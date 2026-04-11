@@ -563,11 +563,9 @@ export class CustomerService {
         .createQueryBuilder(Leads, "leads")
         .leftJoinAndSelect("leads.address", "address")
         .where("leads.is_active = :isActive", { isActive: true });
-      const prospectLeadStatus = LeadStatus.Prospect;
       if (user.role.role_name === Roles.SALES_REP) {
         query
-          .andWhere("leads.assigned_rep_id = :userId", { userId })
-          .andWhere("leads.status = :status", { status: prospectLeadStatus });
+          .andWhere("leads.assigned_rep_id = :userId", { userId });
       }
 
       if (filters.salesmanId) {

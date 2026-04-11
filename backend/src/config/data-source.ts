@@ -77,16 +77,16 @@ export const dataSourceOptions: DataSourceOptions = {
   ],
   migrations: [],
   subscribers: [],
-  poolSize: 5, // Reduced for Supabase pooler // Increased connection pool for better handling
+  poolSize: 2, // Keep low for serverless + Supabase transaction pooler
   extra: {
-    connectionTimeoutMillis: 30000, // 30s timeout (increased from 10s)
-    idleTimeoutMillis: 60000, // 60s idle timeout (increased from 30s)
-    max: 5, // Max connections (increased)
-    min: 1, // Min connections (increased)
-    acquireTimeoutMillis: 60000, // Time to wait for connection from pool
-    createTimeoutMillis: 30000, // Time to wait for new connection creation
-    destroyTimeoutMillis: 5000, // Time to wait for connection destruction
-    reapIntervalMillis: 1000, // Frequency to check for idle connections
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 10000, // Release idle connections quickly in serverless
+    max: 2, // Low max for transaction-mode pooler
+    min: 0, // No min connections in serverless
+    acquireTimeoutMillis: 30000,
+    createTimeoutMillis: 10000,
+    destroyTimeoutMillis: 5000,
+    reapIntervalMillis: 1000,
   },
 };
 
