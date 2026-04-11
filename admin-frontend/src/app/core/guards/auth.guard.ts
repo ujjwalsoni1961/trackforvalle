@@ -1,28 +1,32 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, CanLoad, Router, Route, UrlSegment, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
+import { SupabaseService } from '../services/supabase.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthGuard implements CanActivate, CanLoad {
-  constructor(private authService: AuthService, private router: Router) {}
+  constructor(
+    private authService: AuthService,
+    private supabaseService: SupabaseService,
+    private router: Router
+  ) {}
 
-  private checkAuth(): boolean {
-    const token = this.authService.getToken();
-    if (token) {
+  private async checkAuth(): Promise<boolean> {
+    const { data: { session } } = await this.supabaseService.getSession();
+    if (session) {
       return true;
-    } else {
-      this.router.navigate(['/auth/sign-in']);
-      return false;
     }
+    this.router.navigate(['/auth/sign-in']);
+    return false;
   }
 
-  canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean {
+  async canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Promise<boolean> {
     return this.checkAuth();
   }
 
-  canLoad(route: Route, segments: UrlSegment[]): boolean {
+  async canLoad(route: Route, segments: UrlSegment[]): Promise<boolean> {
     return this.checkAuth();
   }
 }

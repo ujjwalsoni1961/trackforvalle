@@ -60,18 +60,18 @@ export class SigninComponent {
       next: (response) => {
         const user = response?.data?.user;
 
-        if (response?.success && response?.data?.token) {
+        if (response?.success && user) {
           // Check role using role names after roles are fetched
-          const allowedRoles = ['admin', 'manager']; // Admin and Manager role names
+          const allowedRoles = ['admin', 'manager'];
           const userRole = this.authService.getRoleName(user.role_id);
-          
+
           if (!allowedRoles.includes(userRole)) {
+            this.authService.logout();
             this.showError('Please use Salesman Mobile App. This panel is made for Admin and Manager only.');
             this.loading = false;
             return;
           }
 
-          this.authService.setToken(response.data.token);
           this.authService.setCurrentUser(user);
           this.router.navigate(['/dashboard']);
         } else {

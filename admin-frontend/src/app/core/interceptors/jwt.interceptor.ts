@@ -1,18 +1,18 @@
 import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { AuthService } from '../../auth/auth.service';
+import { SupabaseService } from '../services/supabase.service';
 import { Router } from '@angular/router';
 import { HttpErrorResponse, HttpRequest, HttpHandlerFn, HttpEvent } from '@angular/common/http';
 import { catchError, switchMap } from 'rxjs/operators';
-import { Observable, throwError } from 'rxjs';
-
-let isRefreshing = false; // Keep track of refresh state globally
+import { Observable, throwError, from } from 'rxjs';
 
 export const jwtInterceptor: HttpInterceptorFn = (
   req: HttpRequest<any>,
   next: HttpHandlerFn
 ): Observable<HttpEvent<any>> => {
   const authService = inject(AuthService);
+  const supabaseService = inject(SupabaseService);
   const router = inject(Router);
 
   // Skip token for auth endpoints
@@ -20,23 +20,24 @@ export const jwtInterceptor: HttpInterceptorFn = (
     return next(req);
   }
 
-  const token = authService.getToken();
-  if (token) {
-    req = addTokenToRequest(req, token);
-  }
+  // Get the Supabase session token asynchronously
+  return from(supabaseService.getSession()).pipe(
+    switchMap(({ data: { session } }) => {
+      const token = session?.access_token;
+      if (token) {
+        req = addTokenToRequest(req, token);
+      }
 
-  return next(req).pipe(
-    catchError((error: any) => {
-      if (error instanceof HttpErrorResponse && error.status === 401) {
-        // return handle401Error(req, next, authService, router);
-        if (error instanceof HttpErrorResponse && error.status === 401) {
-        // Unauthorized: Log out and redirect to sign-in
-        authService.logout();
-        router.navigate(['/auth/sign-in']);
-        return throwError(() => new Error('Session expired or Unauthorized access - please log in again'));
-      }
-      }
-      return throwError(() => error);
+      return next(req).pipe(
+        catchError((error: any) => {
+          if (error instanceof HttpErrorResponse && error.status === 401) {
+            authService.logout();
+            router.navigate(['/auth/sign-in']);
+            return throwError(() => new Error('Session expired or Unauthorized access - please log in again'));
+          }
+          return throwError(() => error);
+        })
+      );
     })
   );
 };
@@ -56,39 +57,4 @@ function addTokenToRequest(request: HttpRequest<any>, token: string): HttpReques
       Authorization: `Bearer ${token}`
     }
   });
-}
-
-function handle401Error(
-  request: HttpRequest<any>,
-  next: HttpHandlerFn,
-  authService: AuthService,
-  router: Router
-): Observable<HttpEvent<any>> {
-  
-  // if (!isRefreshing) {
-  //   isRefreshing = true;
-
-  //   return authService.refreshToken().pipe(
-  //     switchMap((response: any) => {
-  //       isRefreshing = false;
-
-  //       if (response?.success && response?.data?.token) {
-  //         authService.setToken(response.data.token);
-  //         const newRequest = addTokenToRequest(request, response.data.token);
-  //         return next(newRequest);
-  //       } else {
-  //         authService.logout();
-  //         return throwError(() => new Error('Token refresh failed'));
-  //       }
-  //     }),
-  //     catchError((error) => {
-  //       isRefreshing = false;
-  //       authService.logout();
-  //       return throwError(() => error);
-  //     })
-  //   );
-  // }
-
-  // If already refreshing, just forward original request
-  return next(request);
 }
