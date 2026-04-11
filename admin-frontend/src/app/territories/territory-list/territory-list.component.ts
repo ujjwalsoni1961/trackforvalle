@@ -370,16 +370,29 @@ export class TerritoryListComponent implements OnInit {
           } catch (e) {
             console.warn('Error parsing territory fields', { postalCodes, regions, subregions }, e);
           }
-          return territory.salesmen.map((s: any) => ({
-            id: territory.territory_id,
-            name: territory.name,
-            salesmanId: s.user_id,
-            geometry: JSON.stringify(paths),
-            postal_codes: postalCodes,
-            regions: regions,
-            subregions: subregions,
-            polygon: null
-          }));
+          if (territory.salesmen && territory.salesmen.length > 0) {
+            return territory.salesmen.map((s: any) => ({
+              id: territory.territory_id,
+              name: territory.name,
+              salesmanId: s.user_id,
+              geometry: JSON.stringify(paths),
+              postal_codes: postalCodes,
+              regions: regions,
+              subregions: subregions,
+              polygon: null
+            }));
+          } else {
+            return [{
+              id: territory.territory_id,
+              name: territory.name,
+              salesmanId: null,
+              geometry: JSON.stringify(paths),
+              postal_codes: postalCodes,
+              regions: regions,
+              subregions: subregions,
+              polygon: null
+            }];
+          }
         });
         this.dataSource.data = this.territories;
         // Update pagination data

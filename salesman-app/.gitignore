@@ -11,3 +11,4 @@ android/.idea/
 *.iml
 .idea/
 .firebase/
+.vercel
