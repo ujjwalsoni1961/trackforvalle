@@ -62,7 +62,7 @@ export class SigninComponent {
 
         if (response?.success && user) {
           // Check role using role names after roles are fetched
-          const allowedRoles = ['admin', 'manager'];
+          const allowedRoles = ['super_admin', 'admin', 'manager'];
           const userRole = this.authService.getRoleName(user.role_id);
 
           if (!allowedRoles.includes(userRole)) {
