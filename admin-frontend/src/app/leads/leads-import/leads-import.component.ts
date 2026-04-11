@@ -171,7 +171,13 @@ export class LeadsImportComponent implements OnInit {
         this.resetManualForm();
       },
       error: (err: any) => {
-        this.snackBar.open('Error importing manual leads: ' + err.error.error.message, 'Close', { duration: 3000 });
+        const msg = err?.error?.error?.message || 'An unexpected error occurred';
+        const details = err?.error?.errors;
+        if (details?.length) {
+          this.snackBar.open(details[0], 'Close', { duration: 5000 });
+        } else {
+          this.snackBar.open(msg, 'Close', { duration: 5000 });
+        }
       }
     });
   }

@@ -953,7 +953,9 @@ export class CustomerService {
             const customer = queryRunner.manager.create(Leads, {
               pending_assignment: true,
               is_active: true,
-              name: "",
+              name: row.name?.trim() || "",
+              contact_email: row.contact_email?.trim() || "",
+              contact_phone: (row.contact_phone || (row as any).phone)?.trim() || "",
               created_by: adminId.toString(),
               updated_by: adminId.toString(),
               org_id,
@@ -1081,14 +1083,18 @@ export class CustomerService {
       if (addresses.length || customers.length) {
         return {
           status: httpStatusCodes.OK,
-          message: errors.length ? "Failed to import leads" : "",
+          message: errors.length ? "Some leads had issues" : "Leads imported successfully",
           data: { addresses, customers },
           errors: errors.length ? errors : undefined,
         };
       } else {
+        // Provide a user-friendly message when all rows were duplicates
+        const hasDuplicates = errors.some(e => e.includes("Duplicate"));
         return {
           status: httpStatusCodes.BAD_REQUEST,
-          message: "Import failed: No valid data processed",
+          message: hasDuplicates
+            ? "Import failed: All leads are duplicates of existing records"
+            : "Import failed: No valid data processed",
           data: null,
           errors,
         };
