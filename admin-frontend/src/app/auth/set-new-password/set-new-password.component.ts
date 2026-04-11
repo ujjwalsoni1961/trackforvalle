@@ -35,10 +35,10 @@ export class SetNewPasswordComponent {
   private _route = inject(ActivatedRoute);
   private _authService = inject(AuthService);
 
-  token: string | null = null;
   errorMessage: string | null = null;
   successMessage: string | null = null;
   loading = false;
+  isRecoverySession = false;
 
   form = new FormGroup({
     password: new FormControl('', [
@@ -50,9 +50,9 @@ export class SetNewPasswordComponent {
   }, { validators: this.passwordMatchValidator() });
 
   constructor() {
-    this._route.queryParams.subscribe(params => {
-      this.token = params['token'] || null;
-    });
+    // Supabase recovery flow: the session is already established from the hash fragment
+    // We just need to allow the user to set a new password
+    this.isRecoverySession = true;
   }
 
   passwordMatchValidator(): any {
@@ -68,11 +68,11 @@ export class SetNewPasswordComponent {
   }
 
   resetPassword() {
-    if (this.form.valid && this.token) {
+    if (this.form.valid) {
       this.loading = true;
-      this._authService.resetPassword(this.token, this.form.get('password')?.value!).subscribe({
+      this._authService.resetPassword('recovery', this.form.get('password')?.value!).subscribe({
         next: (response: any) => {
-          this.successMessage = response.message;
+          this.successMessage = response.message || 'Password updated successfully!';
           this.errorMessage = null;
           this.loading = false;
           this.form.markAsUntouched();
@@ -81,7 +81,7 @@ export class SetNewPasswordComponent {
           }, 2000);
         },
         error: (error) => {
-          this.errorMessage = error.error.error?.message || 'An error occurred';
+          this.errorMessage = error.error?.error?.message || error.message || 'An error occurred';
           this.successMessage = null;
           this.loading = false;
         }

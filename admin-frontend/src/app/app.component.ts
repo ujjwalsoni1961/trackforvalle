@@ -1,5 +1,6 @@
 import { afterNextRender, Component, inject, OnInit } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { SupabaseService } from './core/services/supabase.service';
 import { filter } from 'rxjs';
 import { PageLoadingBarComponent } from '@elementar-ui/components/page-loading-bar';
 import {
@@ -29,9 +30,17 @@ export class AppComponent implements OnInit {
   private _seoService = inject(SeoService);
   private _envService = inject(EnvironmentService);
   private _router = inject(Router);
+  private _supabaseService = inject(SupabaseService);
 
   constructor() {
     afterNextRender(() => {
+      // Listen for Supabase PASSWORD_RECOVERY event
+      this._supabaseService.onAuthStateChange((event, session) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          this._router.navigateByUrl('/auth/set-new-password');
+        }
+      });
+
       // Scroll a page to top if url changed
       this._router.events
         .pipe(
