@@ -44,7 +44,7 @@ const territoryService = new TerritoryService();
 const geocodingService = new GeocodingService();
 export class UserTeamService {
   async SendEmailNotification(email: string, password: string, roleName?: string) {
-    const loginUrl = process.env.FORNTEND_URL || "https://field-sales-admin.vercel.app/auth/sign-in";
+    const loginUrl = process.env.FORNTEND_URL || "https://trackforvalle-admin.vercel.app/auth/sign-in";
     const roleLabel = roleName
       ? roleName.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
       : "User";
@@ -78,11 +78,13 @@ export class UserTeamService {
         where: [{ org_id: org_id }, { role_name: Roles.ADMIN }],
       });
 
-      if (!roleData) {
+      await queryRunner.commitTransaction();
+
+      if (!roleData || roleData.length === 0) {
         return {
-          data: null,
-          status: 404,
-          message: "Roles not found",
+          data: [],
+          status: 200,
+          message: "No roles found",
         };
       }
       return {
@@ -95,7 +97,7 @@ export class UserTeamService {
       return {
         data: null,
         status: 500,
-        message: "Error fetcing roles",
+        message: "Error fetching roles",
       };
     } finally {
       await queryRunner.release();

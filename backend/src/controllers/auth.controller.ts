@@ -16,56 +16,71 @@ const authService = new AuthService();
 const otpService = new OtpService();
 export class AuthController {
   async login(req: Request, res: Response) {
-    const { email, password }: ILoginUser = req.body;
-    const response = await authService.login({ email, password });
-    if (response.status >= 400) {
-      return ApiResponse.error(res, response.status, response.message);
+    try {
+      const { email, password }: ILoginUser = req.body;
+      const response = await authService.login({ email, password });
+      if (response.status >= 400) {
+        return ApiResponse.error(res, response.status, response.message);
+      }
+      return ApiResponse.result(
+        res,
+        response.data ?? null,
+        response.status,
+        null,
+        response.message
+      );
+    } catch (error) {
+      console.error("Login controller error:", error);
+      return ApiResponse.error(res, 500, "Internal server error");
     }
-    return ApiResponse.result(
-      res,
-      response.data ?? null,
-      response.status,
-      null,
-      response.message
-    );
   }
 
   async google(req: Request, res: Response) {
-    const { idToken } = req.body;
+    try {
+      const { idToken } = req.body;
 
-    const response = await authService.google(idToken);
-    if (response.status >= 400) {
-      return ApiResponse.error(res, response.status, response.message);
+      const response = await authService.google(idToken);
+      if (response.status >= 400) {
+        return ApiResponse.error(res, response.status, response.message);
+      }
+      return ApiResponse.result(
+        res,
+        response.data ?? null,
+        response.status,
+        null,
+        response.message
+      );
+    } catch (error) {
+      console.error("Google login controller error:", error);
+      return ApiResponse.error(res, 500, "Internal server error");
     }
-    return ApiResponse.result(
-      res,
-      response.data ?? null,
-      response.status,
-      null,
-      response.message
-    );
   }
 
   async signup(req: Request, res: Response) {
-    const params: ISignupParams = {
-      email: req.body.email,
-      password: req.body.password,
-      first_name: req.body.first_name,
-      last_name: req.body.last_name,
-      org_name: req.body.org_name,
-      phone_no: req.body.phone_no,
-    };
-    const response = await authService.signup(params);
-    if (response.status >= 400) {
-      return ApiResponse.error(res, response.status, response.message);
+    try {
+      const params: ISignupParams = {
+        email: req.body.email,
+        password: req.body.password,
+        first_name: req.body.first_name,
+        last_name: req.body.last_name,
+        org_name: req.body.org_name,
+        phone_no: req.body.phone_no,
+      };
+      const response = await authService.signup(params);
+      if (response.status >= 400) {
+        return ApiResponse.error(res, response.status, response.message);
+      }
+      return ApiResponse.result(
+        res,
+        response.data ?? null,
+        response.status,
+        null,
+        response.message
+      );
+    } catch (error) {
+      console.error("Signup controller error:", error);
+      return ApiResponse.error(res, 500, "Internal server error");
     }
-    return ApiResponse.result(
-      res,
-      response.data ?? null,
-      response.status,
-      null,
-      response.message
-    );
   }
 
   async verifyOTP(req: any, res: Response) {
@@ -126,46 +141,56 @@ export class AuthController {
     );
   }
   async forgotPassword(req: any, res: Response) {
-    const { email } = req.body;
-    const response = await authService.forgotPassword(email);
-    if (response.status >= 400) {
-      return ApiResponse.error(res, response.status, response.message);
+    try {
+      const { email } = req.body;
+      const response = await authService.forgotPassword(email);
+      if (response.status >= 400) {
+        return ApiResponse.error(res, response.status, response.message);
+      }
+      return ApiResponse.result(
+        res,
+        response.data ?? null,
+        response.status,
+        null,
+        response.message
+      );
+    } catch (error) {
+      console.error("Forgot password controller error:", error);
+      return ApiResponse.error(res, 500, "Internal server error");
     }
-    return ApiResponse.result(
-      res,
-      response.data ?? null,
-      response.status,
-      null,
-      response.message
-    );
   }
 
   async resetPassword(req: any, res: Response) {
-    const { token, oldPassword, newPassword } = req.body;
-    var org_id;
-    var user_id;
-    if (req.user) {
-      org_id = req.user.org_id;
-      user_id = req.user.user_id;
-    }
-    const response = await authService.resetPassword({
-      token,
-      oldPassword,
-      newPassword,
-      org_id,
-      user_id,
-    });
+    try {
+      const { token, oldPassword, newPassword } = req.body;
+      var org_id;
+      var user_id;
+      if (req.user) {
+        org_id = req.user.org_id;
+        user_id = req.user.user_id;
+      }
+      const response = await authService.resetPassword({
+        token,
+        oldPassword,
+        newPassword,
+        org_id,
+        user_id,
+      });
 
-    if (response.status >= 400) {
-      return ApiResponse.error(res, response.status, response.message);
+      if (response.status >= 400) {
+        return ApiResponse.error(res, response.status, response.message);
+      }
+      return ApiResponse.result(
+        res,
+        response.data ?? null,
+        response.status,
+        null,
+        response.message
+      );
+    } catch (error) {
+      console.error("Reset password controller error:", error);
+      return ApiResponse.error(res, 500, "Internal server error");
     }
-    return ApiResponse.result(
-      res,
-      response.data ?? null,
-      response.status,
-      null,
-      response.message
-    );
   }
 
   // async refreshToken(req: any, res: Response): Promise<void> {

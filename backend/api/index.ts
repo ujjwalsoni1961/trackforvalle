@@ -11,7 +11,12 @@ import { regionsData } from "../src/data/regions";
 const userController = new UserTeamController();
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+}));
 app.use(
   expressSession({
     secret: "your-secret-key",
@@ -26,5 +31,11 @@ app.use("/", (req, res) => {
   res.send("Welcome to track");
 });
 app.get("/api/user/me", userController.getUserById);
+
+// Global error handler to prevent unhandled promise rejections from hanging requests
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error("Unhandled error:", err);
+  res.status(500).json({ success: false, error: { message: "Internal server error" } });
+});
 
 export default app;

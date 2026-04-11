@@ -731,7 +731,7 @@ export class AuthService {
         return { status: 404, message: "User token not found", data: null };
       }
       const resetLink = `${
-        process.env.FORNTEND_URL || "https://field-sales-admin.vercel.app/auth/set-new-password/"
+        process.env.FORNTEND_URL || "https://trackforvalle-admin.vercel.app/auth/set-new-password/"
       }?token=${token}`;
       
       try {

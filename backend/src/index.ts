@@ -16,7 +16,12 @@ const PORT = process.env.PORT || 3002;
   const dataSource = await getDataSource();
   const userController = new UserTeamController();
 
-  app.use(cors());
+  app.use(cors({
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  }));
   app.use(
     expressSession({
       secret: process.env.SESSION_SECRET || "your-secret-key",
@@ -30,6 +35,12 @@ const PORT = process.env.PORT || 3002;
   app.use("/api", router);
   app.use(verifyToken);
   app.get("/api/user/me", userController.getUserById);
+
+  // Global error handler
+  app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error("Unhandled error:", err);
+    res.status(500).json({ success: false, error: { message: "Internal server error" } });
+  });
   const MAX_RETRIES = 5;
   const INITIAL_RETRY_DELAY = 5000;
 
