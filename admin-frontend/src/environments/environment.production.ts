@@ -1,8 +1,8 @@
 export const environment = {
-  siteUrl: 'https://demo.elementarui.com',
-  googleAnalyticsId: 'G-LZYWG6MYJ4',
-  pageTitle: 'Elementar Admin',
-  baseUri: 'https://track-seven-omega.vercel.app/api',
+  siteUrl: 'https://trackforvalle-admin.vercel.app',
+  googleAnalyticsId: '',
+  pageTitle: 'Track for Valle Admin',
+  baseUri: 'https://trackforvalle-backend.vercel.app/api',
   supabaseUrl: 'https://qnbuyistbwdiskwkmvrr.supabase.co',
   supabaseKey: 'sb_publishable_kOJh4VqUPrc25IlG0kpKRg_FfnQ9QSA',
   pageMeta: {

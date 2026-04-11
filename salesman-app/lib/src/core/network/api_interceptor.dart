@@ -9,7 +9,7 @@ import 'package:track/main.dart';
 import 'dart:developer';
 
 class APIInterceptor extends Interceptor {
-  static String BASE_URL = "https://track-seven-omega.vercel.app/api";
+  static String BASE_URL = "https://trackforvalle-backend.vercel.app/api";
 
   static bool isStaging = false;
   
