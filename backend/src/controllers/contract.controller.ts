@@ -4,11 +4,13 @@ import { ApiResponse } from "../utils/api.response";
 import { getDataSource } from "../config/data-source";
 import { Contract } from "../models/Contracts.entity";
 import { ContractPDF } from "../models/ContractPdf.entity";
+import { Visit } from "../models/Visits.entity";
 import { getBrowser } from "../utils/chromium";
 
 export class ContractTemplateController {
   constructor() {
     this.getContractHTML = this.getContractHTML.bind(this);
+    this.getContractByLead = this.getContractByLead.bind(this);
   }
   async create(req: any, res: Response): Promise<void> {
     const { title, content, assigned_manager_ids, status, dropdown_fields, partner_id } =
@@ -731,6 +733,65 @@ export class ContractTemplateController {
     } catch (error) {
       console.error("Error deleting contract:", error);
       return ApiResponse.error(res, 500, "Internal server error");
+    }
+  }
+
+  async getContractByLead(req: any, res: Response): Promise<void> {
+    try {
+      const { leadId } = req.params;
+      const dataSource = await getDataSource();
+
+      // Find visit(s) for this lead that have a contract
+      const visitRepo = dataSource.getRepository(Visit);
+      const visits = await visitRepo.find({
+        where: { lead_id: parseInt(leadId) },
+        relations: {
+          contract: {
+            template: true,
+            images: true,
+            pdf: true,
+          },
+        },
+        order: { created_at: "DESC" },
+      });
+
+      // Filter visits that have a contract
+      const contractVisits = visits.filter((v) => v.contract);
+
+      if (contractVisits.length === 0) {
+        res.status(404).json({
+          success: false,
+          data: null,
+          message: "No contracts found for this lead",
+        });
+        return;
+      }
+
+      // Return the most recent contract with visit info
+      const latestVisit = contractVisits[0];
+      const contract = latestVisit.contract;
+
+      res.status(200).json({
+        success: true,
+        data: {
+          contract_id: contract.id,
+          template_title: contract.template?.title || "Contract",
+          signed_at: contract.signed_at,
+          rendered_html: contract.rendered_html,
+          signature_url: contract.images?.[0]?.image_url || null,
+          has_pdf: !!contract.pdf,
+          visit_id: latestVisit.visit_id,
+          metadata: contract.metadata,
+        },
+        message: "Contract found",
+      });
+    } catch (error) {
+      console.error("Error fetching contract by lead:", error);
+      res.status(500).json({
+        success: false,
+        data: null,
+        message: "Error fetching contract",
+      });
     }
   }
 

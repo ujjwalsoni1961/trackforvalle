@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:track/src/core/injector/injector.dart';
+import 'package:track/src/core/network/api.dart';
 import 'package:track/src/core/ui/res/app_colors.dart';
 import 'package:track/src/core/ui/routes/routes.dart';
 import 'package:track/src/core/ui/utility/paddings.dart';
@@ -15,6 +17,7 @@ import 'package:track/src/features/visits/presentation/leads/cubit/lead_status_c
 import 'package:track/src/features/visits/presentation/leads/views/edit_a_lead_details_view.dart';
 import 'package:track/src/features/visits/presentation/leads/widgets/common_routes_and_leads.dart';
 import 'package:track/src/features/visits/presentation/sign_contract/views/choose_contract_view.dart';
+import 'package:track/src/features/visits/presentation/sign_contract/widgets/contract_preview.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class EachLeadsDetailsPage extends StatefulWidget {
@@ -102,21 +105,21 @@ class _EachLeadsDetailsPageState extends State<EachLeadsDetailsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Sign Contract Button
+            // Sign Contract / View Contract Button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: SizedBox(
                 width: double.infinity,
                 child: isAlreadySigned
                     ? OutlinedButton.icon(
-                        onPressed: null,
+                        onPressed: () => _viewSignedContract(context, widget.lead.leadID),
                         icon: Icon(
-                          Icons.check_circle,
+                          Icons.description,
                           size: 18,
                           color: Colors.green.shade700,
                         ),
                         label: Text(
-                          "Contract Signed",
+                          "View Signed Contract",
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 14,
@@ -236,6 +239,60 @@ class _EachLeadsDetailsPageState extends State<EachLeadsDetailsPage> {
         ),
       ),
     );
+  }
+
+  void _viewSignedContract(BuildContext context, int leadId) async {
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final api = sl<API>();
+      final response = await api.dio.get('/contract/by-lead/$leadId');
+
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // dismiss loading
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final data = response.data['data'];
+        final contractId = data['contract_id'] as int;
+        final title = data['template_title'] as String? ?? 'Contract';
+
+        // Open full-screen dialog with contract preview
+        showDialog(
+          context: context,
+          builder: (ctx) => Dialog.fullscreen(
+            child: Scaffold(
+              appBar: AppBar(
+                title: Text(title),
+                leading: IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(ctx).pop(),
+                ),
+              ),
+              body: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: ContractPreview(
+                  templateString: '',
+                  contractId: contractId,
+                ),
+              ),
+            ),
+          ),
+        );
+      } else {
+        context.errorBar(response.data['message'] ?? 'No contract found for this lead');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.of(context).pop(); // dismiss loading
+        context.errorBar('Failed to load contract');
+      }
+      debugPrint('Error loading contract: $e');
+    }
   }
 
   late LeadStatusCubit leadStatusCubit = context.read<LeadStatusCubit>();

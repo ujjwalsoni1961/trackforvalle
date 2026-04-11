@@ -36,6 +36,7 @@ router.post(
   supabaseUploadMiddleware(STORAGE_BUCKETS.CONTRACT_SIGNATURES, "contracts/pdf/"),
   visitController.submitContractPdf
 );
+router.get("/by-lead/:leadId", verifyToken, authController.getContractByLead);
 router.get("/:contractId/pdf", (req, res) =>
   authController.getContractHTML(req, res)
 );
