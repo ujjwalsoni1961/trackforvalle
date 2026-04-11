@@ -245,6 +245,83 @@ export class PartnerService {
     }
   }
 
+  async getPartnerSignedContracts(
+    partner_id: number,
+    page: number,
+    limit: number
+  ): Promise<{ status: number; data?: any; message: string; total?: number }> {
+    const dataSource = await getDataSource();
+
+    try {
+      const skip = (page - 1) * limit;
+
+      const [contracts, total] = await dataSource
+        .getRepository(Contract)
+        .createQueryBuilder("c")
+        .leftJoinAndSelect("c.template", "template")
+        .leftJoinAndSelect("c.visit", "visit")
+        .leftJoinAndSelect("visit.rep", "rep")
+        .leftJoinAndSelect("visit.lead", "lead")
+        .where("template.partner_id = :partner_id", { partner_id })
+        .orderBy("c.signed_at", "DESC")
+        .skip(skip)
+        .take(limit)
+        .getManyAndCount();
+
+      return {
+        status: httpStatusCodes.OK,
+        data: contracts,
+        total,
+        message: "Signed contracts fetched successfully",
+      };
+    } catch (error) {
+      return {
+        status: httpStatusCodes.INTERNAL_SERVER_ERROR,
+        message: "Error fetching signed contracts",
+      };
+    }
+  }
+
+  async createPartnerContractTemplate(
+    partner_id: number,
+    payload: {
+      title: string;
+      content: string;
+      dropdown_fields?: any;
+    }
+  ): Promise<{ status: number; data?: any; message: string }> {
+    const dataSource = await getDataSource();
+    const queryRunner = dataSource.createQueryRunner();
+    await queryRunner.startTransaction();
+
+    try {
+      const template = queryRunner.manager.getRepository(ContractTemplate).create({
+        title: payload.title,
+        content: payload.content,
+        partner_id,
+        status: "draft",
+        dropdown_fields: payload.dropdown_fields || undefined,
+      });
+
+      const saved = await queryRunner.manager.getRepository(ContractTemplate).save(template);
+      await queryRunner.commitTransaction();
+
+      return {
+        status: httpStatusCodes.CREATED,
+        data: saved,
+        message: "Contract template created successfully",
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      return {
+        status: httpStatusCodes.INTERNAL_SERVER_ERROR,
+        message: "Error creating contract template",
+      };
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
   async getPartnerReports(
     partner_id: number
   ): Promise<{ status: number; data?: any; message: string }> {

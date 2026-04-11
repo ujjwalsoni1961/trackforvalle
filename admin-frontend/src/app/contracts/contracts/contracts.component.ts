@@ -49,6 +49,8 @@ interface Contract {
   created_at: string;
   updated_at: string;
   dropdown_fields?: { [key: string]: DropdownField };
+  partner_id?: number;
+  partner?: { partner_id: number; company_name: string } | null;
 }
 
 interface Manager {
@@ -85,7 +87,7 @@ export class ContractsComponent implements OnInit {
   contracts: Contract[] = [];
   filteredContracts: Contract[] = [];
   managers: Manager[] = [];
-  displayedColumns: string[] = ['title', 'managerNames', 'status', 'createdAt', 'actions'];
+  displayedColumns: string[] = ['title', 'partnerCompany', 'managerNames', 'status', 'createdAt', 'actions'];
   filterForm: FormGroup;
   contractForm: FormGroup;
   isLoading = false;
@@ -213,6 +215,13 @@ export class ContractsComponent implements OnInit {
         .join(', ');
     }
     return 'No managers assigned';
+  }
+
+  getPartnerName(contract: Contract): string {
+    if (contract.partner && contract.partner.company_name) {
+      return contract.partner.company_name;
+    }
+    return '-';
   }
 
   navigateToAddContract() {

@@ -13,6 +13,7 @@ export const ContractTemplateService = {
     content: string;
     status: string;
     assigned_manager_ids: number[];
+    partner_id?: number;
     dropdown_fields?: {
       [fieldName: string]: {
         label: string;
@@ -43,6 +44,7 @@ export const ContractTemplateService = {
         status: payload.status,
         assigned_managers: managers,
         dropdown_fields: payload.dropdown_fields || undefined,
+        ...(payload.partner_id && { partner_id: payload.partner_id }),
       });
 
       const savedTemplate = await contractRepo.save(newTemplate);
@@ -154,7 +156,7 @@ export const ContractTemplateService = {
     await queryRunner.startTransaction();
     try {
       const contracts = await queryRunner.manager.find(ContractTemplate, {
-        relations: { assigned_managers: true },
+        relations: { assigned_managers: true, partner: true },
         order: { updated_at: "DESC" },
       });
       await queryRunner.commitTransaction();
@@ -388,7 +390,7 @@ export const ContractTemplateService = {
 
       const template = await contractRepo.findOne({
         where: { id: templateId },
-        relations: { assigned_managers: true },
+        relations: { assigned_managers: true, partner: true },
       });
 
       if (!template) {

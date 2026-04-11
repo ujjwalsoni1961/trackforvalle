@@ -11,7 +11,7 @@ export class ContractTemplateController {
     this.getContractHTML = this.getContractHTML.bind(this);
   }
   async create(req: any, res: Response): Promise<void> {
-    const { title, content, assigned_manager_ids, status, dropdown_fields } =
+    const { title, content, assigned_manager_ids, status, dropdown_fields, partner_id } =
       req.body;
 
     const newTemplate = await ContractTemplateService.createContractTemplate({
@@ -20,6 +20,7 @@ export class ContractTemplateController {
       status,
       assigned_manager_ids,
       dropdown_fields,
+      ...(partner_id && { partner_id }),
     });
     if (newTemplate.status >= 400) {
       ApiResponse.error(res, newTemplate.status, newTemplate.message);

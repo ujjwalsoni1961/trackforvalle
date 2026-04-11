@@ -34,6 +34,17 @@ export class PartnerService {
     return this.http.put(`${this.baseUrl}/partner/profile`, data);
   }
 
+  getSignedContracts(params: { page?: number; limit?: number } = {}): Observable<any> {
+    let httpParams = new HttpParams();
+    if (params.page) httpParams = httpParams.set('page', params.page.toString());
+    if (params.limit) httpParams = httpParams.set('limit', params.limit.toString());
+    return this.http.get(`${this.baseUrl}/partner/signed-contracts`, { params: httpParams });
+  }
+
+  createContractTemplate(data: { title: string; content: string; dropdown_fields?: any }): Observable<any> {
+    return this.http.post(`${this.baseUrl}/partner/contracts`, data);
+  }
+
   // Admin methods
   getAllPartners(params: { page?: number; limit?: number; search?: string } = {}): Observable<any> {
     let httpParams = new HttpParams();

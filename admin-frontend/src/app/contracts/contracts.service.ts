@@ -34,6 +34,8 @@ interface Contract {
   created_at: string;
   updated_at: string;
   dropdown_fields?: { [key: string]: DropdownField };
+  partner_id?: number;
+  partner?: { partner_id: number; company_name: string } | null;
 }
 
 interface SignedContract {
@@ -234,7 +236,9 @@ export class ContractsService {
             status: item.status as 'draft' | 'active' | 'archived',
             created_by: item.assigned_managers?.[0]?.full_name || 'Unknown',
             created_at: item.created_at,
-            updated_at: item.updated_at
+            updated_at: item.updated_at,
+            partner_id: item.partner_id || null,
+            partner: item.partner || null
           })),
           pagination: { total: response.data.length }
         }
@@ -283,7 +287,9 @@ export class ContractsService {
           created_by: response.data.assigned_managers?.[0]?.full_name || 'Unknown',
           created_at: response.data.created_at,
           updated_at: response.data.updated_at,
-          dropdown_fields: response.data.dropdown_fields || {}
+          dropdown_fields: response.data.dropdown_fields || {},
+          partner_id: response.data.partner_id || null,
+          partner: response.data.partner || null
         }
       }))
     );

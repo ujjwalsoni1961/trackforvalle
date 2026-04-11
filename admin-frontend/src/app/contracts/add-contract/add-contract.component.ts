@@ -15,6 +15,7 @@ import { finalize } from 'rxjs/operators';
 import { QuillModule } from 'ngx-quill';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import { UsersService } from '../../users/users.service';
+import { PartnerService } from '../../partner/partner.service';
 
 interface Manager {
   id: string;
@@ -64,6 +65,7 @@ interface DropdownField {
 export class AddContractComponent implements OnInit {
   contractForm: FormGroup;
   managers: Manager[] = [];
+  partners: Array<{ partner_id: number; company_name: string }> = [];
   isLoading = false;
   dropdownFields: { [key: string]: DropdownField } = {};
   isEditMode = false;
@@ -256,6 +258,7 @@ export class AddContractComponent implements OnInit {
     private fb: FormBuilder,
     private contractsService: ContractsService,
     private usersService: UsersService,
+    private partnerService: PartnerService,
     private snackBar: MatSnackBar,
     private router: Router,
     private route: ActivatedRoute
@@ -265,6 +268,7 @@ export class AddContractComponent implements OnInit {
       content: ['', Validators.required],
       assigned_manager_ids: [[], Validators.required],
       status: ['draft', Validators.required],
+      partner_id: [null],
       templateId: [''], // For template selection
       dropdownFields: this.fb.array([]) // For dynamic dropdown fields
     });
@@ -282,7 +286,8 @@ export class AddContractComponent implements OnInit {
     });
 
     this.loadManagers();
-    
+    this.loadPartners();
+
     // Only set up template selection for create mode
     if (!this.isEditMode) {
       this.contractForm.get('templateId')?.valueChanges.subscribe(templateId => {
@@ -317,7 +322,8 @@ export class AddContractComponent implements OnInit {
           title: this.currentTemplate.title,
           content: this.currentTemplate.content,
           assigned_manager_ids: this.currentTemplate.assigned_manager_ids,
-          status: this.currentTemplate.status
+          status: this.currentTemplate.status,
+          partner_id: this.currentTemplate.partner_id || null
         });
         
         // Load existing dropdown fields
@@ -360,6 +366,17 @@ export class AddContractComponent implements OnInit {
     });
   }
 
+  loadPartners() {
+    this.partnerService.getAllPartners({ page: 1, limit: 100 }).subscribe({
+      next: (response: any) => {
+        this.partners = response?.data || [];
+      },
+      error: () => {
+        // Non-critical, partner selector will just be empty
+      }
+    });
+  }
+
   loadManagers() {
     this.isLoading = true;
     this.usersService.getManagers().pipe(
@@ -386,15 +403,16 @@ export class AddContractComponent implements OnInit {
     }
 
     this.isLoading = true;
-    const { title, content, assigned_manager_ids, status } = this.contractForm.value;
+    const { title, content, assigned_manager_ids, status, partner_id } = this.contractForm.value;
     const dropdownFields = this.buildDropdownFieldsPayload();
-    
-    const contractData = { 
-      title, 
-      content, 
-      assigned_manager_ids, 
+
+    const contractData: any = {
+      title,
+      content,
+      assigned_manager_ids,
       status,
-      ...(Object.keys(dropdownFields).length > 0 && { dropdown_fields: dropdownFields })
+      ...(Object.keys(dropdownFields).length > 0 && { dropdown_fields: dropdownFields }),
+      ...(partner_id && { partner_id })
     };
     
     const apiCall = this.isEditMode && this.templateId

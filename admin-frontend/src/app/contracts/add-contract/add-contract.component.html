@@ -34,6 +34,15 @@
         </mat-select>
         <mat-error *ngIf="contractForm.get('status')?.hasError('required')">Status is required</mat-error>
       </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Partner Company (Optional)</mat-label>
+        <mat-select formControlName="partner_id">
+          <mat-option [value]="null">None</mat-option>
+          <mat-option *ngFor="let partner of partners" [value]="partner.partner_id">
+            {{ partner.company_name }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
     </div>
     <div>
       <label class="block text-sm font-medium mb-2">Content</label>

@@ -121,6 +121,67 @@ export class PartnerController {
     });
   }
 
+  async getPartnerSignedContracts(req: any, res: Response): Promise<void> {
+    try {
+      const { partner_id } = req.user;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+
+      if (!partner_id) {
+        return ApiResponse.error(res, 403, "Partner ID not found for this user");
+      }
+
+      const response = await partnerService.getPartnerSignedContracts(partner_id, page, limit);
+
+      if (response.status >= 400) {
+        return ApiResponse.error(res, response.status, response.message);
+      }
+
+      const total = response.total || 0;
+      const totalPages = Math.ceil(total / limit);
+
+      return ApiResponse.result(res, response.data, response.status, null, response.message, {
+        previousPage: page > 1 ? page - 1 : null,
+        nextPage: page < totalPages ? page + 1 : null,
+        currentPage: page,
+        totalItems: total,
+        totalPages,
+      });
+    } catch (error) {
+      return ApiResponse.error(res, 500, "Error fetching signed contracts");
+    }
+  }
+
+  async createContractTemplate(req: any, res: Response): Promise<void> {
+    try {
+      const { partner_id } = req.user;
+
+      if (!partner_id) {
+        return ApiResponse.error(res, 403, "Partner ID not found for this user");
+      }
+
+      const { title, content, dropdown_fields } = req.body;
+
+      if (!title || !content) {
+        return ApiResponse.error(res, 400, "Title and content are required");
+      }
+
+      const response = await partnerService.createPartnerContractTemplate(partner_id, {
+        title,
+        content,
+        dropdown_fields,
+      });
+
+      if (response.status >= 400) {
+        return ApiResponse.error(res, response.status, response.message);
+      }
+
+      return ApiResponse.result(res, response.data, response.status, null, response.message);
+    } catch (error) {
+      return ApiResponse.error(res, 500, "Error creating contract template");
+    }
+  }
+
   async getPartnerReports(req: any, res: Response): Promise<void> {
     const { partner_id } = req.user;
 

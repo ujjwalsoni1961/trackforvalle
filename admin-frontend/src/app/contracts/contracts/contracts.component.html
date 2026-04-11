@@ -55,6 +55,15 @@
           <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Title</th>
           <td mat-cell *matCellDef="let contract">{{ contract.title }}</td>
         </ng-container>
+        <ng-container matColumnDef="partnerCompany">
+          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Partner</th>
+          <td mat-cell *matCellDef="let contract">
+            <span *ngIf="contract.partner" class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+              {{ getPartnerName(contract) }}
+            </span>
+            <span *ngIf="!contract.partner" class="text-gray-400">-</span>
+          </td>
+        </ng-container>
         <ng-container matColumnDef="managerNames">
           <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Assigned Managers</th>
           <td mat-cell *matCellDef="let contract">{{ getManagerNames(contract) }}</td>
@@ -119,6 +128,7 @@
   <ng-template #viewContractDialog>
     <h2 mat-dialog-title>{{ selectedContract?.title }}</h2>
     <mat-dialog-content>
+      <p *ngIf="selectedContract?.partner"><strong>Partner Company:</strong> {{ selectedContract?.partner?.company_name }}</p>
       <p><strong>Assigned Managers:</strong> {{ selectedContract ? getManagerNames(selectedContract) : 'None' }}</p>
       <!-- <p><strong>Signed Count:</strong> {{ selectedContract?.signed_count }}</p> -->
       <p><strong>Status:</strong> {{ selectedContract?.status | titlecase }}</p>

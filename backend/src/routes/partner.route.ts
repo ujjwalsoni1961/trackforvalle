@@ -11,7 +11,9 @@ router.post("/", verifyToken, (req, res) => partnerController.createPartner(req,
 
 // Partner self-service routes
 router.get("/dashboard", verifyToken, (req, res) => partnerController.getDashboardStats(req, res));
+router.get("/signed-contracts", verifyToken, (req, res) => partnerController.getPartnerSignedContracts(req, res));
 router.get("/contracts", verifyToken, (req, res) => partnerController.getPartnerContracts(req, res));
+router.post("/contracts", verifyToken, (req, res) => partnerController.createContractTemplate(req, res));
 router.get("/reports", verifyToken, (req, res) => partnerController.getPartnerReports(req, res));
 router.get("/profile", verifyToken, (req, res) => partnerController.getPartnerProfile(req, res));
 router.put("/profile", verifyToken, (req, res) => partnerController.updatePartnerProfile(req, res));
