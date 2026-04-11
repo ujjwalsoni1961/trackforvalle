@@ -12,6 +12,10 @@ extension ToastExtension on BuildContext {
   void errorBar(String message, [bool padding = false]) {
     MyToast.show(MessageTypes.ERROR, this, message, padding);
   }
+
+  void infoBar(String message, [bool padding = false]) {
+    MyToast.show(MessageTypes.INFO, this, message, padding);
+  }
 }
 
 class MyToast {
@@ -21,13 +25,22 @@ class MyToast {
     String message,
     bool padding,
   ) {
+    Color bgColor;
+    switch (messageType) {
+      case MessageTypes.ERROR:
+        bgColor = AppColors.red;
+        break;
+      case MessageTypes.INFO:
+        bgColor = const Color(0xFF1d43f0);
+        break;
+      default:
+        bgColor = AppColors.greyDark;
+    }
     Fluttertoast.showToast(
       msg: message,
       toastLength: Toast.LENGTH_SHORT,
       gravity: ToastGravity.BOTTOM,
-      backgroundColor: messageType == MessageTypes.ERROR
-          ? AppColors.red
-          : AppColors.greyDark,
+      backgroundColor: bgColor,
       textColor: AppColors.white,
       fontSize: 16.0,
     );
@@ -37,4 +50,5 @@ class MyToast {
 class MessageTypes {
   static const String ERROR = "error";
   static const String SUCCESS = "success";
+  static const String INFO = "info";
 }

@@ -435,8 +435,8 @@ export class LeadDetailsDialogComponent implements OnInit {
     });
   }
 
-  getStatusStyles(status: LeadStatus): { backgroundColor: string; color: string } {
-    return this.statusColors[status] || { backgroundColor: '#D3D3D3', color: '#808080' };
+  getStatusStyles(status: LeadStatus | string): { backgroundColor: string; color: string } {
+    return this.statusColors[status as LeadStatus] || { backgroundColor: '#D3D3D3', color: '#808080' };
   }
 
   openContractPdf(contractId: number | null): void {

@@ -9,12 +9,14 @@ class LeadStatusDropdown extends StatelessWidget {
   final LeadStatusEntity? selectedStatus;
   final Function(LeadStatusEntity?) onStatusChanged;
   final bool isContractSigned;
+  final String? currentLeadStatus;
 
   const LeadStatusDropdown({
     super.key,
     required this.selectedStatus,
     required this.onStatusChanged,
     required this.isContractSigned,
+    this.currentLeadStatus,
   });
 
   LeadStatusEntity? getSignedStatus(List<LeadStatusEntity> statusList) {
@@ -42,6 +44,12 @@ class LeadStatusDropdown extends StatelessWidget {
         }
 
         if (state is LeadStatusSuccess) {
+          final filteredStatusList = currentLeadStatus != null
+              ? state.statusList
+                  .where((s) => s.status != currentLeadStatus)
+                  .toList()
+              : state.statusList;
+
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -52,6 +60,17 @@ class LeadStatusDropdown extends StatelessWidget {
                   color: Colors.black87,
                 ),
               ),
+              if (currentLeadStatus != null) ...[
+                const GapV(4),
+                Text(
+                  "Current: $currentLeadStatus",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade500,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
               const GapV(12),
               Container(
                 width: double.infinity,
@@ -82,7 +101,7 @@ class LeadStatusDropdown extends StatelessWidget {
                         ? getSignedStatus(state.statusList)
                         : selectedStatus,
                     hint: Text(
-                      "Select status...",
+                      "Select new status...",
                       style: TextStyle(
                         color: isContractSigned
                             ? Colors.grey.shade300
@@ -91,7 +110,7 @@ class LeadStatusDropdown extends StatelessWidget {
                     ),
                     isExpanded: true,
                     onChanged: isContractSigned ? null : onStatusChanged,
-                    items: state.statusList.map((status) {
+                    items: filteredStatusList.map((status) {
                       final statusColor = Color(
                         int.parse('0xFF${status.hexColor.replaceAll("#", "")}'),
                       );

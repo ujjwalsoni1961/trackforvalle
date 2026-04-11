@@ -55,6 +55,42 @@ class CalendarModel extends CalendarEntity {
   }
 }
 
+class LeadStatusCountModel extends LeadStatusCountEntity {
+  const LeadStatusCountModel({
+    required super.status,
+    required super.count,
+    required super.color,
+  });
+
+  factory LeadStatusCountModel.fromMap(Map<String, dynamic> map) {
+    return LeadStatusCountModel(
+      status: (map['status'] as String?) ?? 'Unknown',
+      count: (map['count'] as num?)?.toInt() ?? 0,
+      color: (map['color'] as String?) ?? '#999999',
+    );
+  }
+}
+
+class RecentActivityModel extends RecentActivityEntity {
+  const RecentActivityModel({
+    required super.visitId,
+    required super.leadName,
+    required super.status,
+    required super.date,
+    super.notes,
+  });
+
+  factory RecentActivityModel.fromMap(Map<String, dynamic> map) {
+    return RecentActivityModel(
+      visitId: (map['visitId'] as num?)?.toInt() ?? 0,
+      leadName: (map['leadName'] as String?) ?? 'Unknown',
+      status: (map['status'] as String?) ?? 'Unknown',
+      date: (map['date'] as String?) ?? '',
+      notes: map['notes'] as String?,
+    );
+  }
+}
+
 class DashboardDataModel extends DashboardDataEntity {
   const DashboardDataModel({
     required super.unSignedLeads,
@@ -63,6 +99,10 @@ class DashboardDataModel extends DashboardDataEntity {
     required super.unVisitedLeads,
     required super.visitedLeads,
     required super.calendar,
+    super.todaysVisits,
+    super.conversionRate,
+    super.leadsByStatus,
+    super.recentActivity,
   });
 
   factory DashboardDataModel.fromMap(Map<String, dynamic> map) {
@@ -75,6 +115,14 @@ class DashboardDataModel extends DashboardDataEntity {
       calendar: CalendarModel.fromMap(
         (map['calender'] ?? map['calendar']) as Map<String, dynamic>,
       ),
+      todaysVisits: (map['todaysVisits'] as num?)?.toInt() ?? 0,
+      conversionRate: (map['conversionRate'] as num?)?.toInt() ?? 0,
+      leadsByStatus: ((map['leadsByStatus'] as List<dynamic>?) ?? [])
+          .map((e) => LeadStatusCountModel.fromMap(e as Map<String, dynamic>))
+          .toList(),
+      recentActivity: ((map['recentActivity'] as List<dynamic>?) ?? [])
+          .map((e) => RecentActivityModel.fromMap(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 
@@ -86,6 +134,8 @@ class DashboardDataModel extends DashboardDataEntity {
       'unVisitedLeads': unVisitedLeads,
       'visitedLeads': visitedLeads,
       'calender': (calendar as CalendarModel).toMap(),
+      'todaysVisits': todaysVisits,
+      'conversionRate': conversionRate,
     };
   }
 }

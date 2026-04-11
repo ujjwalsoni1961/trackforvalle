@@ -3,10 +3,10 @@ import { Role } from "../models/Role.entity";
 import { Leads } from "../models/Leads.entity";
 import { Visit } from "../models/Visits.entity";
 import httpStatusCodes from "http-status-codes";
-import { In, IsNull, Not } from "typeorm";
+import { In, IsNull, Not, MoreThanOrEqual, Between } from "typeorm";
 import { isEmpty } from "class-validator";
 import { getCurrentMonthData } from "../utils/workingDays";
-import { LeadStatus } from "../enum/leadStatus";
+import { LeadStatus, leadStatusColors } from "../enum/leadStatus";
 
 export class DashboardService {
   async getDashboard(
@@ -19,6 +19,12 @@ export class DashboardService {
     const leadsRepo = dataSource.getRepository(Leads);
 
     try {
+      // Today's date range
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+
       // Run queries in parallel
       const [
         unVisitedLeads,
@@ -27,6 +33,9 @@ export class DashboardService {
         signedLeads,
         unSignedLeads,
         calender,
+        todaysVisits,
+        recentVisits,
+        leadsByStatusRaw,
       ] = await Promise.all([
         leadsRepo.count({
           where: {
@@ -56,7 +65,50 @@ export class DashboardService {
           },
         }),
         getCurrentMonthData(),
+        visitRepo.count({
+          where: {
+            rep_id: userId,
+            check_in_time: Between(todayStart, todayEnd),
+          },
+        }),
+        visitRepo.find({
+          where: {
+            rep_id: userId,
+          },
+          order: { check_in_time: "DESC" },
+          take: 5,
+          relations: ["lead"],
+        }),
+        // Get leads grouped by status
+        leadsRepo
+          .createQueryBuilder("lead")
+          .select("lead.status", "status")
+          .addSelect("COUNT(*)", "count")
+          .where("lead.assigned_rep_id = :userId", { userId })
+          .groupBy("lead.status")
+          .getRawMany(),
       ]);
+
+      // Build leadsByStatus with colors
+      const leadsByStatus = leadsByStatusRaw.map((row: any) => ({
+        status: row.status,
+        count: parseInt(row.count, 10),
+        color: leadStatusColors[row.status as LeadStatus]?.hex || "#999999",
+      }));
+
+      // Conversion rate
+      const conversionRate = totalLeads > 0
+        ? Math.round((signedLeads / totalLeads) * 100)
+        : 0;
+
+      // Format recent visits
+      const recentActivity = recentVisits.map((v: any) => ({
+        visitId: v.visit_id,
+        leadName: v.lead?.name || v.lead?.street_address || `Lead #${v.lead_id}`,
+        status: v.status || "Unknown",
+        date: v.check_in_time,
+        notes: v.notes ? v.notes.substring(0, 100) : null,
+      }));
 
       return {
         status: httpStatusCodes.OK,
@@ -68,6 +120,10 @@ export class DashboardService {
           unVisitedLeads,
           visitedLeads,
           calender,
+          todaysVisits,
+          conversionRate,
+          leadsByStatus,
+          recentActivity,
         },
       };
     } catch (error: any) {

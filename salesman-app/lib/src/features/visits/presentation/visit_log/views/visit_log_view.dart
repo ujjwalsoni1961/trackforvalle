@@ -145,16 +145,15 @@ class _VisitLogViewState extends State<VisitLogView> {
           '[{"subject": "$subject", "notes": "$followupNotes", "scheduled_date": "${formatDateManually(_selectedDate!)}"}]';
     }
 
-    // Latitude and longitude
+    // Latitude and longitude - non-blocking, allow submission without location
     final locationCubit = context.read<GetCurrentLocationCubit>();
     double? latitude = locationCubit.latitude;
     double? longitude = locationCubit.longitude;
 
     if (latitude == null || longitude == null) {
-      context.errorBar(
-        "Unable to fetch current location, check permissions or restart app...",
+      context.infoBar(
+        "Location unavailable - visit will be saved without coordinates",
       );
-      return;
     }
 
     context.read<VisitLogCubit>().submitTheVisitLog(
@@ -327,6 +326,7 @@ class _VisitLogViewState extends State<VisitLogView> {
                     setState(() {});
                   },
                   isContractSigned: contractSignedID != null,
+                  currentLeadStatus: widget.params.currentLeadStatus,
                 ),
                 const GapV(12),
                 Text(

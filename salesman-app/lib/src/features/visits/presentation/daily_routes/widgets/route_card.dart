@@ -545,6 +545,7 @@ class RouteActionButtons extends StatelessWidget {
       extra: LeadIDVisitIDPageParams(
         leadId: route.leadID,
         visitId: route.visitID,
+        currentLeadStatus: route.leadStatus,
       ),
     );
   }

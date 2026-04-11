@@ -17,11 +17,16 @@ import 'package:track/src/features/visits/presentation/sign_contract/widgets/con
 class LeadIDVisitIDPageParams extends Equatable {
   final int leadId;
   final int visitId;
+  final String? currentLeadStatus;
 
-  const LeadIDVisitIDPageParams({required this.leadId, required this.visitId});
+  const LeadIDVisitIDPageParams({
+    required this.leadId,
+    required this.visitId,
+    this.currentLeadStatus,
+  });
 
   @override
-  List<Object?> get props => [leadId, visitId];
+  List<Object?> get props => [leadId, visitId, currentLeadStatus];
 }
 
 class ChooseContractView extends StatefulWidget {

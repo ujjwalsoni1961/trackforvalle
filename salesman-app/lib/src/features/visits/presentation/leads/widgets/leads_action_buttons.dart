@@ -138,7 +138,11 @@ class LeadActionButtons extends StatelessWidget {
   void _handleLogVisit(BuildContext context, LeadsDetailsEntity lead) {
     context.push(
       Routes.visitLogView,
-      extra: LeadIDVisitIDPageParams(leadId: lead.leadID, visitId: -1),
+      extra: LeadIDVisitIDPageParams(
+        leadId: lead.leadID,
+        visitId: -1,
+        currentLeadStatus: lead.status,
+      ),
     );
   }
 

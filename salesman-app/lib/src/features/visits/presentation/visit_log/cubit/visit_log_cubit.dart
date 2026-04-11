@@ -24,8 +24,8 @@ class VisitLogCubit extends Cubit<VisitLogState> {
   void submitTheVisitLog({
     required List<File> photos,
     required String notes,
-    required double latitude,
-    required double longitude,
+    required double? latitude,
+    required double? longitude,
     required int leadID,
     int? visitID,
     required String leadStatus,
@@ -37,8 +37,8 @@ class VisitLogCubit extends Cubit<VisitLogState> {
       SubmitVisitLogParams(
         photos: photos,
         notes: notes,
-        latitude: latitude,
-        longitude: longitude,
+        latitude: latitude ?? 0,
+        longitude: longitude ?? 0,
         leadID: leadID,
         visitID: visitID,
         followUp: followUp,

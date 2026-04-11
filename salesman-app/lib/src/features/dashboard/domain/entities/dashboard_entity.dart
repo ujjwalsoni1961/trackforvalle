@@ -41,6 +41,40 @@ class CalendarEntity extends Equatable {
   ];
 }
 
+class LeadStatusCountEntity extends Equatable {
+  final String status;
+  final int count;
+  final String color;
+
+  const LeadStatusCountEntity({
+    required this.status,
+    required this.count,
+    required this.color,
+  });
+
+  @override
+  List<Object?> get props => [status, count, color];
+}
+
+class RecentActivityEntity extends Equatable {
+  final int visitId;
+  final String leadName;
+  final String status;
+  final String date;
+  final String? notes;
+
+  const RecentActivityEntity({
+    required this.visitId,
+    required this.leadName,
+    required this.status,
+    required this.date,
+    this.notes,
+  });
+
+  @override
+  List<Object?> get props => [visitId, leadName, status, date, notes];
+}
+
 class DashboardDataEntity extends Equatable {
   final int unSignedLeads;
   final int signedLeads;
@@ -48,6 +82,10 @@ class DashboardDataEntity extends Equatable {
   final int unVisitedLeads;
   final int visitedLeads;
   final CalendarEntity calendar;
+  final int todaysVisits;
+  final int conversionRate;
+  final List<LeadStatusCountEntity> leadsByStatus;
+  final List<RecentActivityEntity> recentActivity;
 
   const DashboardDataEntity({
     required this.unSignedLeads,
@@ -56,6 +94,10 @@ class DashboardDataEntity extends Equatable {
     required this.unVisitedLeads,
     required this.visitedLeads,
     required this.calendar,
+    this.todaysVisits = 0,
+    this.conversionRate = 0,
+    this.leadsByStatus = const [],
+    this.recentActivity = const [],
   });
 
   @override
@@ -66,5 +108,9 @@ class DashboardDataEntity extends Equatable {
     unVisitedLeads,
     visitedLeads,
     calendar,
+    todaysVisits,
+    conversionRate,
+    leadsByStatus,
+    recentActivity,
   ];
 }

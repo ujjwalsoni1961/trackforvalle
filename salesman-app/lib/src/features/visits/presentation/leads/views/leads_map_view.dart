@@ -39,6 +39,7 @@ class _LeadsMapWidgetState extends State<LeadsMapWidget> {
   // Filter state
   String _selectedStatus = 'All';
   List<String> _availableStatuses = ['All'];
+  bool _showLegend = false;
 
   final Map<String, BitmapDescriptor> _markerIconCache = {};
 
@@ -264,36 +265,33 @@ class _LeadsMapWidgetState extends State<LeadsMapWidget> {
       canvas.drawPath(path, fillPaint);
       canvas.drawPath(path, borderPaint);
 
-      // Draw status icon
-      final icon = _getIconForStatus(status);
-      
-      // Create a TextSpan with the icon
-      final iconSpan = TextSpan(
-        text: String.fromCharCode(icon.codePoint),
+      // Draw status letter (first letter of status)
+      final statusLetter = status.isNotEmpty ? status[0] : '?';
+
+      final letterSpan = TextSpan(
+        text: statusLetter,
         style: TextStyle(
-          fontSize: kIsWeb ? 20 : 42,  // Smaller icon for web
+          fontSize: kIsWeb ? 22 : 44,
           color: Colors.white,
-          fontFamily: icon.fontFamily ?? 'MaterialIcons',
-          package: icon.fontPackage,
           fontWeight: FontWeight.bold,
         ),
       );
-      
-      final iconPainter = TextPainter(
-        text: iconSpan,
+
+      final letterPainter = TextPainter(
+        text: letterSpan,
         textDirection: TextDirection.ltr,
         textAlign: TextAlign.center,
       );
-      
-      iconPainter.layout();
 
-      // Center the icon
-      final iconOffset = Offset(
-        centerX - iconPainter.width / 2,
-        circleCenterY - iconPainter.height / 2,
+      letterPainter.layout();
+
+      // Center the letter
+      final letterOffset = Offset(
+        centerX - letterPainter.width / 2,
+        circleCenterY - letterPainter.height / 2,
       );
-      
-      iconPainter.paint(canvas, iconOffset);
+
+      letterPainter.paint(canvas, letterOffset);
 
       final img = await pictureRecorder.endRecording().toImage(
         width.toInt(),
@@ -530,77 +528,135 @@ class _LeadsMapWidgetState extends State<LeadsMapWidget> {
 
   Widget _buildStatusFilter() {
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: _availableStatuses.map((status) {
+            final isSelected = _selectedStatus == status;
+            final isAll = status == 'All';
+            final color = isAll
+                ? Colors.grey
+                : Color(
+                    int.parse(
+                      leadStatusCubit
+                          .getColorByLeadStatus(status)
+                          .replaceFirst('#', '0xff'),
+                    ),
+                  );
+
+            return Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: FilterChip(
+                label: Text(
+                  status,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isSelected ? Colors.white : Colors.black87,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+                selected: isSelected,
+                onSelected: (_) => _onStatusChanged(status),
+                avatar: isAll && !isSelected
+                    ? const Icon(Icons.filter_list, size: 14, color: Colors.grey)
+                    : (!isAll && !isSelected
+                        ? Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                            ),
+                          )
+                        : null),
+                backgroundColor: Colors.white,
+                selectedColor: color,
+                checkmarkColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+                elevation: 2,
+                shadowColor: Colors.black26,
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLegend() {
+    return Container(
+      margin: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(25),
+        color: Colors.white.withOpacity(0.95),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: _selectedStatus,
-            icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-            iconSize: 20,
-            style: const TextStyle(
-              color: Colors.black87,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-            onChanged: _onStatusChanged,
-            items: _availableStatuses.map<DropdownMenuItem<String>>((
-              String status,
-            ) {
-              return DropdownMenuItem<String>(
-                value: status,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (status != 'All') ...[
-                      Container(
-                        width: 12,
-                        height: 12,
-                        margin: const EdgeInsets.only(right: 8),
-                        decoration: BoxDecoration(
-                          color: Color(
-                            int.parse(
-                              leadStatusCubit
-                                  .getColorByLeadStatus(status)
-                                  .replaceFirst('#', '0xff'),
-                            ),
-                          ),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ] else ...[
-                      const Icon(
-                        Icons.filter_list,
-                        size: 16,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    Text(
-                      status,
-                      style: TextStyle(
-                        color: _selectedStatus == status
-                            ? Colors.black87
-                            : Colors.grey[600],
-                      ),
-                    ),
-                  ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.palette, size: 14, color: Colors.grey),
+              const SizedBox(width: 4),
+              const Text(
+                'Legend',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
                 ),
-              );
-            }).toList(),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => setState(() => _showLegend = false),
+                child: const Icon(Icons.close, size: 14, color: Colors.grey),
+              ),
+            ],
           ),
-        ),
+          const SizedBox(height: 6),
+          ...(_availableStatuses.where((s) => s != 'All')).map((status) {
+            final color = Color(
+              int.parse(
+                leadStatusCubit
+                    .getColorByLeadStatus(status)
+                    .replaceFirst('#', '0xff'),
+              ),
+            );
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 3),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    status,
+                    style: const TextStyle(fontSize: 11, color: Colors.black87),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
       ),
     );
   }
@@ -787,15 +843,39 @@ class _LeadsMapWidgetState extends State<LeadsMapWidget> {
             Positioned(
               bottom: 116,
               left: 16,
-              child: FloatingActionButton(
-                mini: true,
-                onPressed: _fitBounds,
-                backgroundColor: Colors.white,
-                elevation: 4,
-                heroTag: "fit_bounds",
-                child: Icon(Icons.center_focus_strong, color: Colors.grey[700]),
+              child: Column(
+                children: [
+                  FloatingActionButton(
+                    mini: true,
+                    onPressed: _fitBounds,
+                    backgroundColor: Colors.white,
+                    elevation: 4,
+                    heroTag: "fit_bounds",
+                    child: Icon(Icons.center_focus_strong, color: Colors.grey[700]),
+                  ),
+                  const SizedBox(height: 8),
+                  FloatingActionButton(
+                    mini: true,
+                    onPressed: () => setState(() => _showLegend = !_showLegend),
+                    backgroundColor: _showLegend ? Colors.blue : Colors.white,
+                    elevation: 4,
+                    heroTag: "legend_toggle",
+                    child: Icon(
+                      Icons.palette,
+                      color: _showLegend ? Colors.white : Colors.grey[700],
+                    ),
+                  ),
+                ],
               ),
             ),
+
+            // Color legend
+            if (_showLegend)
+              Positioned(
+                bottom: 80,
+                right: 16,
+                child: _buildLegend(),
+              ),
 
             // Map type toggle buttons
             Positioned(

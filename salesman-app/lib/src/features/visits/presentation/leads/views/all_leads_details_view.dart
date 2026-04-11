@@ -15,6 +15,7 @@ import 'package:track/src/features/visits/presentation/daily_routes/cubit/get_cu
 import 'package:track/src/features/visits/presentation/daily_routes/cubit/plan_visits_cubit.dart';
 import 'package:track/src/features/visits/presentation/leads/cubit/add_lead_cubit.dart';
 import 'package:track/src/features/visits/presentation/leads/cubit/edit_a_lead_details_cubit.dart';
+import 'package:track/src/features/visits/presentation/leads/cubit/lead_status_cubit.dart';
 import 'package:track/src/features/visits/presentation/leads/cubit/leads_details_cubit.dart';
 import 'package:track/src/features/visits/presentation/leads/widgets/leads_card.dart';
 import 'package:track/src/features/visits/presentation/visit_log/cubit/visit_log_cubit.dart';
@@ -37,6 +38,8 @@ class _AllLeadsDetailsViewState extends State<AllLeadsDetailsView> {
   bool _isSearchExpanded = false;
   Timer? _debounce;
   List<int> selectedLeadIds = [];
+  String? _selectedStatusFilter;
+  String? _selectedCityFilter;
 
   @override
   void initState() {
@@ -255,6 +258,7 @@ class _AllLeadsDetailsViewState extends State<AllLeadsDetailsView> {
                     ],
                   ),
                 ),
+                if (!_isSearchExpanded) _buildFilterBar(),
                 Expanded(
                   child:
                       (state is LeadsDetailsLoaded ||
@@ -454,8 +458,158 @@ class _AllLeadsDetailsViewState extends State<AllLeadsDetailsView> {
     );
   }
 
-  Widget _buildLeadsList(LeadsDetailsState state) {
+  Widget _buildFilterBar() {
     final leads = leadsDetailsCubit.leadsData.allLeads;
+    final leadStatusCubit = context.read<LeadStatusCubit>();
+
+    // Get unique cities from leads
+    final cities = leads
+        .map((l) => l.leadAddress.city)
+        .where((c) => c.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+
+    // Get unique statuses from leads
+    final statuses = leads
+        .map((l) => l.status)
+        .where((s) => s.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+
+    final hasActiveFilters = _selectedStatusFilter != null || _selectedCityFilter != null;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(color: Colors.grey.shade200),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Status filter chips
+          if (statuses.isNotEmpty)
+            SizedBox(
+              height: 36,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  ...statuses.map((status) {
+                    final isSelected = _selectedStatusFilter == status;
+                    final hexColor = leadStatusCubit.getColorByLeadStatus(status);
+                    final color = Color(
+                      int.parse(hexColor.replaceFirst('#', '0xff')),
+                    );
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 6.0),
+                      child: FilterChip(
+                        label: Text(
+                          status,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isSelected ? Colors.white : Colors.black87,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                          ),
+                        ),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          setState(() {
+                            _selectedStatusFilter = selected ? status : null;
+                          });
+                        },
+                        backgroundColor: color.withOpacity(0.1),
+                        selectedColor: color,
+                        checkmarkColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          if (cities.length > 1) ...[
+            const GapV(6.0),
+            SizedBox(
+              height: 36,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  ...cities.map((city) {
+                    final isSelected = _selectedCityFilter == city;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 6.0),
+                      child: FilterChip(
+                        label: Text(
+                          city,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isSelected ? Colors.white : Colors.black87,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                          ),
+                        ),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          setState(() {
+                            _selectedCityFilter = selected ? city : null;
+                          });
+                        },
+                        avatar: isSelected ? null : Icon(Icons.location_city, size: 14, color: Colors.grey[600]),
+                        backgroundColor: Colors.grey.shade100,
+                        selectedColor: theme.colorScheme.primary,
+                        checkmarkColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ],
+          if (hasActiveFilters) ...[
+            const GapV(4.0),
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedStatusFilter = null;
+                  _selectedCityFilter = null;
+                });
+              },
+              child: Text(
+                'Clear filters',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  List<dynamic> _getFilteredLeads() {
+    var leads = leadsDetailsCubit.leadsData.allLeads;
+    if (_selectedStatusFilter != null) {
+      leads = leads.where((l) => l.status == _selectedStatusFilter).toList();
+    }
+    if (_selectedCityFilter != null) {
+      leads = leads.where((l) => l.leadAddress.city == _selectedCityFilter).toList();
+    }
+    return leads;
+  }
+
+  Widget _buildLeadsList(LeadsDetailsState state) {
+    final leads = _getFilteredLeads();
     final hasMoreData = leadsDetailsCubit.hasMoreData;
     final isLoadingMore = state is LeadsDetailsLoading && !state.isFirstPage;
 
