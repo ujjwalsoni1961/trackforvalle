@@ -3,7 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:track/src/core/ui/res/app_colors.dart';
+import 'package:track/src/core/ui/routes/routes.dart';
 import 'package:track/src/core/ui/utility/paddings.dart';
 import 'package:track/src/core/ui/utility/toast.dart';
 import 'package:track/src/core/ui/widgets/gap.dart';
@@ -12,6 +14,7 @@ import 'package:track/src/features/visits/domain/entities/leads_entity.dart';
 import 'package:track/src/features/visits/presentation/leads/cubit/lead_status_cubit.dart';
 import 'package:track/src/features/visits/presentation/leads/views/edit_a_lead_details_view.dart';
 import 'package:track/src/features/visits/presentation/leads/widgets/common_routes_and_leads.dart';
+import 'package:track/src/features/visits/presentation/sign_contract/views/choose_contract_view.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class EachLeadsDetailsPage extends StatefulWidget {
@@ -64,6 +67,7 @@ class _EachLeadsDetailsPageState extends State<EachLeadsDetailsPage> {
   @override
   Widget build(BuildContext context) {
     final address = widget.lead.leadAddress;
+    final bool isAlreadySigned = widget.lead.status.toLowerCase() == 'signed';
 
     return MyScaffold(
       appBar: AppBar(
@@ -98,6 +102,87 @@ class _EachLeadsDetailsPageState extends State<EachLeadsDetailsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Sign Contract Button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: SizedBox(
+                width: double.infinity,
+                child: isAlreadySigned
+                    ? OutlinedButton.icon(
+                        onPressed: null,
+                        icon: Icon(
+                          Icons.check_circle,
+                          size: 18,
+                          color: Colors.green.shade700,
+                        ),
+                        label: Text(
+                          "Contract Signed",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: Colors.green.shade700,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                            color: Colors.green.shade700,
+                            width: 1.5,
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          backgroundColor: Colors.green.shade50.withOpacity(0.05),
+                        ),
+                      )
+                    : OutlinedButton.icon(
+                        onPressed: () {
+                          context.push(
+                            RoutePaths.chooseContract,
+                            extra: LeadIDVisitIDPageParams(
+                              leadId: widget.lead.leadID,
+                              visitId: -1,
+                              currentLeadStatus: widget.lead.status,
+                            ),
+                          );
+                        },
+                        icon: Icon(
+                          Icons.edit_document,
+                          size: 18,
+                          color: Colors.blue.shade700,
+                        ),
+                        label: Text(
+                          "Sign Contract",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: Colors.blue.shade700,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                            color: Colors.blue.shade700,
+                            width: 1.5,
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          backgroundColor: Colors.blue.shade50.withOpacity(0.05),
+                        ).copyWith(
+                          overlayColor: WidgetStateProperty.all(
+                            Colors.blue.withOpacity(0.08),
+                          ),
+                        ),
+                      ),
+              ),
+            ),
             // Details Section
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,7 +220,6 @@ class _EachLeadsDetailsPageState extends State<EachLeadsDetailsPage> {
                     address.country,
                   ].where((part) => part.trim().isNotEmpty).join(', '),
                 ),
-
                 _buildDetailCard(
                   icon: Icons.landscape,
                   title: 'Landmark',

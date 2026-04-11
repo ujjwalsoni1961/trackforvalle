@@ -10,6 +10,7 @@ import 'package:track/src/core/ui/utility/loading_animation.dart';
 import 'package:track/src/core/ui/utility/toast.dart';
 import 'package:track/src/core/ui/widgets/button_primary.dart';
 import 'package:track/src/core/ui/widgets/gap.dart';
+import 'package:track/src/features/visits/presentation/leads/cubit/leads_details_cubit.dart';
 import 'package:track/src/features/visits/presentation/sign_contract/cubit/submit_contract_cubit.dart';
 import 'package:track/src/features/visits/presentation/sign_contract/widgets/contract_preview.dart';
 import 'package:track/src/features/visits/presentation/visit_log/cubit/visit_log_cubit.dart';
@@ -160,6 +161,7 @@ class _ContractPreviewModalState extends State<ContractPreviewModal> {
             leadID: widget.leadID,
             visitID: state.visitID,
           );
+          context.read<LeadsDetailsCubit>().getAllTheLeads(pageNumber: 1);
           context.pop();
           context.pop();
           context.pop();

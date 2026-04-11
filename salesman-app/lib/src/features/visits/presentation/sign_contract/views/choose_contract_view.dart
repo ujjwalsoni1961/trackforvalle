@@ -41,6 +41,15 @@ class _ChooseContractViewState extends State<ChooseContractView> {
   int? _selectedId;
   String _currentTemplateString = '';
 
+  @override
+  void initState() {
+    super.initState();
+    final cubit = context.read<GetContractTemplatesCubit>();
+    if (cubit.state is GetContractTemplatesInitial) {
+      cubit.getTheContractTemplates();
+    }
+  }
+
   List<String> extractTemplateVariables(String templateString, Map<String, DropdownField>? dropdownFields) {
     final RegExp variableRegex = RegExp(r'\{(\w+)\}');
     final RegExp dropdownRegex = RegExp(r'\{dropdown:(\w+)\}');
