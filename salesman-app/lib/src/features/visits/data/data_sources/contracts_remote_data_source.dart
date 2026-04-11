@@ -41,7 +41,7 @@ class ContractsRemoteDataSourceImpl extends ContractsRemoteDataSource {
         return ContractsTemplateListModel.fromMap(response.data['data']);
       } else {
         throw APIException(
-          message: response.data['error']['message'],
+          message: response.data?['error']?['message']?.toString() ?? 'Request failed',
           statusCode: response.statusCode ?? 500,
         );
       }
@@ -49,7 +49,7 @@ class ContractsRemoteDataSourceImpl extends ContractsRemoteDataSource {
       rethrow;
     } catch (e) {
       throw APIException(
-        message: e is APIException ? e.message : e.runtimeType.toString(),
+        message: e.toString(),
         statusCode: 505,
       );
     }
@@ -83,7 +83,7 @@ class ContractsRemoteDataSourceImpl extends ContractsRemoteDataSource {
         return SignContractModel.fromMap(response.data['data']);
       } else {
         throw APIException(
-          message: response.data['error']['message'],
+          message: response.data?['error']?['message']?.toString() ?? 'Request failed',
           statusCode: response.statusCode ?? 500,
         );
       }
@@ -91,7 +91,7 @@ class ContractsRemoteDataSourceImpl extends ContractsRemoteDataSource {
       rethrow;
     } catch (e) {
       throw APIException(
-        message: e is APIException ? e.message : e.runtimeType.toString(),
+        message: e.toString(),
         statusCode: 505,
       );
     }
@@ -126,7 +126,7 @@ class ContractsRemoteDataSourceImpl extends ContractsRemoteDataSource {
         return SignContractModel.fromMap(response.data['data']);
       } else {
         throw APIException(
-          message: response.data['error']['message'],
+          message: response.data?['error']?['message']?.toString() ?? 'Request failed',
           statusCode: response.statusCode ?? 500,
         );
       }
@@ -134,7 +134,7 @@ class ContractsRemoteDataSourceImpl extends ContractsRemoteDataSource {
       rethrow;
     } catch (e) {
       throw APIException(
-        message: e is APIException ? e.message : e.runtimeType.toString(),
+        message: e.toString(),
         statusCode: 505,
       );
     }

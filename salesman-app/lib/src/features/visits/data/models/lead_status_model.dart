@@ -7,7 +7,7 @@ class LeadStatusModel extends LeadStatusEntity {
   factory LeadStatusModel.fromMap(DataMap map) {
     return LeadStatusModel(
       status: map['status'] ?? "",
-      hexColor: map['color']['hex'],
+      hexColor: (map['color'] as Map<String, dynamic>?)?['hex'] ?? '',
     );
   }
 }

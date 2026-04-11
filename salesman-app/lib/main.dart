@@ -121,6 +121,17 @@ class _MyAppState extends State<MyApp> {
         themeMode: ThemeMode.dark,
         debugShowCheckedModeBanner: false,
         routerConfig: widget.router,
+        builder: (context, child) {
+          return Container(
+            color: const Color(0xFFE8EAF0),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: child,
+              ),
+            ),
+          );
+        },
       ),
     );
   }

@@ -63,7 +63,7 @@ class LeadsRemoteDataSourceImpl extends LeadsRemoteDataSource {
         return LeadsListModel.fromMap(response.data['data']);
       } else {
         throw APIException(
-          message: response.data['error']['message'],
+          message: response.data?['error']?['message']?.toString() ?? 'Request failed',
           statusCode: response.statusCode ?? 500,
         );
       }
@@ -71,7 +71,7 @@ class LeadsRemoteDataSourceImpl extends LeadsRemoteDataSource {
       rethrow;
     } catch (e) {
       throw APIException(
-        message: e is APIException ? e.message : e.runtimeType.toString(),
+        message: e.toString(),
         statusCode: 505,
       );
     }
@@ -115,7 +115,7 @@ class LeadsRemoteDataSourceImpl extends LeadsRemoteDataSource {
         return LeadsDetailsModel.fromMap(response.data['data']);
       } else {
         throw APIException(
-          message: response.data['error']['message'],
+          message: response.data?['error']?['message']?.toString() ?? 'Request failed',
           statusCode: response.statusCode ?? 500,
         );
       }
@@ -123,7 +123,7 @@ class LeadsRemoteDataSourceImpl extends LeadsRemoteDataSource {
       rethrow;
     } catch (e) {
       throw APIException(
-        message: e is APIException ? e.message : e.runtimeType.toString(),
+        message: e.toString(),
         statusCode: 505,
       );
     }
@@ -166,7 +166,7 @@ class LeadsRemoteDataSourceImpl extends LeadsRemoteDataSource {
         return;
       } else {
         throw APIException(
-          message: response.data['error']['message'],
+          message: response.data?['error']?['message']?.toString() ?? 'Request failed',
           statusCode: response.statusCode ?? 500,
         );
       }
@@ -174,7 +174,7 @@ class LeadsRemoteDataSourceImpl extends LeadsRemoteDataSource {
       rethrow;
     } catch (e) {
       throw APIException(
-        message: e is APIException ? e.message : e.runtimeType.toString(),
+        message: e.toString(),
         statusCode: 505,
       );
     }
@@ -188,7 +188,7 @@ class LeadsRemoteDataSourceImpl extends LeadsRemoteDataSource {
         return LeadStatusListModel.fromMap(response.data['data']);
       } else {
         throw APIException(
-          message: response.data['error']['message'],
+          message: response.data?['error']?['message']?.toString() ?? 'Request failed',
           statusCode: response.statusCode ?? 500,
         );
       }
@@ -196,7 +196,7 @@ class LeadsRemoteDataSourceImpl extends LeadsRemoteDataSource {
       rethrow;
     } catch (e) {
       throw APIException(
-        message: e is APIException ? e.message : e.runtimeType.toString(),
+        message: e.toString(),
         statusCode: 505,
       );
     }

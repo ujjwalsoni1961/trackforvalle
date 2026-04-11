@@ -19,12 +19,12 @@ class RegionSubregionRemoteDataSourceImpl
     try {
       final response = await _api.dio.get('/regions');
       if (response.statusCode == 200) {
-        return (response.data as List<dynamic>)
+        return ((response.data as List<dynamic>?) ?? [])
             .map((e) => RegionSubregionModel.fromMap(e))
             .toList();
       } else {
         throw APIException(
-          message: response.data['error']['message'],
+          message: response.data?['error']?['message']?.toString() ?? 'Request failed',
           statusCode: response.statusCode ?? 500,
         );
       }
@@ -32,7 +32,7 @@ class RegionSubregionRemoteDataSourceImpl
       rethrow;
     } catch (e) {
       throw APIException(
-        message: e is APIException ? e.message : e.runtimeType.toString(),
+        message: e.toString(),
         statusCode: 505,
       );
     }
@@ -45,12 +45,12 @@ class RegionSubregionRemoteDataSourceImpl
     try {
       final response = await _api.dio.get('/regions/$regionID');
       if (response.statusCode == 200) {
-        return (response.data['subregions'] as List<dynamic>)
+        return ((response.data['subregions'] as List<dynamic>?) ?? [])
             .map((e) => RegionSubregionModel.fromMap(e))
             .toList();
       } else {
         throw APIException(
-          message: response.data['error']['message'],
+          message: response.data?['error']?['message']?.toString() ?? 'Request failed',
           statusCode: response.statusCode ?? 500,
         );
       }
@@ -58,7 +58,7 @@ class RegionSubregionRemoteDataSourceImpl
       rethrow;
     } catch (e) {
       throw APIException(
-        message: e is APIException ? e.message : e.runtimeType.toString(),
+        message: e.toString(),
         statusCode: 505,
       );
     }

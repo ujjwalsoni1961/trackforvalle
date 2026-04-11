@@ -16,10 +16,13 @@ class DashboardRemoteDataSourceImpl extends DashboardRemoteDataSource {
     try {
       final response = await _api.dio.get('/dashboard');
       if (response.statusCode == 200) {
-        return DashboardDataModel.fromMap(response.data['data']);
+        return DashboardDataModel.fromMap(
+          response.data['data'] as Map<String, dynamic>,
+        );
       } else {
         throw APIException(
-          message: response.data['error']['message'],
+          message: response.data?['error']?['message']?.toString() ??
+              'Failed to load dashboard',
           statusCode: response.statusCode ?? 500,
         );
       }
@@ -27,7 +30,7 @@ class DashboardRemoteDataSourceImpl extends DashboardRemoteDataSource {
       rethrow;
     } catch (e) {
       throw APIException(
-        message: e is APIException ? e.message : e.runtimeType.toString(),
+        message: e.toString(),
         statusCode: 505,
       );
     }

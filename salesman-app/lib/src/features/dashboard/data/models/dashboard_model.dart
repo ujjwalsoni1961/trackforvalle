@@ -28,15 +28,15 @@ class CalendarModel extends CalendarEntity {
 
   factory CalendarModel.fromMap(Map<String, dynamic> map) {
     return CalendarModel(
-      currentMonth: map['currentMonth'] as int,
-      monthName: map['monthName'] as String,
-      totalDays: map['totalDays'] as int,
-      holidays: map['holidays'] as int,
-      weekends: map['weekends'] as int,
-      publicHolidays: (map['publicHolidays'] as List<dynamic>)
+      currentMonth: (map['currentMonth'] as num?)?.toInt() ?? 0,
+      monthName: (map['monthName'] as String?) ?? '',
+      totalDays: (map['totalDays'] as num?)?.toInt() ?? 0,
+      holidays: (map['holidays'] as num?)?.toInt() ?? 0,
+      weekends: (map['weekends'] as num?)?.toInt() ?? 0,
+      publicHolidays: ((map['publicHolidays'] as List<dynamic>?) ?? [])
           .map((e) => PublicHolidayModel.fromMap(e as Map<String, dynamic>))
           .toList(),
-      workingDaysLeft: map['workingDaysLeft'] as int,
+      workingDaysLeft: (map['workingDaysLeft'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -67,12 +67,14 @@ class DashboardDataModel extends DashboardDataEntity {
 
   factory DashboardDataModel.fromMap(Map<String, dynamic> map) {
     return DashboardDataModel(
-      unSignedLeads: map['unSignedLeads'] as int,
-      signedLeads: map['signedLeads'] as int,
-      totalLeads: map['totalLeads'] as int,
-      unVisitedLeads: map['unVisitedLeads'] as int,
-      visitedLeads: map['visitedLeads'] as int,
-      calendar: CalendarModel.fromMap(map['calender'] as Map<String, dynamic>),
+      unSignedLeads: (map['unSignedLeads'] as num?)?.toInt() ?? 0,
+      signedLeads: (map['signedLeads'] as num?)?.toInt() ?? 0,
+      totalLeads: (map['totalLeads'] as num?)?.toInt() ?? 0,
+      unVisitedLeads: (map['unVisitedLeads'] as num?)?.toInt() ?? 0,
+      visitedLeads: (map['visitedLeads'] as num?)?.toInt() ?? 0,
+      calendar: CalendarModel.fromMap(
+        (map['calender'] ?? map['calendar']) as Map<String, dynamic>,
+      ),
     );
   }
 

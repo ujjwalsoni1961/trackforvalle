@@ -44,7 +44,12 @@ const territoryService = new TerritoryService();
 const geocodingService = new GeocodingService();
 export class UserTeamService {
   async SendEmailNotification(email: string, password: string, roleName?: string) {
-    const loginUrl = process.env.FORNTEND_URL || "https://trackforvalle-admin.vercel.app/auth/sign-in";
+    let loginUrl: string;
+    if (roleName === 'sales_rep' || roleName === 'manager') {
+      loginUrl = process.env.SALESMAN_APP_URL || "https://web-opal-eight-21.vercel.app";
+    } else {
+      loginUrl = process.env.FORNTEND_URL || "https://admin-frontend-omega-vert.vercel.app";
+    }
     const roleLabel = roleName
       ? roleName.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
       : "User";

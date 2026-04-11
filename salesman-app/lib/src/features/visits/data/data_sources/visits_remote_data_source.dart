@@ -57,7 +57,7 @@ class VisitsRemoteDataSourceImpl extends VisitsRemoteDataSource {
         return DailyRoutesListModel.fromMap(data);
       } else {
         throw APIException(
-          message: response.data['error']['message'],
+          message: response.data?['error']?['message']?.toString() ?? 'Request failed',
           statusCode: response.statusCode ?? 500,
         );
       }
@@ -65,7 +65,7 @@ class VisitsRemoteDataSourceImpl extends VisitsRemoteDataSource {
       rethrow;
     } catch (e) {
       throw APIException(
-        message: e is APIException ? e.message : e.runtimeType.toString(),
+        message: e.toString(),
         statusCode: 505,
       );
     }
@@ -81,12 +81,16 @@ class VisitsRemoteDataSourceImpl extends VisitsRemoteDataSource {
         '/visit/route/refresh?latitude=$latitude&longitude=$longitude',
       );
       if (response.statusCode == 200) {
+        final data = response.data['data'] as List<dynamic>?;
+        if (data == null || data.isEmpty) {
+          return RefreshRoutesListModel.fromMap([]);
+        }
         return RefreshRoutesListModel.fromMap(
-          response.data['data'][0]['route_order'],
+          data[0]['route_order'] ?? [],
         );
       } else {
         throw APIException(
-          message: response.data['error']['message'],
+          message: response.data?['error']?['message']?.toString() ?? 'Request failed',
           statusCode: response.statusCode ?? 500,
         );
       }
@@ -94,7 +98,7 @@ class VisitsRemoteDataSourceImpl extends VisitsRemoteDataSource {
       rethrow;
     } catch (e) {
       throw APIException(
-        message: e is APIException ? e.message : e.runtimeType.toString(),
+        message: e.toString(),
         statusCode: 505,
       );
     }
@@ -139,7 +143,7 @@ class VisitsRemoteDataSourceImpl extends VisitsRemoteDataSource {
         return;
       } else {
         throw APIException(
-          message: response.data['error']['message'],
+          message: response.data?['error']?['message']?.toString() ?? 'Request failed',
           statusCode: response.statusCode ?? 500,
         );
       }
@@ -147,7 +151,7 @@ class VisitsRemoteDataSourceImpl extends VisitsRemoteDataSource {
       rethrow;
     } catch (e) {
       throw APIException(
-        message: e is APIException ? e.message : e.runtimeType.toString(),
+        message: e.toString(),
         statusCode: 505,
       );
     }
@@ -182,7 +186,7 @@ class VisitsRemoteDataSourceImpl extends VisitsRemoteDataSource {
         return PastVisitsListModel.fromMap(response.data);
       } else {
         throw APIException(
-          message: response.data['error']['message'],
+          message: response.data?['error']?['message']?.toString() ?? 'Request failed',
           statusCode: response.statusCode ?? 500,
         );
       }
@@ -190,7 +194,7 @@ class VisitsRemoteDataSourceImpl extends VisitsRemoteDataSource {
       rethrow;
     } catch (e) {
       throw APIException(
-        message: e is APIException ? e.message : e.runtimeType.toString(),
+        message: e.toString(),
         statusCode: 505,
       );
     }
@@ -215,7 +219,7 @@ class VisitsRemoteDataSourceImpl extends VisitsRemoteDataSource {
         return;
       } else {
         throw APIException(
-          message: response.data['error']['message'],
+          message: response.data?['error']?['message']?.toString() ?? 'Request failed',
           statusCode: response.statusCode ?? 500,
         );
       }
@@ -223,7 +227,7 @@ class VisitsRemoteDataSourceImpl extends VisitsRemoteDataSource {
       rethrow;
     } catch (e) {
       throw APIException(
-        message: e is APIException ? e.message : e.runtimeType.toString(),
+        message: e.toString(),
         statusCode: 505,
       );
     }
