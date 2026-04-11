@@ -28,6 +28,7 @@ import { Role } from "../models/Role.entity";
 import { Leads } from "../models/Leads.entity";
 import { Visit } from "../models/Visits.entity";
 import { Route } from "../models/Route.entity";
+import { Partner } from "../models/Partner.entity";
 import { Contract } from "../models/Contracts.entity";
 import { ContractTemplate } from "../models/ContractTemplate.entity";
 import { LeadStatus } from "../enum/leadStatus";
@@ -794,6 +795,28 @@ export class UserTeamService {
         console.warn("Supabase Auth user creation failed (non-blocking):", supabaseError);
       }
 
+      // Handle partner: use existing partner_id or auto-create from partner_company_name
+      let partner_id = (params as any).partner_id || null;
+      if (!partner_id && (params as any).partner_company_name && findRole.role_name === Roles.PARTNER) {
+        const companyName = (params as any).partner_company_name.trim();
+        // Check if partner company already exists by name
+        const partnerRepo = queryRunner.manager.getRepository(Partner);
+        let existingPartner = await partnerRepo.findOne({ where: { company_name: companyName, org_id } });
+        if (!existingPartner) {
+          // Auto-create the partner company
+          existingPartner = partnerRepo.create({
+            company_name: companyName,
+            contact_email: params.email,
+            org_id,
+            is_active: true,
+            created_by: String(user_id).trim(),
+            updated_by: String(user_id).trim(),
+          });
+          existingPartner = await partnerRepo.save(existingPartner);
+        }
+        partner_id = existingPartner.partner_id;
+      }
+
       const newUser = await userQuery.createUser(queryRunner.manager, {
         role_id: role_id,
         email: params.email,
@@ -804,7 +827,7 @@ export class UserTeamService {
         is_email_verified: 1,
         is_active: true,
         is_admin: findRole.role_name === Roles.ADMIN ? 1 : 0,
-        partner_id: (params as any).partner_id || null,
+        partner_id: partner_id,
         password_hash: passwordhash,
         created_by: String(user_id).trim(),
       });

@@ -53,12 +53,26 @@
         </mat-form-field>
 
         <!-- Partner Company (Conditional - shown for partner role) -->
+        <!-- Autocomplete: type to search existing or create new -->
         <mat-form-field class="col-span-1" *ngIf="selectedRoleName === 'partner'">
           <mat-label>Partner Company</mat-label>
-          <mat-select formControlName="partner_id">
-            <mat-option *ngFor="let partner of partners" [value]="partner.id">{{ partner.name }}</mat-option>
-          </mat-select>
-          <mat-error *ngIf="userForm.get('partner_id')?.touched && userForm.get('partner_id')?.invalid">
+          <input matInput
+                 formControlName="partner_company_name"
+                 [matAutocomplete]="partnerAuto"
+                 placeholder="Type company name (select existing or create new)">
+          <mat-autocomplete #partnerAuto="matAutocomplete"
+                            (optionSelected)="onPartnerSelected($event)"
+                            [displayWith]="displayPartner">
+            <mat-option *ngFor="let partner of filteredPartners" [value]="partner">
+              {{ partner.name }}
+            </mat-option>
+            <mat-option *ngIf="showCreateNew && partnerSearchText.length > 0" [value]="{id: null, name: partnerSearchText}">
+              <span class="text-blue-400">+ Create "{{ partnerSearchText }}"</span>
+            </mat-option>
+          </mat-autocomplete>
+          <mat-hint *ngIf="selectedPartner">Selected: {{ selectedPartner.name }}</mat-hint>
+          <mat-hint *ngIf="!selectedPartner && partnerSearchText.length > 0" class="text-blue-400">New company will be created</mat-hint>
+          <mat-error *ngIf="userForm.get('partner_company_name')?.touched && userForm.get('partner_company_name')?.invalid">
             Partner company is required
           </mat-error>
         </mat-form-field>

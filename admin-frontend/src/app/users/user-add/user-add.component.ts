@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormGroup, FormBuilder, Validators } from '@angular/forms';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { UsersService } from '../users.service';
 import { PartnerService } from '../../partner/partner.service';
 import { finalize } from 'rxjs/operators';
@@ -10,7 +11,7 @@ import { SharedModule } from '../../shared/shared.module';
 
 @Component({
   selector: 'app-user-add',
-  imports: [SharedModule, MatProgressBarModule, CommonModule],
+  imports: [SharedModule, MatProgressBarModule, MatAutocompleteModule, CommonModule],
   templateUrl: './user-add.component.html',
   styleUrl: './user-add.component.scss'
 })
@@ -18,6 +19,7 @@ export class UserAddComponent implements OnInit {
   userForm: FormGroup;
   roles: { id: number; label: string; name: string }[] = [];
   partners: { id: number; name: string }[] = [];
+  filteredPartners: { id: number; name: string }[] = [];
   territories: any[] = [
     { id: 'territory1', name: 'Imatra' },
     { id: 'territory2', name: 'Hamina' },
@@ -25,6 +27,9 @@ export class UserAddComponent implements OnInit {
   ];
   isSubmitting = false;
   selectedRoleName = '';
+  selectedPartner: { id: number | null; name: string } | null = null;
+  partnerSearchText = '';
+  showCreateNew = false;
 
   constructor(
     private fb: FormBuilder,
@@ -38,7 +43,7 @@ export class UserAddComponent implements OnInit {
       email: ['', [Validators.required, Validators.email]],
       phone: ['', [Validators.required, Validators.pattern(/^[0-9]{10,15}$/)]],
       role_id: [null, Validators.required],
-      partner_id: [null],
+      partner_company_name: [''],
       territory: ['']
     });
   }
@@ -46,13 +51,14 @@ export class UserAddComponent implements OnInit {
   ngOnInit() {
     this.getRoles();
     this.loadPartners();
-    // Dynamically update field validation based on role
+
+    // Watch role changes
     this.userForm.get('role_id')?.valueChanges.subscribe(roleId => {
       const role = this.roles.find(r => r.id === +roleId);
       this.selectedRoleName = role?.name || '';
 
       const territoryControl = this.userForm.get('territory');
-      const partnerControl = this.userForm.get('partner_id');
+      const partnerControl = this.userForm.get('partner_company_name');
 
       if (this.selectedRoleName === 'manager' || this.selectedRoleName === 'sales_rep') {
         territoryControl?.setValidators([Validators.required]);
@@ -65,10 +71,49 @@ export class UserAddComponent implements OnInit {
         partnerControl?.setValidators([Validators.required]);
       } else {
         partnerControl?.clearValidators();
-        partnerControl?.setValue(null);
+        partnerControl?.setValue('');
+        this.selectedPartner = null;
       }
       partnerControl?.updateValueAndValidity();
     });
+
+    // Watch partner company name input for filtering
+    this.userForm.get('partner_company_name')?.valueChanges.subscribe(value => {
+      if (typeof value === 'string') {
+        this.partnerSearchText = value;
+        this.filterPartners(value);
+        // If user clears the field or types something new, deselect
+        if (this.selectedPartner && this.selectedPartner.name !== value) {
+          this.selectedPartner = null;
+        }
+      }
+    });
+  }
+
+  filterPartners(search: string) {
+    if (!search || search.length === 0) {
+      this.filteredPartners = [...this.partners];
+      this.showCreateNew = false;
+      return;
+    }
+    const lower = search.toLowerCase();
+    this.filteredPartners = this.partners.filter(p =>
+      p.name.toLowerCase().includes(lower)
+    );
+    // Show "Create new" option if no exact match
+    this.showCreateNew = !this.partners.some(p =>
+      p.name.toLowerCase() === lower
+    );
+  }
+
+  onPartnerSelected(event: MatAutocompleteSelectedEvent) {
+    const selected = event.option.value;
+    this.selectedPartner = selected;
+    this.partnerSearchText = selected.name;
+  }
+
+  displayPartner(partner: any): string {
+    return partner?.name || partner || '';
   }
 
   getRoles() {
@@ -96,6 +141,7 @@ export class UserAddComponent implements OnInit {
             id: p.partner_id,
             name: p.company_name
           }));
+          this.filteredPartners = [...this.partners];
         }
       },
       error: () => {}
@@ -125,8 +171,14 @@ export class UserAddComponent implements OnInit {
       role_id: +this.userForm.value.role_id
     };
 
-    if (this.selectedRoleName === 'partner' && this.userForm.value.partner_id) {
-      payload.partner_id = +this.userForm.value.partner_id;
+    if (this.selectedRoleName === 'partner') {
+      if (this.selectedPartner && this.selectedPartner.id) {
+        // Existing partner selected
+        payload.partner_id = this.selectedPartner.id;
+      } else {
+        // New partner company — backend will create it
+        payload.partner_company_name = this.partnerSearchText.trim();
+      }
     }
 
     this.usersService.createUser(payload).pipe(
@@ -136,13 +188,18 @@ export class UserAddComponent implements OnInit {
         this.snackBar.open('User created successfully!', 'Close', { duration: 3000 });
         this.userForm.reset();
         this.userForm.markAsUntouched();
+        this.selectedPartner = null;
+        this.partnerSearchText = '';
+        // Reload partners in case a new one was created
+        this.loadPartners();
       },
       error: (err: any) => {
         console.log(err);
         if (err.status === 409) {
           this.snackBar.open('Email already exists.', 'Close', { duration: 3000 });
         } else {
-          this.snackBar.open('Error creating user: ' + err.error.error.message, 'Close', { duration: 3000 });
+          const msg = err.error?.error?.message || err.message || 'Unknown error';
+          this.snackBar.open('Error creating user: ' + msg, 'Close', { duration: 3000 });
         }
       }
     });
