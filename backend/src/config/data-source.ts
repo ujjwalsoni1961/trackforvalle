@@ -42,7 +42,7 @@ export const dataSourceOptions: DataSourceOptions = {
   ssl: {
     rejectUnauthorized: false,
   },
-  synchronize: true,
+  synchronize: false, // Tables already created via SQL schema
   logging: process.env.NODE_ENV === "production" ? ["error"] : ["error"],
   entities: [
     User,
@@ -75,12 +75,12 @@ export const dataSourceOptions: DataSourceOptions = {
   ],
   migrations: [],
   subscribers: [],
-  poolSize: 20, // Increased connection pool for better handling
+  poolSize: 5, // Reduced for Supabase pooler // Increased connection pool for better handling
   extra: {
     connectionTimeoutMillis: 30000, // 30s timeout (increased from 10s)
     idleTimeoutMillis: 60000, // 60s idle timeout (increased from 30s)
-    max: 20, // Max connections (increased)
-    min: 5, // Min connections (increased)
+    max: 5, // Max connections (increased)
+    min: 1, // Min connections (increased)
     acquireTimeoutMillis: 60000, // Time to wait for connection from pool
     createTimeoutMillis: 30000, // Time to wait for new connection creation
     destroyTimeoutMillis: 5000, // Time to wait for connection destruction
