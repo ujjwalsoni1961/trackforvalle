@@ -580,6 +580,30 @@ export class ContractTemplateController {
           <div class="contract-body">
             ${html}
           </div>
+          
+          ${signatureUrl ? `
+          <div class="signature-container">
+            <div class="signature-header">
+              <h3>Digital Signature</h3>
+            </div>
+            <div style="text-align: center; padding: 20px;">
+              <p style="margin-bottom: 10px;"><strong>Customer Signature:</strong></p>
+              <img src="${signatureUrl}" alt="Customer Signature" class="signature-image" style="max-width: 300px; max-height: 200px; border: 1px solid #ddd; border-radius: 8px; padding: 8px; background: white;">
+              <div class="signature-details" style="margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                <div class="detail-item" style="text-align: center;">
+                  <span class="detail-label" style="font-size: 12px; color: #666;">Status</span>
+                  <span class="detail-value" style="display: block; color: #27ae60; font-weight: 600;">✓ Verified</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          ` : `
+          <div class="signature-container">
+            <div class="signature-placeholder">
+              <p>⚠️ No signature captured for this contract</p>
+            </div>
+          </div>
+          `}
         </div>
         
         <div class="footer">
