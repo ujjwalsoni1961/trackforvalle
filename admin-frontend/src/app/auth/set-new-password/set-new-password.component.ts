@@ -54,13 +54,37 @@ export class SetNewPasswordComponent implements OnInit {
   constructor() {}
 
   async ngOnInit() {
-    // Check if we have a valid session from Supabase recovery
+    // First try getting existing session
     const { data: { session } } = await this._supabaseService.getSession();
     if (session) {
       this.sessionReady = true;
-    } else {
-      this.errorMessage = 'Auth session missing! Please use the reset link from your email again.';
+      return;
     }
+
+    // If no session yet, wait for Supabase to process the hash fragment
+    // This happens when redirected from password reset email
+    const { data: { subscription } } = this._supabaseService.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+        this.sessionReady = true;
+        this.errorMessage = null;
+        subscription.unsubscribe();
+      }
+    });
+
+    // Give Supabase up to 5 seconds to process the hash
+    setTimeout(async () => {
+      if (!this.sessionReady) {
+        // One more attempt to get session
+        const { data: { session: retrySession } } = await this._supabaseService.getSession();
+        if (retrySession) {
+          this.sessionReady = true;
+          this.errorMessage = null;
+        } else {
+          this.errorMessage = 'Auth session expired. Please request a new password reset link.';
+        }
+        subscription.unsubscribe();
+      }
+    }, 5000);
   }
 
   passwordMatchValidator(): any {

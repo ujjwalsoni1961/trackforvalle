@@ -10,7 +10,12 @@ export class SupabaseService {
   private supabase: SupabaseClient;
 
   constructor() {
-    this.supabase = createClient(environment.supabaseUrl, environment.supabaseKey);
+    this.supabase = createClient(environment.supabaseUrl, environment.supabaseKey, {
+      auth: {
+        detectSessionInUrl: true,
+        flowType: 'implicit',
+      }
+    });
   }
 
   get client(): SupabaseClient {

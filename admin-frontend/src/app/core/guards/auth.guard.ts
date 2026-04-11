@@ -25,21 +25,17 @@ export class AuthGuard implements CanActivate, CanLoad {
 
   private async checkAuth(): Promise<boolean> {
     // Check if the URL hash contains recovery type (Supabase redirect)
+    // This handles the case where Supabase redirects to the root URL
     if (typeof window !== 'undefined') {
       const hash = window.location.hash;
       if (hash && hash.includes('type=recovery')) {
-        // Store the full hash so set-new-password page can use it
-        sessionStorage.setItem('supabase_recovery_hash', hash);
-        AuthGuard.isRecoveryMode = true;
-        // Don't return false - let Supabase process the hash first
-        // Wait for Supabase to establish the session from the hash
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        this.router.navigateByUrl('/auth/set-new-password');
+        // Redirect to set-new-password and preserve the hash
+        window.location.href = '/auth/set-new-password' + hash;
         return false;
       }
     }
 
-    // If we're in recovery mode, redirect to set-new-password
+    // If recovery mode was set by onAuthStateChange
     if (AuthGuard.isRecoveryMode) {
       AuthGuard.isRecoveryMode = false;
       this.router.navigateByUrl('/auth/set-new-password');
