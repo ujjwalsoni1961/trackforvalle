@@ -117,8 +117,8 @@ export class AuthService {
         user?.org_id,
         user.email,
         user.role_id,
-        user.is_super_admin,
-        user.is_admin
+        user.is_admin,
+        user.partner_id
       );
       const getUserByIdWithOrganization =
         await organizationQuery.getUserByIdWithOrganization(
@@ -262,8 +262,8 @@ export class AuthService {
         user.org_id,
         user.email,
         user.role_id,
-        user.is_super_admin,
-        user.is_admin
+        user.is_admin,
+        user.partner_id
       );
 
       await userQuery.saveToken(queryRunner.manager, {
@@ -414,8 +414,8 @@ export class AuthService {
         user.org_id,
         user.email,
         undefined,
-        user.is_super_admin,
-        user.is_admin
+        user.is_admin,
+        user.partner_id
       );
       const refreshToken = await generateRefreshToken(user.user_id);
 
@@ -562,8 +562,8 @@ export class AuthService {
         newOrganization.org_id,
         newUser.email,
         role_id,
-        newUser.is_super_admin,
-        newUser.is_admin
+        newUser.is_admin,
+        newUser.partner_id
       );
 
       await userQuery.saveToken(queryRunner.manager, {
@@ -712,8 +712,8 @@ export class AuthService {
         user.org_id,
         email,
         user.role_id,
-        user.is_super_admin,
-        user.is_admin
+        user.is_admin,
+        user.partner_id
       );
       const params = {
         otp: token,

@@ -5,9 +5,12 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToMany,
+  ManyToOne,
+  JoinColumn,
   JoinTable,
 } from "typeorm";
 import { User } from "./User.entity";
+import { Partner } from "./Partner.entity";
 
 @Entity("contract_templates")
 export class ContractTemplate {
@@ -43,6 +46,13 @@ export class ContractTemplate {
     inverseJoinColumn: { name: "manager_id", referencedColumnName: "user_id" },
   })
   assigned_managers: User[];
+
+  @Column({ type: "int", nullable: true })
+  partner_id: number;
+
+  @ManyToOne(() => Partner, { onDelete: "SET NULL" })
+  @JoinColumn({ name: "partner_id" })
+  partner: Partner;
 
   @CreateDateColumn()
   created_at: Date;

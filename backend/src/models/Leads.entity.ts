@@ -11,6 +11,7 @@ import { Source, LeadStatus } from "../enum/leadStatus";
 import { User } from "./User.entity";
 import { Address } from "./Address.entity";
 import { Organization } from "./Organisation.entity";
+import { Partner } from "./Partner.entity";
 
 // Entities
 @Entity("leads")
@@ -82,7 +83,14 @@ export class Leads {
   @ManyToOne(() => Address, { onDelete: "SET NULL" })
   @JoinColumn({ name: "address_id" })
   address: Address;
+  @Column({ type: "int", nullable: true })
+  partner_id: number;
+
   @ManyToOne(() => Organization, { onDelete: "SET NULL" })
   @JoinColumn({ name: "org_id" })
   organization: Organization;
+
+  @ManyToOne(() => Partner, { onDelete: "SET NULL" })
+  @JoinColumn({ name: "partner_id" })
+  partner: Partner;
 }

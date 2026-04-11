@@ -62,18 +62,23 @@ export class SigninComponent {
 
         if (response?.success && user) {
           // Check role using role names after roles are fetched
-          const allowedRoles = ['super_admin', 'admin', 'manager'];
+          const allowedRoles = ['admin', 'manager', 'partner'];
           const userRole = this.authService.getRoleName(user.role_id);
 
           if (!allowedRoles.includes(userRole)) {
             this.authService.logout();
-            this.showError('Please use Salesman Mobile App. This panel is made for Admin and Manager only.');
+            this.showError('Please use Salesman Mobile App. This panel is made for Admin, Manager, and Partner only.');
             this.loading = false;
             return;
           }
 
           this.authService.setCurrentUser(user);
-          this.router.navigate(['/dashboard']);
+
+          if (userRole === 'partner') {
+            this.router.navigate(['/partner/dashboard']);
+          } else {
+            this.router.navigate(['/dashboard']);
+          }
         } else {
           this.showError(response?.message || 'Invalid response from server');
         }

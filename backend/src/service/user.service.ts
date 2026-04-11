@@ -31,6 +31,7 @@ import { Route } from "../models/Route.entity";
 import { Contract } from "../models/Contracts.entity";
 import { ContractTemplate } from "../models/ContractTemplate.entity";
 import { LeadStatus } from "../enum/leadStatus";
+import { getSupabaseServiceClient } from "../config/supabase";
 
 const userQuery = new UserQuery();
 const roleQuery = new RoleQuery();
@@ -41,11 +42,28 @@ const territoryService = new TerritoryService();
 
 const geocodingService = new GeocodingService();
 export class UserTeamService {
-  async SendEmailNotification(email: string, password: string) {
+  async SendEmailNotification(email: string, password: string, roleName?: string) {
+    const loginUrl = process.env.FORNTEND_URL || "https://field-sales-admin.vercel.app/auth/sign-in";
+    const roleLabel = roleName
+      ? roleName.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
+      : "User";
+
     await sendEmail({
       to: email,
-      subject: "Login Credentials",
-      body: `Your password is ${password} and email is ${email}. Please reset your password after login.`,
+      subject: "Welcome to Track for Valle - Your Account Details",
+      body: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">Welcome to Track for Valle!</h2>
+          <p>Your account has been created with the role: <strong>${roleLabel}</strong></p>
+          <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0;">
+            <p style="margin: 4px 0;"><strong>Email:</strong> ${email}</p>
+            <p style="margin: 4px 0;"><strong>Password:</strong> ${password}</p>
+            <p style="margin: 4px 0;"><strong>Login URL:</strong> <a href="${loginUrl}">${loginUrl}</a></p>
+          </div>
+          <p>Please change your password after your first login.</p>
+          <p style="color: #666; font-size: 12px;">This is an automated message. Do not reply.</p>
+        </div>
+      `,
     });
   }
   async getAllRoles(
@@ -760,6 +778,22 @@ export class UserTeamService {
           message: "Role not found",
         };
       }
+      // Create user in Supabase Auth
+      try {
+        const supabase = getSupabaseServiceClient();
+        await supabase.auth.admin.createUser({
+          email: params.email,
+          password: password,
+          email_confirm: true,
+          user_metadata: {
+            full_name: `${params.first_name} ${params.last_name}`.trim(),
+            role: findRole.role_name,
+          },
+        });
+      } catch (supabaseError) {
+        console.warn("Supabase Auth user creation failed (non-blocking):", supabaseError);
+      }
+
       const newUser = await userQuery.createUser(queryRunner.manager, {
         role_id: role_id,
         email: params.email,
@@ -770,10 +804,11 @@ export class UserTeamService {
         is_email_verified: 1,
         is_active: true,
         is_admin: findRole.role_name === Roles.ADMIN ? 1 : 0,
+        partner_id: (params as any).partner_id || null,
         password_hash: passwordhash,
         created_by: String(user_id).trim(),
       });
-      await this.SendEmailNotification(params.email, password);
+      await this.SendEmailNotification(params.email, password, findRole.role_name);
 
       const { password_hash, ...safeUser } = newUser;
 

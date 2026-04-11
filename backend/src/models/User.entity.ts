@@ -15,6 +15,7 @@ import { Address } from "./Address.entity";
 import { Visit } from "./Visits.entity";
 import {  Leads } from "./Leads.entity";
 import { Message } from "./Message.entity";
+import { Partner } from "./Partner.entity";
 
 @Entity("user")
 @Index("idx_users_organization_id", ["org_id"])
@@ -66,8 +67,8 @@ export class User {
   @Column({ type: "char", length: 36, nullable: true })
   updated_by: string;
 
-  @Column({ type: "boolean", default: false })
-  is_super_admin: number;
+  @Column({ type: "int", nullable: true })
+  partner_id: number;
 
   @CreateDateColumn() created_at: Date;
 
@@ -82,6 +83,10 @@ export class User {
   @ManyToOne(() => Role, { onDelete: "RESTRICT" })
   @JoinColumn({ name: "role_id" })
   role: Role;
+
+  @ManyToOne(() => Partner, { onDelete: "SET NULL" })
+  @JoinColumn({ name: "partner_id" })
+  partner: Partner;
 
   @OneToMany(() => Leads, (lead) => lead.assigned_rep)
   leads: Leads[];

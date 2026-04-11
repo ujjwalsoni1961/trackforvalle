@@ -109,8 +109,8 @@ export const verifyToken = async (
       org_id: appUser.org_id,
       email: appUser.email,
       role_id: appUser.role_id,
-      is_super_admin: appUser.is_super_admin,
       is_admin: appUser.is_admin,
+      partner_id: appUser.partner_id,
       token,
     };
     next();

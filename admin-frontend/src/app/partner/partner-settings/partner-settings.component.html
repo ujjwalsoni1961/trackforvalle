@@ -1,0 +1,50 @@
+<div class="p-8 max-w-[800px] mx-auto">
+  <h1 class="text-2xl font-bold mb-6">Company Settings</h1>
+
+  <mat-progress-bar mode="indeterminate" *ngIf="loading"></mat-progress-bar>
+
+  <div *ngIf="!loading" class="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
+    <form [formGroup]="profileForm" (ngSubmit)="onSave()">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <mat-form-field class="col-span-2">
+          <mat-label>Company Name</mat-label>
+          <input matInput formControlName="company_name" placeholder="Enter company name">
+        </mat-form-field>
+
+        <mat-form-field class="col-span-2">
+          <mat-label>Description</mat-label>
+          <textarea matInput formControlName="description" placeholder="Company description" rows="3"></textarea>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Contact Email</mat-label>
+          <input matInput formControlName="contact_email" placeholder="contact@company.com">
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Contact Phone</mat-label>
+          <input matInput formControlName="contact_phone" placeholder="+358 XX XXXXXXX">
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Website</mat-label>
+          <input matInput formControlName="website" placeholder="https://www.company.com">
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Logo URL</mat-label>
+          <input matInput formControlName="logo_url" placeholder="https://...">
+        </mat-form-field>
+      </div>
+
+      <div class="flex justify-end gap-3 mt-6">
+        <button mat-stroked-button type="button" (click)="loadProfile()">Reset</button>
+        <button mat-flat-button color="primary" type="submit" [disabled]="saving">
+          {{ saving ? 'Saving...' : 'Save Changes' }}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <mat-progress-bar mode="indeterminate" *ngIf="saving"></mat-progress-bar>
+</div>

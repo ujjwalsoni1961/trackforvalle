@@ -1,0 +1,37 @@
+<div class="p-8">
+  <h1 class="text-2xl font-bold mb-6">Contract Templates</h1>
+
+  <mat-progress-bar mode="indeterminate" *ngIf="loading"></mat-progress-bar>
+
+  <div *ngIf="!loading && contracts.length === 0" class="text-center py-12 text-gray-500">
+    <mat-icon class="text-6xl text-gray-300 mb-4">description</mat-icon>
+    <p class="text-lg">No contract templates found</p>
+    <p class="text-sm">Contract templates linked to your company will appear here.</p>
+  </div>
+
+  <div *ngIf="!loading && contracts.length > 0" class="space-y-4">
+    <div *ngFor="let contract of contracts"
+         class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="font-semibold text-gray-900">{{ contract.title }}</h3>
+          <p class="text-sm text-gray-500 mt-1">
+            Status: <span [class]="contract.status === 'active' ? 'text-green-600' : 'text-gray-400'">{{ contract.status }}</span>
+          </p>
+        </div>
+        <div class="text-sm text-gray-400">
+          {{ contract.created_at | date:'mediumDate' }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div *ngIf="totalPages > 1" class="flex items-center justify-between pt-4">
+      <span class="text-sm text-gray-500">Page {{ currentPage }} of {{ totalPages }} ({{ totalItems }} total)</span>
+      <div class="flex gap-2">
+        <button mat-stroked-button (click)="prevPage()" [disabled]="currentPage <= 1">Previous</button>
+        <button mat-stroked-button (click)="nextPage()" [disabled]="currentPage >= totalPages">Next</button>
+      </div>
+    </div>
+  </div>
+</div>

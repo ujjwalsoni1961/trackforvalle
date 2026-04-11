@@ -9,11 +9,11 @@ export const jwtSign = (
   org_id: number,
   email: string,
   role_id: number | undefined,
-  is_super_admin: number,
-  is_admin: number
+  is_admin: number,
+  partner_id?: number | null
 ) => {
   return jwt.sign(
-    { user_id, org_id, email, role_id, is_super_admin, is_admin },
+    { user_id, org_id, email, role_id, is_admin, partner_id: partner_id || null },
     SECRET_KEY,
     {
       expiresIn: "2d",

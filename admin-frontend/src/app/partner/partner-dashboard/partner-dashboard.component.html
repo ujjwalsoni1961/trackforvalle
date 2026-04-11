@@ -1,0 +1,84 @@
+<div class="p-8">
+  <h1 class="text-2xl font-bold mb-6">Partner Dashboard</h1>
+
+  <mat-progress-bar mode="indeterminate" *ngIf="loading"></mat-progress-bar>
+
+  <div *ngIf="stats" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Total Contracts -->
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <div class="flex items-center gap-3 mb-2">
+        <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+          <mat-icon class="text-blue-600">description</mat-icon>
+        </div>
+        <span class="text-sm text-gray-500">Contract Templates</span>
+      </div>
+      <p class="text-3xl font-bold text-gray-900">{{ stats.totalContracts }}</p>
+    </div>
+
+    <!-- Total Leads -->
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <div class="flex items-center gap-3 mb-2">
+        <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+          <mat-icon class="text-green-600">people</mat-icon>
+        </div>
+        <span class="text-sm text-gray-500">Total Leads</span>
+      </div>
+      <p class="text-3xl font-bold text-gray-900">{{ stats.totalLeads }}</p>
+    </div>
+
+    <!-- Signed Leads -->
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <div class="flex items-center gap-3 mb-2">
+        <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+          <mat-icon class="text-purple-600">check_circle</mat-icon>
+        </div>
+        <span class="text-sm text-gray-500">Signed Leads</span>
+      </div>
+      <p class="text-3xl font-bold text-gray-900">{{ stats.signedLeads }}</p>
+    </div>
+
+    <!-- Conversion Rate -->
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <div class="flex items-center gap-3 mb-2">
+        <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+          <mat-icon class="text-amber-600">trending_up</mat-icon>
+        </div>
+        <span class="text-sm text-gray-500">Conversion Rate</span>
+      </div>
+      <p class="text-3xl font-bold text-gray-900">{{ stats.conversionRate }}%</p>
+    </div>
+  </div>
+
+  <!-- Quick Links -->
+  <div *ngIf="!loading" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <a routerLink="/partner/contracts" class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer block no-underline">
+      <div class="flex items-center gap-3">
+        <mat-icon class="text-blue-600">description</mat-icon>
+        <div>
+          <h3 class="font-semibold text-gray-900">View Contracts</h3>
+          <p class="text-sm text-gray-500">Browse your contract templates</p>
+        </div>
+      </div>
+    </a>
+
+    <a routerLink="/partner/reports" class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer block no-underline">
+      <div class="flex items-center gap-3">
+        <mat-icon class="text-green-600">analytics</mat-icon>
+        <div>
+          <h3 class="font-semibold text-gray-900">Sales Reports</h3>
+          <p class="text-sm text-gray-500">View performance analytics</p>
+        </div>
+      </div>
+    </a>
+
+    <a routerLink="/partner/settings" class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer block no-underline">
+      <div class="flex items-center gap-3">
+        <mat-icon class="text-gray-600">settings</mat-icon>
+        <div>
+          <h3 class="font-semibold text-gray-900">Company Settings</h3>
+          <p class="text-sm text-gray-500">Manage your company profile</p>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>

@@ -235,8 +235,16 @@ export class AuthService {
     return this.hasRole('admin');
   }
 
+  isPartner(): boolean {
+    return this.hasRole('partner');
+  }
+
   canAccessManagerPanel(): boolean {
     return this.hasAnyRole(['manager', 'admin']);
+  }
+
+  canAccessPartnerPanel(): boolean {
+    return this.hasRole('partner');
   }
 
   getAllRoles(): { [key: number]: string } {

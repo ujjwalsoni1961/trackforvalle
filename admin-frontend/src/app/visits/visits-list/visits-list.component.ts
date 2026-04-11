@@ -73,7 +73,7 @@ interface Visit {
     is_active: boolean;
     created_by: string;
     updated_by: string | null;
-    is_super_admin: boolean;
+    partner_id: number | null;
     created_at: string;
     updated_at: string;
   };

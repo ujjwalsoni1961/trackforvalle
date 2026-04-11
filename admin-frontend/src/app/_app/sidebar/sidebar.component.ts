@@ -72,14 +72,14 @@ export class SidebarComponent implements OnInit {
 
   readonly navigation = viewChild.required<any>('navigation');
 
-  navItems: any[] = [
+  // Admin/Manager navigation items
+  adminNavItems: any[] = [
     {
       type: 'group',
       name: 'Dashboard',
       icon: 'dashboard',
       children: [
         { key: uuid(), type: 'link', name: 'Overview', link: '/dashboard/basic' },
-        // { key: uuid(), type: 'link', name: 'Reports (Demo)', link: '/dashboard/analytics' }
       ]
     },
     {
@@ -116,7 +116,6 @@ export class SidebarComponent implements OnInit {
       icon: 'map',
       children: [
         { key: uuid(), type: 'link', name: 'Salesman Territory', link: '/territories/salesman' },
-        // { key: uuid(), type: 'link', name: 'Manager Territory', link: '/territories/manager' }
       ]
     },
     {
@@ -124,7 +123,6 @@ export class SidebarComponent implements OnInit {
       name: 'Visits',
       icon: 'event_note',
       children: [
-        // { key: uuid(), type: 'link', name: 'Planned Visits', link: '/visits/planned' },
         { key: uuid(), type: 'link', name: 'Visit Logs', link: '/visits' }
       ]
     },
@@ -134,7 +132,6 @@ export class SidebarComponent implements OnInit {
       icon: 'alt_route',
       children: [
         { key: uuid(), type: 'link', name: 'Live Routes', link: '/routes' },
-        // { key: uuid(), type: 'link', name: 'Route History', link: '/routes/history' }
       ]
     },
     {
@@ -147,37 +144,45 @@ export class SidebarComponent implements OnInit {
         { key: uuid(), type: 'link', name: 'Signed Contracts', link: '/contracts/signed' }
       ]
     },
-    // {
-    //   type: 'group',
-    //   name: 'Messaging',
-    //   icon: 'chat',
-    //   children: [
-    //     { key: uuid(), type: 'link', name: 'Chat', link: '/messaging/chat' },
-    //     { key: uuid(), type: 'link', name: 'Message History', link: '/messaging/history' }
-    //   ]
-    // },
-    // {
-    //   type: 'group',
-    //   name: 'Notifications',
-    //   icon: 'notifications',
-    //   children: [
-    //     { key: uuid(), type: 'link', name: 'All Notifications', link: '/notifications' }
-    //   ]
-    // },
-    // {
-    //   type: 'group',
-    //   name: 'Settings',
-    //   icon: 'settings',
-    //   children: [
-    //     { key: uuid(), type: 'link', name: 'Organization', link: '/settings/org' },
-    //     { key: uuid(), type: 'link', name: 'System Logs', link: '/settings/logs' }
-    //   ]
-    // },
-    // {
-    //   type: 'heading',
-    //   name: 'Legacy / Reference'
-    // }
   ];
+
+  // Partner navigation items
+  partnerNavItems: any[] = [
+    {
+      type: 'group',
+      name: 'Dashboard',
+      icon: 'dashboard',
+      children: [
+        { key: uuid(), type: 'link', name: 'Overview', link: '/partner/dashboard' },
+      ]
+    },
+    {
+      type: 'group',
+      name: 'Contracts',
+      icon: 'description',
+      children: [
+        { key: uuid(), type: 'link', name: 'My Contracts', link: '/partner/contracts' },
+      ]
+    },
+    {
+      type: 'group',
+      name: 'Reports',
+      icon: 'analytics',
+      children: [
+        { key: uuid(), type: 'link', name: 'Sales Reports', link: '/partner/reports' },
+      ]
+    },
+    {
+      type: 'group',
+      name: 'Settings',
+      icon: 'settings',
+      children: [
+        { key: uuid(), type: 'link', name: 'Company Profile', link: '/partner/settings' },
+      ]
+    },
+  ];
+
+  navItems: any[] = [];
 
   navItemLinks: any[] = [];
   activeKey: null | string = null;
@@ -185,6 +190,9 @@ export class SidebarComponent implements OnInit {
   ngOnInit() {
     const currentUser = this.authService.getCurrentUser();
     const userRole = currentUser?.role;
+
+    // Select navigation items based on role
+    this.navItems = userRole === 'partner' ? [...this.partnerNavItems] : [...this.adminNavItems];
 
     // Filter navigation items based on user role
     const filteredNavItems = this.navItems.filter(navItem => {

@@ -129,8 +129,8 @@ export interface IJwtVerify {
   org_id: number;
   email: string;
   role_id?: number;
-  is_super_admin?: boolean;
   is_admin?: boolean;
+  partner_id?: number | null;
   iat?: number; // Issued at (seconds since Unix epoch)
   exp?: number; // Expiration time (seconds since Unix epoch)
 }

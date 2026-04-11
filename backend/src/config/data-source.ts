@@ -28,6 +28,7 @@ import { FollowUp } from "../models/FollowUp.entity";
 import { FollowUpVisit } from "../models/FollowUpVisit.entity";
 import { ContractImage } from "../models/ContractImage.entity";
 import { ContractPDF } from "../models/ContractPdf.entity";
+import { Partner } from "../models/Partner.entity";
 
 dotenv.config();
 
@@ -72,6 +73,7 @@ export const dataSourceOptions: DataSourceOptions = {
     Subregion,
     Route,
     RefreshToken,
+    Partner,
   ],
   migrations: [],
   subscribers: [],

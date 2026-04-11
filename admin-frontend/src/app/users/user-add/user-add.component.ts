@@ -4,6 +4,7 @@ import { FormsModule, ReactiveFormsModule, FormGroup, FormBuilder, Validators } 
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { UsersService } from '../users.service';
+import { PartnerService } from '../../partner/partner.service';
 import { finalize } from 'rxjs/operators';
 import { SharedModule } from '../../shared/shared.module';
 
@@ -15,17 +16,20 @@ import { SharedModule } from '../../shared/shared.module';
 })
 export class UserAddComponent implements OnInit {
   userForm: FormGroup;
-  roles: { id: number; label: string }[] = [];
+  roles: { id: number; label: string; name: string }[] = [];
+  partners: { id: number; name: string }[] = [];
   territories: any[] = [
     { id: 'territory1', name: 'Imatra' },
     { id: 'territory2', name: 'Hamina' },
     { id: 'territory3', name: 'Lappeenranta' }
   ];
   isSubmitting = false;
+  selectedRoleName = '';
 
   constructor(
     private fb: FormBuilder,
     private usersService: UsersService,
+    private partnerService: PartnerService,
     private snackBar: MatSnackBar
   ) {
     this.userForm = this.fb.group({
@@ -34,21 +38,36 @@ export class UserAddComponent implements OnInit {
       email: ['', [Validators.required, Validators.email]],
       phone: ['', [Validators.required, Validators.pattern(/^[0-9]{10,15}$/)]],
       role_id: [null, Validators.required],
+      partner_id: [null],
       territory: ['']
     });
   }
 
   ngOnInit() {
     this.getRoles();
-    // Dynamically update territory field validation based on role
-    this.userForm.get('role')?.valueChanges.subscribe(role => {
+    this.loadPartners();
+    // Dynamically update field validation based on role
+    this.userForm.get('role_id')?.valueChanges.subscribe(roleId => {
+      const role = this.roles.find(r => r.id === +roleId);
+      this.selectedRoleName = role?.name || '';
+
       const territoryControl = this.userForm.get('territory');
-      if (role === 'manager' || role === 'sales_rep') {
+      const partnerControl = this.userForm.get('partner_id');
+
+      if (this.selectedRoleName === 'manager' || this.selectedRoleName === 'sales_rep') {
         territoryControl?.setValidators([Validators.required]);
       } else {
         territoryControl?.clearValidators();
       }
       territoryControl?.updateValueAndValidity();
+
+      if (this.selectedRoleName === 'partner') {
+        partnerControl?.setValidators([Validators.required]);
+      } else {
+        partnerControl?.clearValidators();
+        partnerControl?.setValue(null);
+      }
+      partnerControl?.updateValueAndValidity();
     });
   }
 
@@ -58,6 +77,7 @@ export class UserAddComponent implements OnInit {
         if (response.success && response.data) {
           this.roles = response.data.map((role: any) => ({
             id: role.role_id,
+            name: role.role_name,
             label: this.formatRoleLabel(role.role_name)
           }));
         }
@@ -65,6 +85,20 @@ export class UserAddComponent implements OnInit {
       error: (err) => {
         this.snackBar.open('Error fetching roles: ' + err.message, 'Close', { duration: 3000 });
       }
+    });
+  }
+
+  loadPartners() {
+    this.partnerService.getAllPartners({ limit: 100 }).subscribe({
+      next: (response: any) => {
+        if (response.success && response.data) {
+          this.partners = response.data.map((p: any) => ({
+            id: p.partner_id,
+            name: p.company_name
+          }));
+        }
+      },
+      error: () => {}
     });
   }
 
@@ -82,14 +116,18 @@ export class UserAddComponent implements OnInit {
     }
 
     this.isSubmitting = true;
-    const payload = {
+    const payload: any = {
       email: this.userForm.value.email,
       first_name: this.userForm.value.first_name,
       last_name: this.userForm.value.last_name,
       territory: this.userForm.value.territory || null,
       phone: this.userForm.value.phone,
-      role_id: +this.userForm.value.role_id // Ensure it's a number
+      role_id: +this.userForm.value.role_id
     };
+
+    if (this.selectedRoleName === 'partner' && this.userForm.value.partner_id) {
+      payload.partner_id = +this.userForm.value.partner_id;
+    }
 
     this.usersService.createUser(payload).pipe(
       finalize(() => this.isSubmitting = false)

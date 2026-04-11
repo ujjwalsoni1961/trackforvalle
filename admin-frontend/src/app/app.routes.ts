@@ -54,6 +54,10 @@ export const routes: Routes = [
         path: 'contracts',
         loadChildren: () => import('./contracts/contracts.module').then(m => m.ContractsModule)
       },
+      {
+        path: 'partner',
+        loadChildren: () => import('./partner/partner.module').then(m => m.PartnerModule)
+      },
       // {
       //   path: 'manager',
       //   canActivate: [managerGuard],

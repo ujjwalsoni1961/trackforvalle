@@ -170,7 +170,7 @@ export class UserQuery {
         "user.created_by",
         "user.updated_by",
         "user.created_at",
-        "user.is_super_admin",
+        "user.partner_id",
         "user.updated_at",
         "role.role_name",
       ])
@@ -222,7 +222,7 @@ export class UserQuery {
         "user.created_by",
         "user.updated_by",
         "user.created_at",
-        "user.is_super_admin",
+        "user.partner_id",
         "user.updated_at",
         "role.role_name",
       ])
