@@ -6,6 +6,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { UsersService } from '../users.service';
 import { PartnerService } from '../../partner/partner.service';
+import { TerritoryService } from '../../territories/territory.service';
 import { finalize } from 'rxjs/operators';
 import { SharedModule } from '../../shared/shared.module';
 
@@ -20,11 +21,8 @@ export class UserAddComponent implements OnInit {
   roles: { id: number; label: string; name: string }[] = [];
   partners: { id: number; name: string }[] = [];
   filteredPartners: { id: number; name: string }[] = [];
-  territories: any[] = [
-    { id: 'territory1', name: 'Imatra' },
-    { id: 'territory2', name: 'Hamina' },
-    { id: 'territory3', name: 'Lappeenranta' }
-  ];
+  territories: any[] = [];
+  isLoadingTerritories = false;
   isSubmitting = false;
   selectedRoleName = '';
   selectedPartner: { id: number | null; name: string } | null = null;
@@ -35,6 +33,7 @@ export class UserAddComponent implements OnInit {
     private fb: FormBuilder,
     private usersService: UsersService,
     private partnerService: PartnerService,
+    private territoryService: TerritoryService,
     private snackBar: MatSnackBar
   ) {
     this.userForm = this.fb.group({
@@ -51,6 +50,7 @@ export class UserAddComponent implements OnInit {
   ngOnInit() {
     this.getRoles();
     this.loadPartners();
+    this.loadTerritories();
 
     // Watch role changes
     this.userForm.get('role_id')?.valueChanges.subscribe(roleId => {
@@ -60,11 +60,8 @@ export class UserAddComponent implements OnInit {
       const territoryControl = this.userForm.get('territory');
       const partnerControl = this.userForm.get('partner_company_name');
 
-      if (this.selectedRoleName === 'manager' || this.selectedRoleName === 'sales_rep') {
-        territoryControl?.setValidators([Validators.required]);
-      } else {
-        territoryControl?.clearValidators();
-      }
+      // Territory is always optional - no required validator
+      territoryControl?.clearValidators();
       territoryControl?.updateValueAndValidity();
 
       if (this.selectedRoleName === 'partner') {
@@ -145,6 +142,25 @@ export class UserAddComponent implements OnInit {
         }
       },
       error: () => {}
+    });
+  }
+
+  loadTerritories() {
+    this.isLoadingTerritories = true;
+    this.territoryService.getTerritories({ limit: 500 }).subscribe({
+      next: (response: any) => {
+        this.isLoadingTerritories = false;
+        if (response.data) {
+          this.territories = response.data.map((t: any) => ({
+            id: t.territory_id,
+            name: t.name
+          }));
+        }
+      },
+      error: () => {
+        this.isLoadingTerritories = false;
+        this.snackBar.open('Error loading territories', 'Close', { duration: 3000 });
+      }
     });
   }
 

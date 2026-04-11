@@ -74,6 +74,12 @@ export class TerritoryService {
     );
   }
 
+  reassignTerritory(territoryId: string, newSalesmanId: string): Observable<any> {
+    return this.http.put(`${this.baseUrl}/territory/${territoryId}/reassign`, { newSalesmanId }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
   getPredefinedArea(areaName: string): any {
     const predefinedAreas = [
       {

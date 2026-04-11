@@ -10,6 +10,7 @@ import { BehaviorSubject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { MatDialog } from '@angular/material/dialog';
 import { TerritoryDetailsDialogComponent } from '../territory-details-dialog/territory-details-dialog.component';
+import { TerritoryReassignDialogComponent } from '../territory-reassign-dialog/territory-reassign-dialog.component';
 
 @Component({
   selector: 'app-territory-list',
@@ -50,7 +51,7 @@ export class TerritoryListComponent implements OnInit {
   ) {
     this.territoryForm = this.fb.group({
       name: ['', Validators.required],
-      salesmanIds: [[], Validators.required],
+      salesmanIds: [[]],
       searchArea: ['']
     });
   }
@@ -668,6 +669,23 @@ export class TerritoryListComponent implements OnInit {
         postal_codes: territory.postal_codes,
         regions: territory.regions,
         subregions: territory.subregions
+      }
+    });
+  }
+
+  reassignTerritory(territory: any) {
+    const dialogRef = this.dialog.open(TerritoryReassignDialogComponent, {
+      width: '400px',
+      data: {
+        territoryId: territory.id,
+        territoryName: territory.name,
+        currentSalesmanId: territory.salesmanId
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.loadTerritories();
       }
     });
   }

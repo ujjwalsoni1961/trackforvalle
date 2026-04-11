@@ -231,6 +231,33 @@ export class TerritoryController {
     res.status(result.status).json(result);
   }
 
+  async reassignTerritory(req: any, res: Response): Promise<void> {
+    const territoryId = parseInt(req.params.id);
+    const { newSalesmanId } = req.body;
+    const userId = req.user?.user_id;
+
+    if (!userId) {
+      res
+        .status(httpStatusCodes.UNAUTHORIZED)
+        .json({ message: "User not authenticated" });
+      return;
+    }
+
+    if (!newSalesmanId) {
+      res
+        .status(httpStatusCodes.BAD_REQUEST)
+        .json({ message: "newSalesmanId is required" });
+      return;
+    }
+
+    const result = await territoryService.reassignTerritory(
+      territoryId,
+      parseInt(newSalesmanId),
+      parseInt(userId)
+    );
+    res.status(result.status).json(result);
+  }
+
   async autoAssignTerritory(req: any, res: Response): Promise<void> {
     const dataSource = await getDataSource();
     const queryRunner = await dataSource.createQueryRunner();

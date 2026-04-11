@@ -22,6 +22,11 @@ router.post(
   territoryController.addTerritory
 );
 router.put(
+  "/:id/reassign",
+  verifyToken,
+  territoryController.reassignTerritory
+);
+router.put(
   "/:id",
   verifyToken,
   // permissionMiddleware("customer_import"),

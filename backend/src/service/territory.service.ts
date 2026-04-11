@@ -8,11 +8,13 @@ import { Address } from "../models/Address.entity";
 import { Polygon } from "../models/Polygon.entity";
 import { booleanPointInPolygon, point, polygon } from "@turf/turf";
 import { TerritorySalesman } from "../models/TerritorySalesMan.entity";
-import { In, QueryRunner } from "typeorm";
+import { In, Not, QueryRunner } from "typeorm";
 import { GeocodingService } from "../utils/geoCode.service";
 import { UserQuery } from "../query/user.query";
 import { IJwtVerify } from "../interfaces/user.interface";
 import { getFinnishTime } from "../utils/timezone";
+import { Leads } from "../models/Leads.entity";
+import { LeadStatus } from "../enum/leadStatus";
 
 const geocodingService = new GeocodingService();
 const userQuery = new UserQuery();
@@ -899,6 +901,115 @@ async autoAssignTerritory(
         data: null,
         total: 0,
       };
+    }
+  }
+
+  async reassignTerritory(
+    territoryId: number,
+    newSalesmanId: number,
+    adminId: number
+  ): Promise<{
+    status: number;
+    data?: any;
+    message: string;
+  }> {
+    const dataSource = await getDataSource();
+    const queryRunner = dataSource.createQueryRunner();
+    await queryRunner.startTransaction();
+    try {
+      // Verify territory exists
+      const territory = await queryRunner.manager.findOne(Territory, {
+        where: { territory_id: territoryId, is_active: true },
+      });
+      if (!territory) {
+        await queryRunner.rollbackTransaction();
+        return {
+          status: httpStatusCodes.NOT_FOUND,
+          message: "Territory not found",
+        };
+      }
+
+      // Find existing salesman assignments for this territory
+      const existingAssignments = await queryRunner.manager.find(
+        TerritorySalesman,
+        { where: { territory_id: territoryId } }
+      );
+      const oldSalesmanIds = existingAssignments.map((a) => a.salesman_id);
+
+      // Remove old assignments
+      if (existingAssignments.length > 0) {
+        await queryRunner.manager.delete(TerritorySalesman, {
+          territory_id: territoryId,
+        });
+      }
+
+      // Create new assignment
+      const newAssignment = queryRunner.manager.create(TerritorySalesman, {
+        territory_id: territoryId,
+        salesman_id: newSalesmanId,
+      });
+      await queryRunner.manager.save(TerritorySalesman, newAssignment);
+
+      // Transfer unsigned leads in this territory to the new salesman
+      // Leads with status "Signed" stay with original salesman
+      let leadsTransferred = 0;
+      let leadsKept = 0;
+
+      if (oldSalesmanIds.length > 0) {
+        // Count signed leads (they stay with original salesman)
+        const signedLeads = await queryRunner.manager.count(Leads, {
+          where: {
+            territory_id: territoryId,
+            assigned_rep_id: In(oldSalesmanIds),
+            status: LeadStatus.Signed,
+            is_active: true,
+          },
+        });
+        leadsKept = signedLeads;
+
+        // Transfer all non-signed leads to new salesman
+        const transferResult = await queryRunner.manager
+          .createQueryBuilder()
+          .update(Leads)
+          .set({
+            assigned_rep_id: newSalesmanId,
+            updated_by: adminId.toString(),
+            updated_at: getFinnishTime(),
+          })
+          .where("territory_id = :territoryId", { territoryId })
+          .andWhere("assigned_rep_id IN (:...oldSalesmanIds)", {
+            oldSalesmanIds,
+          })
+          .andWhere("status != :signedStatus", {
+            signedStatus: LeadStatus.Signed,
+          })
+          .andWhere("is_active = true")
+          .execute();
+
+        leadsTransferred = transferResult.affected || 0;
+      }
+
+      await queryRunner.commitTransaction();
+
+      return {
+        status: httpStatusCodes.OK,
+        data: {
+          territory_id: territoryId,
+          new_salesman_id: newSalesmanId,
+          old_salesman_ids: oldSalesmanIds,
+          leads_transferred: leadsTransferred,
+          leads_kept_with_original: leadsKept,
+        },
+        message: `Territory reassigned successfully. ${leadsTransferred} leads transferred, ${leadsKept} signed leads kept with original salesman.`,
+      };
+    } catch (error: any) {
+      await queryRunner.rollbackTransaction();
+      return {
+        status: httpStatusCodes.INTERNAL_SERVER_ERROR,
+        message: `Failed to reassign territory: ${error.message}`,
+      };
+    } finally {
+      await queryRunner.release();
     }
   }
 }
