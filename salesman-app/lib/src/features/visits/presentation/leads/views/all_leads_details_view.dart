@@ -11,8 +11,6 @@ import 'package:track/src/core/ui/widgets/center_error_widget.dart';
 import 'package:track/src/core/ui/widgets/gap.dart';
 import 'package:track/src/core/ui/widgets/my_scaffold.dart';
 import 'package:track/src/features/dashboard/presentation/home/cubit/dashboard_cubit.dart';
-import 'package:track/src/features/visits/presentation/daily_routes/cubit/get_current_location_cubit.dart';
-import 'package:track/src/features/visits/presentation/daily_routes/cubit/plan_visits_cubit.dart';
 import 'package:track/src/features/visits/presentation/leads/cubit/add_lead_cubit.dart';
 import 'package:track/src/features/visits/presentation/leads/cubit/edit_a_lead_details_cubit.dart';
 import 'package:track/src/features/visits/presentation/leads/cubit/lead_status_cubit.dart';
@@ -33,11 +31,9 @@ class _AllLeadsDetailsViewState extends State<AllLeadsDetailsView> {
   final ScrollController _scrollController = ScrollController();
   late final LeadsDetailsCubit leadsDetailsCubit = context
       .read<LeadsDetailsCubit>();
-  late final PlanVisitsCubit planVisitCubit = context.read<PlanVisitsCubit>();
   late ThemeData theme = Theme.of(context);
   bool _isSearchExpanded = false;
   Timer? _debounce;
-  List<int> selectedLeadIds = [];
   String? _selectedStatusFilter;
   String? _selectedCityFilter;
 
@@ -140,38 +136,10 @@ class _AllLeadsDetailsViewState extends State<AllLeadsDetailsView> {
     );
   }
 
-  void _onLeadSelectionChanged(int leadId, bool isSelected) {
-    setState(() {
-      if (isSelected) {
-        if (!selectedLeadIds.contains(leadId)) {
-          selectedLeadIds.add(leadId);
-        }
-      } else {
-        selectedLeadIds.remove(leadId);
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return MultiBlocListener(
       listeners: [
-        BlocListener<PlanVisitsCubit, PlanVisitsState>(
-          listener: (context, state) {
-            if (state is PlanVisitsFailed) {
-              context.errorBar(state.errorMessage);
-            }
-            if (state is PlanVisitsSuccess) {
-              selectedLeadIds = [];
-              context.successBar("Visits Planned successfully");
-              leadsDetailsCubit.refreshLeads();
-              context.read<GetCurrentLocationCubit>().getCurrentLatLong(
-                refreshRoutes: true,
-              );
-              context.read<DashboardCubit>().getTheDashBoardData();
-            }
-          },
-        ),
         BlocListener<AddLeadCubit, AddLeadState>(
           listener: (context, state) {
             if (state is AddLeadSuccess) {
@@ -207,22 +175,6 @@ class _AllLeadsDetailsViewState extends State<AllLeadsDetailsView> {
           }
 
           return MyScaffold(
-            floatingActionButton: selectedLeadIds.isNotEmpty
-                ? FloatingActionButton.extended(
-                    onPressed: () async {
-                      final locationCubit = context
-                          .read<GetCurrentLocationCubit>();
-                      await locationCubit.getCurrentLatLong();
-                      planVisitCubit.planTheVisit(
-                        leadIds: selectedLeadIds,
-                        latitude: locationCubit.latitude ?? 0,
-                        longitude: locationCubit.longitude ?? 0,
-                      );
-                    },
-                    icon: const Icon(Icons.calendar_month_outlined),
-                    label: Text('Plan Visit (${selectedLeadIds.length})'),
-                  )
-                : null,
             body: Column(
               children: [
                 // Header Section
@@ -657,13 +609,6 @@ class _AllLeadsDetailsViewState extends State<AllLeadsDetailsView> {
                 padding: const EdgeInsets.only(bottom: 12.0),
                 child: LeadsCard(
                   lead: leads[index - 1],
-                  isSelected: selectedLeadIds.contains(leads[index - 1].leadID),
-                  onSelectionChanged: (isSelected) {
-                    _onLeadSelectionChanged(
-                      leads[index - 1].leadID,
-                      isSelected,
-                    );
-                  },
                 ),
               );
             }

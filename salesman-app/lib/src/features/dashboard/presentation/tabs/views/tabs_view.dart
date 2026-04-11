@@ -5,7 +5,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:track/src/core/injector/injector.dart';
 import 'package:track/src/core/local/user_local_data_source.dart';
-import 'package:track/src/core/ui/res/app_colors.dart';
 import 'package:track/src/core/ui/res/app_icons.dart';
 import 'package:track/src/core/ui/routes/routes.dart';
 import 'package:track/src/core/ui/utility/paddings.dart';
@@ -18,14 +17,9 @@ import 'package:track/src/features/dashboard/presentation/profile/cubit/profile_
 import 'package:track/src/features/dashboard/presentation/profile/views/profile_tab.dart';
 import 'package:track/src/features/dashboard/presentation/tabs/cubit/tab_change_cubit.dart';
 import 'package:track/src/features/dashboard/presentation/tabs/widgets/custom_bottom_bar.dart';
-import 'package:track/src/features/visits/presentation/daily_routes/cubit/daily_routes_cubit.dart';
-import 'package:track/src/features/visits/presentation/daily_routes/cubit/get_current_location_cubit.dart';
-import 'package:track/src/features/visits/presentation/daily_routes/views/daily_routes_view.dart';
 import 'package:track/src/features/visits/presentation/leads/cubit/lead_status_cubit.dart';
 import 'package:track/src/features/visits/presentation/leads/cubit/leads_details_cubit.dart';
 import 'package:track/src/features/visits/presentation/leads/views/all_leads_details_view.dart';
-import 'package:track/src/features/visits/presentation/past_visits/cubit/past_visits_cubit.dart';
-import 'package:track/src/features/visits/presentation/past_visits/views/past_visits_history_view.dart';
 import 'package:track/src/features/visits/presentation/region_subregions/cubit/regions_cubit.dart';
 import 'package:track/src/features/visits/presentation/sign_contract/cubit/get_contract_templates_cubit.dart';
 
@@ -38,11 +32,8 @@ class TabsView extends StatefulWidget {
 
 class _TabsViewState extends State<TabsView>
     with SingleTickerProviderStateMixin {
-  late TabController tabController = TabController(length: 5, vsync: this);
+  late TabController tabController = TabController(length: 3, vsync: this);
   late final TabChangeCubit tabChangeCubit = context.read<TabChangeCubit>();
-  late DailyRoutesCubit dailyRoutesCubit = context.read<DailyRoutesCubit>();
-  late GetCurrentLocationCubit getCurrentLocationCubit = context
-      .read<GetCurrentLocationCubit>();
 
   late final ThemeData theme = Theme.of(context);
 
@@ -59,11 +50,6 @@ class _TabsViewState extends State<TabsView>
   }
 
   void _initializeData() {
-    print('📱 TabsView: Initializing data...');
-
-    // Fetch location and routes
-    getCurrentLocationCubit.getCurrentLatLong(refreshRoutes: true);
-
     // Fetch all necessary data for the app
     context.read<LeadStatusCubit>().getTheLeadStatusList();
     context.read<RegionsCubit>().getTheRegion();
@@ -71,39 +57,12 @@ class _TabsViewState extends State<TabsView>
     context.read<ProfileDetailsCubit>().fetchProfileDetailsLocal();
     context.read<LeadsDetailsCubit>().getAllTheLeads(pageNumber: 1);
     context.read<GetContractTemplatesCubit>().getTheContractTemplates();
-    context.read<PastVisitsCubit>().getGeneralPastVisits(pageNumber: 1);
-
-    print('📱 TabsView: Data initialization triggered');
   }
 
   @override
   Widget build(BuildContext context) {
     return MultiBlocListener(
       listeners: [
-        BlocListener<GetCurrentLocationCubit, GetCurrentLocationState>(
-          listener: (context, state) {
-            if (state is GetCurrentLocationSuccess && state.refreshRoutes) {
-              dailyRoutesCubit.getTheRoutes(
-                latitude: state.latitude,
-                longitude: state.longitude,
-              );
-            }
-            if (state is GetCurrentLocationLoading) {
-              context.successBar("fetching your current location...");
-            }
-            if (state is GetCurrentLocationFailed && state.refreshRoutes) {
-              context.errorBar(state.errorMessage);
-              dailyRoutesCubit.getTheRoutes();
-            }
-          },
-        ),
-        BlocListener<DailyRoutesCubit, DailyRoutesState>(
-          listener: (context, state) {
-            if (state is DailyRefreshRouteFailed) {
-              context.errorBar(state.errorMessage);
-            }
-          },
-        ),
         BlocListener<LeadsDetailsCubit, LeadsDetailsState>(
           listener: (context, leadsState) async {
             if (leadsState is LeadsDetailsFailed) {
@@ -137,7 +96,6 @@ class _TabsViewState extends State<TabsView>
               return Future.value(false);
             },
             child: MyScaffold(
-              // Added light gray background to create contrast with white BottomAppBar
               appBar: AppBar(
                 title: Row(
                   mainAxisAlignment: MainAxisAlignment.start,
@@ -157,31 +115,13 @@ class _TabsViewState extends State<TabsView>
               body: TabBarView(
                 controller: tabController,
                 physics:
-                    const NeverScrollableScrollPhysics(), // Disable swipe gestures
+                    const NeverScrollableScrollPhysics(),
                 children: [
                   HomeTabView(),
                   AllLeadsDetailsView(),
-                  DailyRoutesView(),
-                  PastVisitsHistoryView(),
                   ProfileTab(),
                 ],
               ),
-              floatingActionButton: FloatingActionButton(
-                onPressed: () => {tabChangeCubit.changeTab(2)},
-
-                backgroundColor: state is TabChange && state.tabIndex == 2
-                    ? AppColors.accent
-                    : AppColors.greyDark,
-                elevation: 4,
-                child: Icon(
-                  Icons.route,
-                  color: state is TabChange && state.tabIndex == 2
-                      ? AppColors.white
-                      : AppColors.white,
-                ),
-              ),
-              floatingActionButtonLocation:
-                  FloatingActionButtonLocation.centerDocked,
               bottomBar: CustomBottomAppBar(
                 currentIndex: tabController.index,
                 onTap: (index) {
@@ -190,8 +130,6 @@ class _TabsViewState extends State<TabsView>
                 items: const [
                   TabItem(label: 'Home', icon: AppIcons.home),
                   TabItem(label: 'Leads', icon: AppIcons.continueIcon),
-                  TabItem(label: '', icon: AppIcons.book),
-                  TabItem(label: 'Past Visits', icon: AppIcons.feedback),
                   TabItem(label: 'Profile', icon: AppIcons.profile),
                 ],
               ),

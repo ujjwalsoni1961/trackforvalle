@@ -4,3 +4,4 @@ dist/
 .vercel/
 *.js.map
 .vercel
+.env*.local

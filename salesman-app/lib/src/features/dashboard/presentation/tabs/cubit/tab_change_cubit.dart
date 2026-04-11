@@ -12,10 +12,6 @@ class TabChangeCubit extends Cubit<TabChangeState> {
   }
 
   int calculateNavBarIndexFromTabIndex(int tabIndex) {
-    if (tabIndex < 2) {
-      return tabIndex;
-    } else {
-      return tabIndex + 1;
-    }
+    return tabIndex;
   }
 }

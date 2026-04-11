@@ -333,32 +333,22 @@ class CustomBottomAppBar extends StatefulWidget {
 class _CustomBottomAppBarState extends State<CustomBottomAppBar> {
   @override
   Widget build(BuildContext context) {
-    final midElement = widget.items.length ~/ 2;
-
     return BottomAppBar(
       color: AppColors.offWhite,
       elevation: 8.0,
       height: 70.0,
       shadowColor: Colors.grey,
       surfaceTintColor: AppColors.offWhite,
-      shape: ConvexNotchedRectangle(
-        notchSmoothness: NotchSmoothness.verySmoothEdge,
-        leftCornerRadius: 24.0,
-        convexBridge: false,
-        rightCornerRadius: 24.0,
-      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: List.generate(widget.items.length, (index) {
           return Expanded(
-            child: index == midElement
-                ? const SizedBox()
-                : TabItemWidget(
-                    item: widget.items[index],
-                    isSelected: index == widget.currentIndex,
-                    onTap: () => widget.onTap(index),
-                  ),
+            child: TabItemWidget(
+              item: widget.items[index],
+              isSelected: index == widget.currentIndex,
+              onTap: () => widget.onTap(index),
+            ),
           );
         }),
       ),

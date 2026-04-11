@@ -36,7 +36,7 @@ class ContractsRemoteDataSourceImpl extends ContractsRemoteDataSource {
   @override
   Future<ContractTemplateListEntity> getContractTemplates() async {
     try {
-      final response = await _api.dio.get('/contract/templates/sale-rep');
+      final response = await _api.dio.get('/contract/templates');
       if (response.statusCode == 200) {
         return ContractsTemplateListModel.fromMap(response.data['data']);
       } else {
