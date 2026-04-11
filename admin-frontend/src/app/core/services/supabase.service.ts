@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { createClient, SupabaseClient, Session } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
 
+
 @Injectable({
   providedIn: 'root'
 })
@@ -33,7 +34,9 @@ export class SupabaseService {
   }
 
   resetPasswordForEmail(email: string) {
-    return this.supabase.auth.resetPasswordForEmail(email);
+    return this.supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${environment.siteUrl}/auth/set-new-password`,
+    });
   }
 
   updateUser(attributes: { password?: string }) {

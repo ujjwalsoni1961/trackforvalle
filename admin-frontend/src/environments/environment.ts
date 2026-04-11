@@ -1,5 +1,5 @@
 export const environment = {
-  siteUrl: 'https://trackforvalle-admin.vercel.app',
+  siteUrl: 'https://admin-frontend-omega-vert.vercel.app',
   googleAnalyticsId: '',
   pageTitle: 'Track for Valle Admin',
   baseUri: 'https://trackforvalle-backend.vercel.app/api',
