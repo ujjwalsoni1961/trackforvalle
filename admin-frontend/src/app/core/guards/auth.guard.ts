@@ -28,11 +28,13 @@ export class AuthGuard implements CanActivate, CanLoad {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash;
       if (hash && hash.includes('type=recovery')) {
+        // Store the full hash so set-new-password page can use it
+        sessionStorage.setItem('supabase_recovery_hash', hash);
         AuthGuard.isRecoveryMode = true;
-        // Let Supabase process the hash first, then redirect
-        setTimeout(() => {
-          this.router.navigateByUrl('/auth/set-new-password');
-        }, 500);
+        // Don't return false - let Supabase process the hash first
+        // Wait for Supabase to establish the session from the hash
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        this.router.navigateByUrl('/auth/set-new-password');
         return false;
       }
     }

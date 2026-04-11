@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
@@ -10,6 +10,7 @@ import { LogoComponent } from '@elementar-ui/components/logo';
 import { NgOptimizedImage } from '@angular/common';
 import { AuthService } from '../auth.service';
 import { MatSpinner } from '@angular/material/progress-spinner';
+import { SupabaseService } from '../../core/services/supabase.service';
 
 @Component({
   selector: 'app-set-new-password',
@@ -30,15 +31,16 @@ import { MatSpinner } from '@angular/material/progress-spinner';
   templateUrl: './set-new-password.component.html',
   styleUrl: './set-new-password.component.scss'
 })
-export class SetNewPasswordComponent {
+export class SetNewPasswordComponent implements OnInit {
   private _router = inject(Router);
   private _route = inject(ActivatedRoute);
   private _authService = inject(AuthService);
+  private _supabaseService = inject(SupabaseService);
 
   errorMessage: string | null = null;
   successMessage: string | null = null;
   loading = false;
-  isRecoverySession = false;
+  sessionReady = false;
 
   form = new FormGroup({
     password: new FormControl('', [
@@ -49,10 +51,16 @@ export class SetNewPasswordComponent {
     confirmPassword: new FormControl('', [Validators.required])
   }, { validators: this.passwordMatchValidator() });
 
-  constructor() {
-    // Supabase recovery flow: the session is already established from the hash fragment
-    // We just need to allow the user to set a new password
-    this.isRecoverySession = true;
+  constructor() {}
+
+  async ngOnInit() {
+    // Check if we have a valid session from Supabase recovery
+    const { data: { session } } = await this._supabaseService.getSession();
+    if (session) {
+      this.sessionReady = true;
+    } else {
+      this.errorMessage = 'Auth session missing! Please use the reset link from your email again.';
+    }
   }
 
   passwordMatchValidator(): any {
@@ -68,7 +76,7 @@ export class SetNewPasswordComponent {
   }
 
   resetPassword() {
-    if (this.form.valid) {
+    if (this.form.valid && this.sessionReady) {
       this.loading = true;
       this._authService.resetPassword('recovery', this.form.get('password')?.value!).subscribe({
         next: (response: any) => {
