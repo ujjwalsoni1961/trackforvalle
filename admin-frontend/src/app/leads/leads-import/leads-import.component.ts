@@ -126,7 +126,7 @@ export class LeadsImportComponent implements OnInit {
         });
 
         // Validate email
-        if (lead.email && !this.isValidEmail(lead.email)) {
+        if (!this.isBlankish(lead.email) && !this.isValidEmail(lead.email!)) {
           errors.push('email');
         }
 
@@ -143,15 +143,15 @@ export class LeadsImportComponent implements OnInit {
       })
       .filter(lead => !lead.errors?.length)
       .map(lead => ({
-        name: lead.customerName,
-        contact_email: lead.email,
-        phone: lead.phone,
+        name: lead.customerName || '',
+        contact_email: this.isBlankish(lead.email) ? '' : lead.email,
+        phone: this.isBlankish(lead.phone) ? '' : lead.phone,
         street_address: lead.streetAddress,
         city: lead.city,
         state: lead.state,
         postal_code: lead.postalCode,
         country: lead.country,
-        comments: lead.comments
+        comments: this.isBlankish(lead.comments) ? '' : lead.comments
       }));
 
 
@@ -316,10 +316,10 @@ export class LeadsImportComponent implements OnInit {
           if (this.requiredFields.includes(mapping.systemField) && !(lead as any)[mapping.systemField]) {
             errors.push(mapping.systemField);
           }
-          if (mapping.systemField === 'email' && (lead as any)[mapping.systemField] && !this.isValidEmail((lead as any)[mapping.systemField])) {
+          if (mapping.systemField === 'email' && !this.isBlankish((lead as any)[mapping.systemField]) && !this.isValidEmail((lead as any)[mapping.systemField])) {
             errors.push('email');
           }
-          if (mapping.systemField === 'phone' && (lead as any)[mapping.systemField] && !this.isValidPhone((lead as any)[mapping.systemField])) {
+          if (mapping.systemField === 'phone' && !this.isBlankish((lead as any)[mapping.systemField]) && !this.isValidPhone((lead as any)[mapping.systemField])) {
             errors.push('phone');
           }
         }
@@ -335,6 +335,13 @@ export class LeadsImportComponent implements OnInit {
     this.totalRows = data.length;
     this.validRows = this.previewData.filter(lead => !lead.errors?.length).length;
     this.rowsWithErrors = this.totalRows - this.validRows;
+  }
+
+  /** Treat '-', 'N/A', 'none', etc. as blank */
+  private isBlankish(value: string | undefined): boolean {
+    if (!value) return true;
+    const trimmed = value.trim().toLowerCase();
+    return ['', '-', '--', 'n/a', 'na', 'none', 'nil', '.'].includes(trimmed);
   }
 
   isValidEmail(email: string): boolean {
