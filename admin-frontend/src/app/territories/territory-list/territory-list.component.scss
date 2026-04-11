@@ -1,0 +1,154 @@
+button[mat-flat-button] {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  mat-spinner {
+    display: inline-block;
+    vertical-align: middle;
+  }
+}
+
+:host {
+  // display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.flex.flex-col.h-screen {
+  padding: 1.5rem;
+  gap: 1.5rem;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .flex.flex-col.h-screen {
+    padding: 1rem;
+  }
+
+  .flex-col.md\:flex-row {
+    flex-direction: column;
+  }
+
+  .w-full.md\:w-1\/3,
+  .w-full.md\:w-2\/3 {
+    width: 100%;
+    height: 50%;
+  }
+
+  .max-h-\[40vh\] {
+    max-height: 30vh;
+  }
+}
+
+.bg-surface-container {
+  transition: background-color 0.3s;
+}
+
+// .dark .bg-surface-container {
+// }
+
+.border.border-default {
+  border-radius: 0.75rem;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+
+.border.border-default::-webkit-scrollbar {
+  width: 8px;
+}
+
+
+
+.border.border-default::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+}
+
+
+.w-full.md\:w-2\/3 {
+  position: relative;
+  height: 100%;
+}
+
+#map {
+  height: 100%;
+  width: 100%;
+  border-radius: 0.75rem;
+}
+
+.bg-white.dark\:bg-neutral-700 {
+  transition: background-color 0.3s;
+}
+
+/* Table Styles */
+table.mat-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th.mat-header-cell {
+  font-weight: 600;
+  padding: 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+
+td.mat-cell {
+  padding: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dark td.mat-cell {
+  color: #e0e0e0;
+}
+
+/* Column Widths */
+th[mat-header-cell][matColumnDef="name"],
+td[mat-cell][matColumnDef="name"] {
+  width: 40%;
+}
+
+th[mat-header-cell][matColumnDef="salesman"],
+td[mat-cell][matColumnDef="salesman"] {
+  width: 40%;
+}
+
+th[mat-header-cell][matColumnDef="actions"],
+td[mat-cell][matColumnDef="actions"] {
+  width: 20%;
+  text-align: right;
+}
+
+// tr.mat-row:hover {
+//   background-color: #f0f0f0;
+// }
+
+// .dark tr.mat-row:hover {
+//   background-color: #374151;
+// }
+
+// tr.mat-row {
+//   border-bottom: 1px solid #e0e0e0;
+// }
+
+// .dark tr.mat-row {
+//   border-bottom: 1px solid #444;
+// }
+
+td.mat-cell button {
+  margin-right: 8px;
+}
+
+/* Sort Header Styles */
+// th.mat-header-cell .mat-sort-header-arrow {
+//   color: #333;
+// }
+
+// .dark th.mat-header-cell .mat-sort-header-arrow {
+//   color: #e0e0e0;
+// }

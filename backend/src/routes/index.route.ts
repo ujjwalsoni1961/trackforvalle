@@ -1,0 +1,29 @@
+import authRoute from "./auth.route";
+import userRoute from "./user.route";
+import customerRoute from "./customer.route";
+import visitRoute from "./visits.route";
+import dashboardRoute from "./dashboard.route";
+import messageRoute from "./message.route";
+import mapRoute from "./mapNRoute.route";
+import territoryRoute from "./territory.route";
+import adminRoute from "./adminManager.routes";
+import contractRouter from "./contract.route";
+import dataRouter from "./data.route";
+// import healthRouter from "./health.route";
+
+import express from "express";
+const router = express.Router();
+router.use("/auth", authRoute);
+router.use("/user", userRoute);
+router.use("/leads", customerRoute);
+router.use("/visit", visitRoute);
+router.use("/map", mapRoute);
+router.use("/dashboard", dashboardRoute);
+router.use("/message", messageRoute);
+router.use("/territory", territoryRoute);
+router.use("/admin", adminRoute);
+router.use("/contract",contractRouter)
+router.use("/regions", dataRouter)
+// router.use("/health", healthRouter)
+
+export default router;

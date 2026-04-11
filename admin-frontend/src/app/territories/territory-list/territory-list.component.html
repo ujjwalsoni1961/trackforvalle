@@ -1,0 +1,120 @@
+<div class="flex flex-col h-screen p-6 gap-6">
+  <!-- Top Section: Form and Map -->
+  <div class="flex flex-col md:flex-row gap-6 flex-1">
+    <!-- Sidebar with Form -->
+    <div class="w-full md:w-1/3 bg-surface-container rounded-xl p-6 flex flex-col gap-6">
+      <h2 class="mat-title-large">Territory Management</h2>
+      <form [formGroup]="territoryForm" (ngSubmit)="saveTerritory()" class="flex flex-col gap-4">
+        <mat-form-field appearance="outline">
+          <mat-label>Search Area (e.g., Töölö, Kamppi)</mat-label>
+          <input matInput id="area-search" formControlName="searchArea" placeholder="Type to search areas in Finland">
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Territory Name</mat-label>
+          <input matInput formControlName="name" required>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Assign Salesmen</mat-label>
+          <mat-select formControlName="salesmanIds" multiple required>
+            @for (salesman of salesmen; track salesman.id) {
+            <mat-option [value]="salesman.id">{{ salesman.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <button mat-flat-button color="primary" type="submit"
+          [disabled]="isSaving || !territoryForm.valid || !currentPolygon">
+          <span *ngIf="!isSaving">Save Territory</span>
+          <mat-spinner *ngIf="isSaving" diameter="20"></mat-spinner>
+        </button>
+      </form>
+    </div>
+
+    <!-- Map Container -->
+    <div class="w-full md:w-2/3 relative">
+      <div id="map" class="h-full w-full rounded-xl"></div>
+      <div
+        class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white dark:bg-neutral-700 p-2 rounded shadow flex items-center gap-2">
+        <mat-chip-listbox aria-label="Map tools">
+          <mat-chip-option (click)="enableDrawing()">Draw Polygon</mat-chip-option>
+        </mat-chip-listbox>
+        <button (click)="clearDrawing()"
+          class="px-3 py-1 text-sm rounded bg-white dark:bg-neutral-700 p-2 rounded shadow transition cursor-pointer">
+          Clear
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Section: Saved Territories Table -->
+    <div class="bg-surface-container rounded-xl p-6 border border-default overflow-y-auto min-h-[60vh]">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="mat-title-medium">Saved Territories</h3>
+      <mat-progress-bar mode="indeterminate" *ngIf="isLoading"></mat-progress-bar>
+      <!-- <mat-form-field class="w-64">
+        <mat-label>Search Territories</mat-label>
+        <input matInput placeholder="Enter territory name" [(ngModel)]="searchQuery" (input)="applyFilter()">
+      </mat-form-field> -->
+    </div>
+    <table mat-table [dataSource]="dataSource" matSort class="w-full">
+      <!-- Territory Name Column -->
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header matTooltip="Name of the territory">
+          Territory Name
+        </th>
+        <td mat-cell *matCellDef="let territory" (click)="zoomToTerritory(territory)"
+          class="cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-700">
+          {{ territory.name }}
+        </td>
+      </ng-container>
+
+      <!-- Salesman Column -->
+      <ng-container matColumnDef="salesman">
+        <th mat-header-cell *matHeaderCellDef matTooltip="Salesman assigned to this territory">
+          Assigned Salesman
+        </th>
+        <td mat-cell *matCellDef="let territory" (click)="zoomToTerritory(territory)"
+          class="cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-700">
+          {{ getSalesmanName(territory.salesmanId) }}
+        </td>
+      </ng-container>
+
+      <!-- Actions Column -->
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef matTooltip="Actions for the territory">
+          Actions
+        </th>
+        <td mat-cell *matCellDef="let territory">
+          <button mat-icon-button (click)="showTerritoryDetails(territory)"
+            aria-label="View territory details">
+            <mat-icon>visibility</mat-icon>
+          </button>
+          <button mat-icon-button (click)="deleteTerritory(territory.id, territory.salesmanId)"
+            aria-label="Delete territory">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <!-- Table Header and Rows -->
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+
+      <!-- Empty State -->
+      <tr class="mat-row" *matNoDataRow>
+        <td class="mat-cell text-center text-neutral-500 py-4" colspan="3">
+          No territories available.
+        </td>
+      </tr>
+    </table>
+
+    <!-- Pagination -->
+    <mat-paginator
+      [pageSizeOptions]="[5, 10, 20]"
+      [pageSize]="pagination.limit"
+      [pageIndex]="pagination.page - 1"
+      [length]="pagination.totalItems"
+      (page)="onPageChange($event)"
+      showFirstLastButtons>
+    </mat-paginator>
+</div>
+</div>

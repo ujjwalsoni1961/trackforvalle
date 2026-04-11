@@ -1,0 +1,107 @@
+<div class="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+  <!-- Header -->
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-200">Sales Representative Assignments</h1>
+    <button mat-flat-button color="primary" (click)="showAssignmentForm = !showAssignmentForm">
+      {{ showAssignmentForm ? 'Hide' : 'Show' }} Assignment Form
+    </button>
+  </div>
+
+  <!-- Assignment Form -->
+  <div *ngIf="showAssignmentForm" class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-6 border border-gray-200 dark:border-gray-700">
+    <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">Assign Sales Representatives</h3>
+    <form [formGroup]="assignmentForm" (ngSubmit)="assignSalesReps()" class="grid grid-cols-2 gap-4">
+      <mat-form-field appearance="outline" class="col-span-1">
+        <mat-label>Select Manager</mat-label>
+        <mat-select formControlName="managerId" required>
+          <mat-option *ngFor="let manager of managers" [value]="manager.id">
+            {{ manager.full_name }} ({{ manager.email }})
+          </mat-option>
+        </mat-select>
+        <mat-error *ngIf="assignmentForm.get('managerId')?.hasError('required')">
+          Manager is required
+        </mat-error>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="col-span-1">
+        <mat-label>Select Sales Representatives</mat-label>
+        <mat-select formControlName="salesRepIds" multiple required>
+          <mat-option *ngFor="let salesRep of unassignedSalesReps" [value]="salesRep.id">
+            {{ salesRep.full_name }} ({{ salesRep.email }})
+          </mat-option>
+        </mat-select>
+        <mat-error *ngIf="assignmentForm.get('salesRepIds')?.hasError('required')">
+          At least one sales representative is required
+        </mat-error>
+      </mat-form-field>
+      <div class="col-span-2 flex justify-between items-center">
+        <button *ngIf="hasMoreSalesReps" mat-button color="primary" (click)="loadMoreSalesReps()" [disabled]="isLoadingSalesReps">
+          <mat-spinner *ngIf="isLoadingSalesReps" diameter="20"></mat-spinner>
+          Load More Sales Reps
+        </button>
+        <div class="flex gap-3">
+          <button mat-button (click)="resetForm()">Reset</button>
+          <button mat-flat-button color="primary" type="submit" [disabled]="assignmentForm.invalid || isLoading">
+            <mat-icon *ngIf="!isLoading">save</mat-icon>
+            <mat-spinner *ngIf="isLoading" diameter="20"></mat-spinner>
+            Assign
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Filters -->
+  <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md mb-6 border border-gray-200 dark:border-gray-700">
+    <div class="grid grid-cols-3 gap-4">
+      <mat-form-field appearance="outline">
+        <mat-label>Filter by Manager</mat-label>
+        <mat-select [(ngModel)]="managerFilter" (selectionChange)="applyFilters()">
+          <mat-option value="">All Managers</mat-option>
+          <mat-option *ngFor="let manager of managers" [value]="manager.id">
+            {{ manager.full_name }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Filter by Salesman</mat-label>
+        <input matInput [(ngModel)]="salesmanFilter" (input)="applyFilters()" placeholder="Search by name or email">
+      </mat-form-field>
+      <div class="flex items-center justify-end">
+        <button mat-button color="warn" (click)="clearFilters()">Clear Filters</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden border border-gray-200 dark:border-gray-700">
+    <table mat-table [dataSource]="dataSource" class="w-full">
+      <ng-container matColumnDef="manager">
+        <th mat-header-cell *matHeaderCellDef>Manager</th>
+        <td mat-cell *matCellDef="let element">{{ element.manager.full_name }} ({{ element.manager.email }})</td>
+      </ng-container>
+      <ng-container matColumnDef="salesman">
+        <th mat-header-cell *matHeaderCellDef>Salesman</th>
+        <td mat-cell *matCellDef="let element">{{ element.salesman.full_name }} ({{ element.salesman.email }})</td>
+      </ng-container>
+      <ng-container matColumnDef="phone">
+        <th mat-header-cell *matHeaderCellDef>Phone</th>
+        <td mat-cell *matCellDef="let element">{{ element.salesman.phone }}</td>
+      </ng-container>
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let element">
+          <button mat-icon-button color="warn" (click)="removeSalesman(element.salesman.id)" [disabled]="isLoading">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+    <mat-paginator [pageSizeOptions]="[5, 10, 20]" showFirstLastButtons></mat-paginator>
+  </div>
+
+  <!-- Progress Bar -->
+  <mat-progress-bar mode="indeterminate" *ngIf="isLoading"></mat-progress-bar>
+</div>

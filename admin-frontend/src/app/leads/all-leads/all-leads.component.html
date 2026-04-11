@@ -1,0 +1,162 @@
+<div class="p-10 max-w-[1260px] mx-auto">
+  <h1 class="text-lg font-bold mb-7">All Leads</h1>
+
+  <!-- Filters and Bulk Actions -->
+  <div class="flex items-center gap-5 mb-7 flex-wrap">
+    <mat-form-field class="w-1/3">
+      <mat-label>Search Leads</mat-label>
+      <input matInput placeholder="Search by name..." (input)="onSearchChange($event)">
+    </mat-form-field>
+    <mat-form-field class="w-1/4">
+      <mat-label>Status</mat-label>
+      <mat-select [(ngModel)]="statusFilter" (selectionChange)="onStatusFilterChange($event.value)">
+        <mat-option value="">All</mat-option>
+        <mat-option value="Get Back">Get Back</mat-option>
+        <mat-option value="Not Available">Not Available</mat-option>
+        <mat-option value="Not Interested">Not Interested</mat-option>
+        <mat-option value="Meeting">Meeting</mat-option>
+        <mat-option value="Hot Lead">Hot Lead</mat-option>
+        <mat-option value="Signed">Signed</mat-option>
+        <mat-option value="Start Signing">Start Signing</mat-option>
+        <mat-option value="Not Sellable">Not Sellable</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field class="w-1/4">
+      <mat-label>Sales Representative</mat-label>
+      <mat-select [(ngModel)]="salesmanFilter" (selectionChange)="onSalesmanFilterChange($event.value)">
+        <mat-option value="">All</mat-option>
+        <mat-option *ngFor="let salesman of salesmen" [value]="salesman.user_id">
+          {{ salesman.full_name }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field class="w-1/4">
+      <mat-label>Manager</mat-label>
+      <mat-select [(ngModel)]="managerFilter" (selectionChange)="onManagerFilterChange($event.value)">
+        <mat-option value="">All</mat-option>
+        <mat-option *ngFor="let manager of managers" [value]="manager.user_id">
+          {{ manager.full_name }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field class="w-1/4">
+      <mat-label>Bulk Assign to Sales Rep</mat-label>
+      <mat-select [(ngModel)]="selectedSalesman">
+        <mat-option value="">Select Sales Rep</mat-option>
+        <mat-option *ngFor="let salesman of salesmen" [value]="salesman.user_id">
+          {{ salesman.full_name }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+    <button mat-raised-button color="primary" (click)="assignLeads()" [disabled]="!selectedSalesman || selection.size === 0">
+      Assign Selected
+    </button>
+    <button mat-raised-button color="warn" (click)="bulkDeleteLeads()" [disabled]="selection.size === 0">
+      Delete Selected
+    </button>
+  </div>
+
+  <!-- Table -->
+  <div class="border border-default rounded-xl overflow-hidden">
+    <mat-progress-bar mode="indeterminate" *ngIf="isLoading"></mat-progress-bar>
+    <table mat-table [dataSource]="dataSource" class="w-full">
+      <ng-container matColumnDef="select">
+        <th mat-header-cell *matHeaderCellDef>
+          <mat-checkbox
+            (change)="toggleAllSelection($event.checked)"
+            [checked]="selection.size === dataSource.data.length && dataSource.data.length > 0"
+            [indeterminate]="selection.size > 0 && selection.size < dataSource.data.length">
+          </mat-checkbox>
+        </th>
+        <td mat-cell *matCellDef="let lead">
+          <mat-checkbox
+            (click)="$event.stopPropagation()"
+            (change)="toggleSelection(lead.lead_id)"
+            [checked]="selection.has(lead.lead_id)">
+          </mat-checkbox>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="lead_id">
+        <th mat-header-cell *matHeaderCellDef>Lead ID</th>
+        <td mat-cell *matCellDef="let lead">{{ lead.lead_id }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="street_address">
+        <th mat-header-cell *matHeaderCellDef>Address</th>
+        <td mat-cell *matCellDef="let lead">{{ lead.address?.street_address || '-' }}</td>
+      </ng-container>
+
+      <!-- New City Column -->
+      <ng-container matColumnDef="city">
+        <th mat-header-cell *matHeaderCellDef>City</th>
+        <td mat-cell *matCellDef="let lead">{{ lead.address?.city || '-' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="postal_code">
+        <th mat-header-cell *matHeaderCellDef>Postal Code</th>
+        <td mat-cell *matCellDef="let lead">{{ lead.address?.postal_code || '-' }}</td>
+      </ng-container>
+
+       <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef class="cursor-pointer">
+          Name
+        </th>
+        <td mat-cell *matCellDef="let lead">{{ lead.name }}</td>
+      </ng-container>
+
+            <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef class="cursor-pointer">
+          Status
+        </th>
+        <td mat-cell *matCellDef="let lead">
+          <span class="status-badge" [ngStyle]="getStatusStyles(lead.status)">{{ lead.status }}</span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="assigned_to">
+        <th mat-header-cell *matHeaderCellDef>Assigned To</th>
+        <td mat-cell *matCellDef="let lead">{{ getSalesmanName(lead.assigned_rep_id) }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="created_at">
+        <th mat-header-cell *matHeaderCellDef class="cursor-pointer">
+          Created At
+        </th>
+        <td mat-cell *matCellDef="let lead">{{ lead.created_at | date:'short' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let lead">
+          <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Lead actions" (click)="openActionMenu($event)">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+          <mat-menu #menu="matMenu">
+            <button mat-menu-item (click)="viewLead(lead)">
+              <mat-icon>visibility</mat-icon>View
+            </button>
+            <button mat-menu-item (click)="editLead(lead)">
+              <mat-icon>edit</mat-icon>Edit
+            </button>
+            <button mat-menu-item (click)="deleteLead(lead)">
+              <mat-icon>delete</mat-icon>Delete
+            </button>
+          </mat-menu>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;" (click)="viewLead(row)"></tr>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <mat-paginator
+    [length]="totalItems"
+    [pageSize]="pageSize"
+    [pageSizeOptions]="[5, 10, 25, 50]"
+    (page)="onPageChange($event)"
+    aria-label="Select page of leads">
+  </mat-paginator>
+</div>

@@ -1,0 +1,35 @@
+<div class="flex flex-wrap h-screen mat-typography">
+  <div class="flex w-full flex-col md:w-1/2 h-screen">
+    <div>
+      <a emr-logo routerLink="/" class="mt-7 ms-8">TRACK</a>
+    </div>
+    <div class="grow px-10 md:px-20 flex items-center justify-center overflow-y-auto">
+      <div class="w-[500px]">
+        <h2>All done!</h2>
+        <p class="mt-2 text-left text-neutral-500 text-sm mb-4">
+          Your password has been reset. Would you like to setup multi-factor authentication?
+        </p>
+        <div class="flex items-center gap-6 mt-7">
+          <button mat-flat-button color="primary" type="button" class="!h-12">Setup MFA</button>
+          <a routerLink="/auth/sign-in" mat-stroked-button color="primary" type="button" class="!h-12">I'll do this later</a>
+        </div>
+        <div class="flex items-center justify-between absolute bottom-7 lg:w-[29rem]">
+          <div class="flex items-center justify-center gap-3">
+            <div class="w-8 h-8 border border-default rounded-full text-sm text-neutral-400 flex items-center justify-center">1</div>
+            <div class="w-8 h-8 border border-default rounded-full text-sm text-neutral-400 flex items-center justify-center">2</div>
+            <div class="w-8 h-8 border border-default rounded-full text-sm text-neutral-400 flex items-center justify-center">3</div>
+            <div class="w-8 h-8 border border-default rounded-full text-sm border-neutral-800 flex items-center justify-center">4</div>
+          </div>
+          <a routerLink="/auth/sign-in" class="whitespace-nowrap text-xs font-medium text-neutral-400 dark:text-neutral-300
+                                             hover:text-primary dark:hover:text-accent inline-flex items-center">
+            <mat-icon class="font-icon text-base">arrow_back</mat-icon> Back to login page
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="pointer-events-none relative hidden h-screen flex items-center
+              justify-center select-none bg-surface-container md:flex md:w-1/2">
+    <img class="z-1 max-w-[80%] w-full mx-auto" src="assets/onboarding/step1.svg" alt="Done">
+  </div>
+</div>

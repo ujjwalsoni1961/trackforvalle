@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- Google Sign-In -->
+  <meta name="google-signin-client_id" content="917443098038-p8q57fbj3v1pi6bna2envd44cocm1s6b.apps.googleusercontent.com">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="track">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>track</title>
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      position: fixed;
+    }
+
+    #splash-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(135deg, rgba(2, 125, 255, 0.1) 0%, #ffffff 50%, rgba(2, 125, 255, 0.05) 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease-out;
+    }
+
+    #splash-screen.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Logo Container */
+    .splash-logo-container {
+      animation: logoFadeIn 1.2s ease-out forwards, logoScale 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+      opacity: 0;
+      transform: scale(0.5);
+    }
+
+    .splash-logo {
+      width: 160px;
+      height: 160px;
+      background: white;
+      border-radius: 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 0 30px rgba(2, 125, 255, 0.3), 0 8px 32px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+    }
+
+    .splash-logo img {
+      width: 120px;
+      height: 120px;
+      object-fit: contain;
+    }
+
+    /* Branding */
+    .splash-branding {
+      margin-top: 40px;
+      text-align: center;
+      animation: logoFadeIn 1.2s ease-out 0.3s forwards;
+      opacity: 0;
+    }
+
+    .splash-title {
+      color: #027dff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: 2px;
+    }
+
+    .splash-subtitle {
+      color: #808080;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-size: 16px;
+      font-weight: 400;
+      letter-spacing: 1px;
+    }
+
+    /* Animation Scene Container */
+    .animation-scene {
+      position: relative;
+      width: 80%;
+      max-width: 600px;
+      height: 200px;
+      margin: 40px 0;
+      animation: sceneFadeIn 0.5s ease-out 1.2s forwards;
+      opacity: 0;
+    }
+
+    /* SVG Path Animation */
+    .route-path {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+    }
+
+    .path-line {
+      stroke: rgba(2, 125, 255, 0.3);
+      stroke-width: 3;
+      fill: none;
+      stroke-dasharray: 1000;
+      stroke-dashoffset: 1000;
+      animation: drawPath 1.8s ease-out 1.5s forwards;
+    }
+
+    .location-marker {
+      fill: rgba(2, 125, 255, 0.5);
+      animation: markerAppear 0.3s ease-out forwards;
+      opacity: 0;
+    }
+
+    .marker-1 { animation-delay: 2s; }
+    .marker-2 { animation-delay: 2.5s; }
+
+    /* Salesman Walking */
+    .salesman {
+      position: absolute;
+      bottom: 40px;
+      left: -80px;
+      animation: walkToHouse 2.5s cubic-bezier(0.4, 0, 0.2, 1) 1.5s forwards;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .salesman-icon {
+      font-size: 60px;
+      animation: walk 0.5s ease-in-out infinite;
+    }
+
+    .phone-icon {
+      font-size: 24px;
+      margin-top: 4px;
+      color: rgba(2, 125, 255, 0.8);
+    }
+
+    /* House */
+    .house {
+      position: absolute;
+      bottom: 40px;
+      right: 20px;
+      font-size: 80px;
+      color: rgba(2, 125, 255, 0.7);
+      animation: houseAppear 0.5s ease-out 2.5s forwards;
+      opacity: 0;
+    }
+
+    /* Signature Box */
+    .signature-box {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      background: white;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 4px 12px rgba(2, 125, 255, 0.2);
+      animation: signatureAppear 0.5s ease-out 3.2s forwards;
+      opacity: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .edit-icon {
+      font-size: 30px;
+      color: #027dff;
+    }
+
+    .check-icon {
+      font-size: 20px;
+      color: #4caf50;
+    }
+
+    /* Animations */
+    @keyframes logoFadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes logoScale {
+      to {
+        transform: scale(1);
+      }
+    }
+
+    @keyframes sceneFadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes drawPath {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    @keyframes markerAppear {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes walkToHouse {
+      to {
+        left: calc(100% - 180px);
+      }
+    }
+
+    @keyframes walk {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+
+    @keyframes houseAppear {
+      from {
+        opacity: 0;
+        transform: scale(0.5);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @keyframes signatureAppear {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .splash-logo {
+        width: 140px;
+        height: 140px;
+      }
+
+      .splash-logo img {
+        width: 100px;
+        height: 100px;
+      }
+
+      .splash-title {
+        font-size: 28px;
+      }
+
+      .animation-scene {
+        height: 150px;
+        width: 90%;
+      }
+
+      .salesman-icon {
+        font-size: 40px;
+      }
+
+      .house {
+        font-size: 60px;
+      }
+
+      .signature-box {
+        padding: 8px;
+      }
+
+      .edit-icon {
+        font-size: 24px;
+      }
+
+      .check-icon {
+        font-size: 16px;
+      }
+    }
+
+    /* Ensure Flutter app fills screen after splash */
+    flt-glass-pane {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    /* Flutter app container sizing */
+    flutter-view {
+      width: 100%;
+      height: 100%;
+    }
+
+    #root {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <!-- Splash Screen -->
+  <div id="splash-screen">
+    <!-- Logo -->
+    <div class="splash-logo-container">
+      <div class="splash-logo">
+        <img src="icons/logo.png" alt="Track Logo">
+      </div>
+    </div>
+
+    <!-- Animation Scene -->
+    <div class="animation-scene">
+      <!-- SVG Route Path -->
+      <svg class="route-path" viewBox="0 0 600 200" preserveAspectRatio="xMidYMid meet">
+        <path class="path-line" d="M 60,120 Q 150,80 200,120 T 380,120 T 540,120" />
+        <circle class="location-marker marker-1" cx="180" cy="105" r="6" />
+        <circle class="location-marker marker-2" cx="360" cy="125" r="6" />
+      </svg>
+
+      <!-- Salesman Walking -->
+      <div class="salesman">
+        <div class="salesman-icon">🚶</div>
+        <div class="phone-icon">📱</div>
+      </div>
+
+      <!-- House at Destination -->
+      <div class="house">🏠</div>
+
+      <!-- Signature Box -->
+      <div class="signature-box">
+        <div class="edit-icon">✍️</div>
+        <div class="check-icon">✅</div>
+      </div>
+    </div>
+
+    <!-- Branding -->
+    <div class="splash-branding">
+      <div class="splash-title">Track</div>
+      <div class="splash-subtitle">Field Sales Made Easy</div>
+    </div>
+  </div>
+
+  <script src="flutter_bootstrap.js" async></script>
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBDgeE6OMJrZmm3_BOkLP3CKOTzM3jReR0&libraries=places,drawing,geometry"
+    async defer loading="async"></script>
+
+  <script>
+    // Hide splash screen when Flutter is ready
+    window.addEventListener('flutter-first-frame', function() {
+      const splash = document.getElementById('splash-screen');
+      if (splash) {
+        splash.classList.add('fade-out');
+        setTimeout(function() {
+          splash.remove();
+        }, 500);
+      }
+    });
+  </script>
+</body>
+</html>

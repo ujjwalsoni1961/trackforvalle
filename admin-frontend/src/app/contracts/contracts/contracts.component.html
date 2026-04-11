@@ -1,0 +1,154 @@
+<div class="p-10">
+  <!-- Header -->
+  <div class="flex justify-between items-center mb-7">
+    <h1 class="text-lg font-bold">Contract Templates</h1>
+    <button mat-flat-button 
+            color="primary" 
+            (click)="navigateToAddContract()"
+            *ngIf="canCreateContracts">
+      <mat-icon>add</mat-icon> Create Contract
+    </button>
+  </div>
+
+  <!-- Filter Section -->
+  <div class="border border-default rounded-2xl p-6 mb-7">
+    <h3 class="text-md font-medium mb-4">Filter Contracts</h3>
+    <form [formGroup]="filterForm" class="grid grid-cols-4 gap-3">
+      <mat-form-field appearance="outline" class="col-span-1">
+        <mat-label>Manager</mat-label>
+        <mat-select formControlName="managerId">
+          <mat-option value="all">All Managers</mat-option>
+          <mat-option *ngFor="let manager of managers" [value]="manager.id">
+            {{ manager.first_name }} {{ manager.last_name }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="col-span-1">
+        <mat-label>Status</mat-label>
+        <mat-select formControlName="status">
+          <mat-option value="all">All Statuses</mat-option>
+          <mat-option value="draft">Draft</mat-option>
+          <mat-option value="active">Active</mat-option>
+          <mat-option value="archived">Archived</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="col-span-1">
+        <mat-label>Search by Title</mat-label>
+        <input matInput formControlName="search" placeholder="Enter contract title">
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="col-span-1">
+        <mat-label>Sort By</mat-label>
+        <mat-select formControlName="sortBy">
+          <!-- <mat-option value="signed_count">Signed Count</mat-option> -->
+          <mat-option value="created_at">Created Date</mat-option>
+          <mat-option value="title">Title</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </form>
+  </div>
+
+  <!-- Table View -->
+  <div class="border border-default rounded-xl overflow-hidden mb-7">
+    <div class="table-container">
+      <table mat-table [dataSource]="filteredContracts" class="not-mat-typography">
+        <ng-container matColumnDef="title">
+          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Title</th>
+          <td mat-cell *matCellDef="let contract">{{ contract.title }}</td>
+        </ng-container>
+        <ng-container matColumnDef="managerNames">
+          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Assigned Managers</th>
+          <td mat-cell *matCellDef="let contract">{{ getManagerNames(contract) }}</td>
+        </ng-container>
+        <!-- <ng-container matColumnDef="signedCount">
+          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Signed Count</th>
+          <td mat-cell *matCellDef="let contract">{{ contract.signed_count }}</td>
+        </ng-container> -->
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Status</th>
+          <td mat-cell *matCellDef="let contract">
+            <span class="status-badge" [ngClass]="contract.status">
+              {{ contract.status | titlecase }}
+            </span>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="createdAt">
+          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Created At</th>
+          <td mat-cell *matCellDef="let contract">{{ contract.created_at | date:'medium' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Actions</th>
+          <td mat-cell *matCellDef="let contract">
+            <button mat-icon-button matTooltip="View" (click)="viewContract(contract)">
+              <mat-icon>visibility</mat-icon>
+            </button>
+            <!-- <button mat-icon-button matTooltip="Download PDF" (click)="downloadContract(contract)">
+              <mat-icon>download</mat-icon>
+            </button> -->
+            <button mat-icon-button 
+                    matTooltip="Reassign" 
+                    (click)="openReassignContractDialog(contract)"
+                    *ngIf="canEditContract(contract)">
+              <mat-icon>assignment_ind</mat-icon>
+            </button>
+            <button mat-icon-button 
+                    matTooltip="Delete" 
+                    (click)="deleteContract(contract)"
+                    *ngIf="canDeleteContract(contract)">
+              <mat-icon>delete</mat-icon>
+            </button>
+            
+            <!-- Show restricted access message for managers -->
+            <span *ngIf="currentUserRole === 'manager' && !canEditContract(contract)" 
+                  class="text-gray-500 text-sm italic">
+              View Only
+            </span>
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </div>
+    <mat-paginator [pageSizeOptions]="[5, 10, 20]" [pageSize]="10" [length]="totalContracts"
+      (page)="onPageChange($event)" showFirstLastButtons></mat-paginator>
+  </div>
+
+  <!-- Progress Bar -->
+  <mat-progress-bar mode="indeterminate" *ngIf="isLoading"></mat-progress-bar>
+
+  <!-- View Contract Dialog -->
+  <ng-template #viewContractDialog>
+    <h2 mat-dialog-title>{{ selectedContract?.title }}</h2>
+    <mat-dialog-content>
+      <p><strong>Assigned Managers:</strong> {{ selectedContract ? getManagerNames(selectedContract) : 'None' }}</p>
+      <!-- <p><strong>Signed Count:</strong> {{ selectedContract?.signed_count }}</p> -->
+      <p><strong>Status:</strong> {{ selectedContract?.status | titlecase }}</p>
+      <p><strong>Created At:</strong> {{ selectedContract?.created_at | date:'medium' }}</p>
+      <div class="contract-content" [innerHTML]="selectedContract?.content"></div>
+    </mat-dialog-content>
+    <mat-dialog-actions>
+      <button mat-button mat-dialog-close>Close</button>
+    </mat-dialog-actions>
+  </ng-template>
+
+  <!-- Reassign Contract Dialog -->
+  <ng-template #reassignContractDialog>
+    <h2 mat-dialog-title>Reassign Contract</h2>
+    <mat-dialog-content>
+      <form [formGroup]="contractForm">
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Assign to Managers</mat-label>
+          <mat-select formControlName="assigned_manager_ids" multiple required>
+            <mat-option *ngFor="let manager of managers" [value]="manager.id">
+              {{ manager.first_name }} {{ manager.last_name }}
+            </mat-option>
+          </mat-select>
+          <mat-error *ngIf="contractForm.get('assigned_manager_ids')?.hasError('required')">At least one manager is required</mat-error>
+        </mat-form-field>
+      </form>
+    </mat-dialog-content>
+    <mat-dialog-actions>
+      <button mat-button mat-dialog-close>Cancel</button>
+      <button mat-flat-button color="primary" (click)="reassignContract()" [disabled]="contractForm.get('assigned_manager_ids')?.invalid">Save</button>
+    </mat-dialog-actions>
+  </ng-template>
+</div>

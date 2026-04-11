@@ -1,0 +1,29 @@
+<div class="flex items-center gap-2">
+  <div class="text-sm">{{ name$ | async }}</div>
+  <div *ngIf="(role$ | async) as role" [ngClass]="getRoleClass(role)" 
+       class="border flex items-center h-5 leading-3 px-2 rounded-full font-bold text-4xs uppercase">
+    {{ role }}
+  </div>
+</div>
+<div class="text-xs text-gray-500 mt-0.5 dark:text-gray-400">{{ email$ | async }}</div>
+<div class="my-4">
+  <emr-h-divider/>
+</div>
+<div class="ms-auto flex items-center gap-2.5">
+  <emr-dicebear key="PS" src="assets/avatars/1.svg" class="size-12"/>
+  <div class="flex items-center rounded-full p-1 gap-[0.5] bg-surface-container-high
+              dark:bg-surface-container-highest hover:text-on-surface">
+    <!-- <button mat-icon-button matTooltip="Settings">
+      <mat-icon>settings</mat-icon>
+    </button> -->
+    <!-- <button mat-icon-button matTooltip="Payments">
+      <mat-icon>credit_card</mat-icon>
+    </button>
+    <button mat-icon-button matTooltip="Notifications">
+       <mat-icon role="img" matBadge="3" class="mat-icon notranslate mat-badge" aria-hidden="false">notifications</mat-icon>
+    </button> -->
+    <button mat-icon-button matTooltip="Logout" (click)="logout()">
+      <mat-icon>logout</mat-icon>
+    </button>
+  </div>
+</div>

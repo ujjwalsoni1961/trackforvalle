@@ -1,0 +1,9 @@
+:host ::ng-deep .ql-container {
+  height: 400px;
+  border-radius: 0.5rem;
+}
+
+:host ::ng-deep .ql-toolbar {
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+}

@@ -1,0 +1,58 @@
+import { Router } from "express";
+import { TerritoryController } from "../controllers/territory.controller";
+import { permissionMiddleware } from "../middleware/permission.middleware";
+import { verifyToken } from "../middleware/auth.middleware";
+
+const router = Router();
+const territoryController = new TerritoryController();
+router.post(
+  "/assign-manager",
+  verifyToken,
+  territoryController.assignManagerToTerritory
+);
+router.post(
+  "/unassign-salesman",
+  verifyToken,
+  territoryController.unAssignSalesManFromTerritory
+);
+router.post(
+  "/",
+  verifyToken,
+  // permissionMiddleware("territory_assign"),
+  territoryController.addTerritory
+);
+router.put(
+  "/:id",
+  verifyToken,
+  // permissionMiddleware("customer_import"),
+  territoryController.updateTerritory
+);
+router.delete(
+  "/:id",
+  verifyToken,
+  // permissionMiddleware("customer_import"),
+  territoryController.deleteTerritory
+);
+router.get(
+  "/:id",
+  verifyToken,
+  // permissionMiddleware("customer_import"),
+  territoryController.getTerritoryById
+);
+
+router.get(
+  "/",
+  verifyToken,
+  // permissionMiddleware("customer_import"),
+  territoryController.getAllTerritories
+);
+// router.put("/override", 
+//   permissionMiddleware("territory_manual_override")
+// );
+// router.post("/auto-assign", 
+//   permissionMiddleware("territory_auto_assign")
+// );
+// router.post("/assign", 
+//   permissionMiddleware("territory_assign")
+// );
+export default router;

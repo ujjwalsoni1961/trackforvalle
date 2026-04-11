@@ -1,0 +1,78 @@
+<div class="p-10 max-w-[960px] mx-auto">
+  <h1 class="text-lg font-bold mb-7">Add New User</h1>
+
+  <div class="border border-default rounded-2xl p-8">
+    <h3 class="text-md font-medium mb-5">User Details</h3>
+    <form [formGroup]="userForm" (ngSubmit)="onSubmit()">
+      <div class="grid grid-cols-2 gap-5">
+        <!-- First Name -->
+        <mat-form-field class="col-span-1">
+          <mat-label>First Name</mat-label>
+          <input matInput formControlName="first_name" placeholder="Enter first name">
+          <mat-error *ngIf="userForm.get('first_name')?.touched && userForm.get('first_name')?.invalid">
+            {{ getErrorMessage('first_name') }}
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Last Name -->
+        <mat-form-field class="col-span-1">
+          <mat-label>Last Name</mat-label>
+          <input matInput formControlName="last_name" placeholder="Enter last name">
+          <mat-error *ngIf="userForm.get('last_name')?.touched && userForm.get('last_name')?.invalid">
+            {{ getErrorMessage('last_name') }}
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Email -->
+        <mat-form-field class="col-span-1">
+          <mat-label>Email</mat-label>
+          <input matInput formControlName="email" placeholder="Enter email address">
+          <mat-error *ngIf="userForm.get('email')?.touched && userForm.get('email')?.invalid">
+            {{ getErrorMessage('email') }}
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Phone -->
+        <mat-form-field class="col-span-1">
+          <mat-label>Phone</mat-label>
+          <input matInput formControlName="phone" placeholder="Enter phone number">
+          <mat-error *ngIf="userForm.get('phone')?.touched && userForm.get('phone')?.invalid">
+            {{ getErrorMessage('phone') }}
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Role -->
+        <mat-form-field class="col-span-1">
+          <mat-label>Role</mat-label>
+          <mat-select formControlName="role_id">
+            <mat-option *ngFor="let role of roles" [value]="role.id">{{ role.label }}</mat-option>
+          </mat-select>
+          <mat-error *ngIf="userForm.get('role_id')?.touched && userForm.get('role_id')?.invalid">
+            Role is required
+          </mat-error>
+        </mat-form-field>
+
+        <!-- territory (Conditional) -->
+        <mat-form-field class="col-span-1" *ngIf="userForm.get('role')?.value === 'manager' || userForm.get('role')?.value === 'sales_rep'">
+          <mat-label>Territory</mat-label>
+          <mat-select formControlName="territory">
+            <mat-option *ngFor="let territory of territories" [value]="territory.id">{{ territory.name }}</mat-option>
+          </mat-select>
+          <mat-error *ngIf="userForm.get('territory')?.touched && userForm.get('territory')?.invalid">
+            {{ getErrorMessage('territory') }}
+          </mat-error>
+        </mat-form-field>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex justify-end gap-3 mt-5">
+        <button mat-stroked-button type="button" (click)="userForm.reset()">Cancel</button>
+        <button mat-flat-button color="primary" type="submit" [disabled]="userForm.invalid || isSubmitting">
+          <mat-icon *ngIf="isSubmitting" class="animate-spin">autorenew</mat-icon>Invite User
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <mat-progress-bar mode="indeterminate" *ngIf="isSubmitting"></mat-progress-bar>
+</div>

@@ -1,0 +1,84 @@
+<div class="p-10">
+  <!-- Header -->
+  <h1 class="text-lg font-bold mb-7">Manager Management</h1>
+
+  <!-- Filter Section -->
+  <div class="border border-default rounded-2xl p-6 mb-7">
+    <h3 class="text-md font-medium mb-4">Filter Managers</h3>
+    <form [formGroup]="filterForm" class="grid grid-cols-3 gap-3">
+      <mat-form-field appearance="outline" class="col-span-2">
+        <mat-label>Search</mat-label>
+        <input matInput formControlName="search" placeholder="Name or email">
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="col-span-1">
+        <mat-label>Status</mat-label>
+        <mat-select formControlName="status">
+          <mat-option *ngFor="let status of statuses" [value]="status.id">{{ status.label }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </form>
+  </div>
+
+  <!-- Manager List Section -->
+  <div class="border border-default rounded-xl overflow-hidden mb-7">
+    <div class="flex justify-between items-center p-5">
+      <h3 class="text-md font-medium">Managers</h3>
+      <button mat-flat-button color="primary" (click)="exportManagers()">
+        <mat-icon>download</mat-icon> Export Managers
+      </button>
+    </div>
+    <div class="table-container">
+      <table mat-table [dataSource]="dataSource" class="not-mat-typography">
+        <ng-container matColumnDef="fullName">
+          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Full Name</th>
+          <td mat-cell *matCellDef="let manager">{{ manager.first_name }} {{ manager.last_name }}</td>
+        </ng-container>
+        <ng-container matColumnDef="email">
+          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Email</th>
+          <td mat-cell *matCellDef="let manager">{{ manager.email }}</td>
+        </ng-container>
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Status</th>
+          <td mat-cell *matCellDef="let manager">
+            <span class="status-badge {{ manager.status.toLowerCase() }}">{{ manager.status }}</span>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="createdAt">
+          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Created At</th>
+          <td mat-cell *matCellDef="let manager">{{ manager.createdAt | date:'mediumDate' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Actions</th>
+          <td mat-cell *matCellDef="let manager">
+            <button mat-icon-button matTooltip="Edit Manager" (click)="editManager(manager)">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button matTooltip="Delete Manager" (click)="deleteManager(manager)">
+              <mat-icon>delete</mat-icon>
+            </button>
+            <button mat-icon-button matTooltip="Toggle Status" (click)="toggleStatus(manager)">
+              <mat-icon>{{ manager.status === 'Active' ? 'lock' : 'lock_open' }}</mat-icon>
+            </button>
+            <button mat-icon-button matTooltip="Reset Password" (click)="resetPassword(manager)">
+              <mat-icon>vpn_key</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </div>
+    <!-- Paginator -->
+    <mat-paginator
+      [length]="totalItems"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="[5, 10, 25, 50]"
+      [pageIndex]="pageIndex"
+      (page)="onPageChange($event)"
+      aria-label="Select page of managers">
+    </mat-paginator>
+  </div>
+
+  <!-- Progress Bar -->
+  <mat-progress-bar mode="indeterminate" *ngIf="isLoading"></mat-progress-bar>
+</div>

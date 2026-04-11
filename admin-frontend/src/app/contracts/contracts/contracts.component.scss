@@ -1,0 +1,50 @@
+.table-container {
+  max-height: 500px;
+  overflow: auto;
+}
+
+.status-badge {
+  &.draft {
+    background-color: #e0e0e0;
+    color: #616161;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+  }
+  &.active {
+    background-color: #e6f4ea;
+    color: #2e7d32;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+  }
+  &.archived {
+    background-color: #ffebee;
+    color: #c62828;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+  }
+}
+
+.border-default {
+  border-color: #e0e0e0;
+}
+
+:host-context(.dark) {
+  .border-default {
+    border-color: #424242;
+  }
+}
+
+.contract-content {
+  border: 1px solid #e0e0e0;
+  padding: 16px;
+  border-radius: 4px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+:host ::ng-deep .ql-container {
+  height: 300px;
+}

@@ -1,0 +1,329 @@
+<!-- <div class="p-10 flex flex-col gap-8">
+  <div class="flex items-center justify-between">
+    <h1 class="text-lg font-bold">Dashboard</h1>
+  </div>
+  <emr-dashboard [configs]="configs" [widgets]="widgets"></emr-dashboard> -->
+
+<!--  <div class="grid grid-cols-4 gap-6">-->
+<!--    <div class="col-span-1">-->
+<!--      <emr-total-subscribers-widget class="border border-default rounded-xl overflow-hidden"/>-->
+<!--    </div>-->
+<!--    <div class="col-span-1">-->
+<!--      <emr-avg-open-rate-widget class="border border-default rounded-xl overflow-hidden"/>-->
+<!--    </div>-->
+<!--    <div class="col-span-1">-->
+<!--      <emr-avg-click-rate-widget class="border border-default rounded-xl overflow-hidden"/>-->
+<!--    </div>-->
+<!--    <div class="col-span-1">-->
+<!--      <emr-unique-visitors-widget class="border border-default rounded-xl overflow-hidden"/>-->
+<!--    </div>-->
+<!--    <div class="col-span-1">-->
+<!--      <emr-total-tasks-widget class="border border-default rounded-xl overflow-hidden"/>-->
+<!--    </div>-->
+<!--    <div class="col-span-1">-->
+<!--      <emr-total-projects-widget class="border border-default rounded-xl overflow-hidden"/>-->
+<!--    </div>-->
+<!--    <div class="col-span-1">-->
+<!--      <emr-events-widget class="border border-default rounded-xl overflow-hidden"/>-->
+<!--    </div>-->
+<!--    <div class="col-span-1">-->
+<!--      <emr-team-widget class="border border-default rounded-xl overflow-hidden"/>-->
+<!--    </div>-->
+<!--    <div class="col-span-2">-->
+<!--      <emr-tasks-in-progress-widget class="border border-default rounded-xl overflow-hidden"/>-->
+<!--    </div>-->
+<!--    <div class="col-span-2">-->
+<!--      <emr-todos-widget class="border border-default rounded-xl overflow-hidden"/>-->
+<!--    </div>-->
+<!--  </div>-->
+<!-- </div> -->
+<!-- Manager Dashboard Widget -->
+<div *ngIf="isManager">
+  <app-manager-dashboard-widget></app-manager-dashboard-widget>
+</div>
+
+<!-- Admin Dashboard -->
+<div *ngIf="!isManager" class="p-10 flex flex-col gap-8">
+  <div class="flex items-center justify-between">
+    <h1 class="text-lg font-bold">Track Admin Dashboard</h1>
+    <button matRipple matTooltip="Refresh Dashboard" (click)="fetchAnalytics()"
+            class="cursor-pointer hover:bg-neutral-100 w-12 h-12 flex items-center justify-center rounded-full">
+      <mat-icon [ngClass]="{'animate-spin': isLoading}" class="text-blue-600">refresh</mat-icon>
+    </button>
+  </div>
+  <mat-progress-bar mode="indeterminate" *ngIf="isLoading" class="mb-4"></mat-progress-bar>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <!-- Total Users Widget -->
+    <div class="relative overflow-hidden group border border-default rounded-xl shadow-md h-full">
+      <div class="flex gap-5 p-6">
+        <div class="rounded-lg bg-blue-500 w-12 h-12 flex items-center justify-center">
+          <mat-icon >group</mat-icon>
+        </div>
+        <div>
+          <div class="truncate text-sm font-medium">Total Users</div>
+          <div class="flex items-center gap-2">
+            <div class="text-2xl font-semibold">{{ displayedAnalytics.totalUsersCount }}</div>
+            <span class="text-xs" *ngIf="analytics.userActivityPercentage">{{ analytics.userActivityPercentage | number:'1.0-0' }}% active</span>
+          </div>
+        </div>
+      </div>
+      <div class="absolute right-0 top-0 bottom-0">
+        <button matRipple matTooltip="View all users" [routerLink]="['/users']"
+                class="cursor-pointer h-full hover:bg-neutral-100 w-10 flex items-center justify-center invisible group-hover:visible">
+          <mat-icon>arrow_right_alt</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Active Users Widget -->
+    <div class="relative overflow-hidden group border border-default rounded-xl shadow-md h-full">
+      <div class="flex gap-5 p-6">
+        <div class="rounded-lg bg-green-500 w-12 h-12 flex items-center justify-center">
+          <mat-icon >person</mat-icon>
+        </div>
+        <div>
+          <div class="truncate text-sm font-medium">Active Users</div>
+          <div class="flex items-center gap-2">
+            <div class="text-2xl font-semibold">{{ displayedAnalytics.activeUsersCount }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="absolute right-0 top-0 bottom-0">
+        <button matRipple matTooltip="View active users" [routerLink]="['/users']"
+                class="cursor-pointer h-full hover:bg-neutral-100 w-10 flex items-center justify-center invisible group-hover:visible">
+          <mat-icon>arrow_right_alt</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Pending Visits Widget -->
+    <div class="relative overflow-hidden group border border-default rounded-xl shadow-md h-full">
+      <div class="flex gap-5 p-6">
+        <div class="rounded-lg bg-yellow-500 w-12 h-12 flex items-center justify-center">
+          <mat-icon >pending_actions</mat-icon>
+        </div>
+        <div>
+          <div class="truncate text-sm font-medium">Pending Visits</div>
+          <div class="flex items-center gap-2">
+            <div class="text-2xl font-semibold">{{ displayedAnalytics.pendingVisitsCount }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="absolute right-0 top-0 bottom-0">
+        <button matRipple matTooltip="View pending visits" [routerLink]="['/visits']"
+                class="cursor-pointer h-full hover:bg-neutral-100 w-10 flex items-center justify-center invisible group-hover:visible">
+          <mat-icon>arrow_right_alt</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Closed Visits Widget -->
+    <div class="relative overflow-hidden group border border-default rounded-xl shadow-md h-full">
+      <div class="flex gap-5 p-6">
+        <div class="rounded-lg bg-purple-500 w-12 h-12 flex items-center justify-center">
+          <mat-icon >check_circle</mat-icon>
+        </div>
+        <div>
+          <div class="truncate text-sm font-medium">Closed Visits</div>
+          <div class="flex items-center gap-2">
+            <div class="text-2xl font-semibold">{{ displayedAnalytics.closedVisitsCount }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="absolute right-0 top-0 bottom-0">
+        <button matRipple matTooltip="View closed visits" [routerLink]="['/visits']"
+                class="cursor-pointer h-full hover:bg-neutral-100 w-10 flex items-center justify-center invisible group-hover:visible">
+          <mat-icon>arrow_right_alt</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Closed Leads Widget -->
+    <div class="relative overflow-hidden group border border-default rounded-xl shadow-md h-full">
+      <div class="flex gap-5 p-6">
+        <div class="rounded-lg bg-teal-500 w-12 h-12 flex items-center justify-center">
+          <mat-icon >done_all</mat-icon>
+        </div>
+        <div>
+          <div class="truncate text-sm font-medium">Closed Leads</div>
+          <div class="flex items-center gap-2">
+            <div class="text-2xl font-semibold">{{ displayedAnalytics.closedLeadsCount }}</div>
+            <span class="text-xs" *ngIf="analytics.leadConversionRate">{{ analytics.leadConversionRate | number:'1.0-0' }}% conversion</span>
+          </div>
+        </div>
+      </div>
+      <div class="absolute right-0 top-0 bottom-0">
+        <button matRipple matTooltip="View closed leads" [routerLink]="['/leads']"
+                class="cursor-pointer h-full hover:bg-neutral-100 w-10 flex items-center justify-center invisible group-hover:visible">
+          <mat-icon>arrow_right_alt</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Leads Widget -->
+    <div class="relative overflow-hidden group border border-default rounded-xl shadow-md h-full">
+      <div class="flex gap-5 p-6">
+        <div class="rounded-lg bg-red-500 w-12 h-12 flex items-center justify-center">
+          <mat-icon >leaderboard</mat-icon>
+        </div>
+        <div>
+          <div class="truncate text-sm font-medium">Leads</div>
+          <div class="flex items-center gap-2">
+            <div class="text-2xl font-semibold">{{ displayedAnalytics.leadsCount }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="absolute right-0 top-0 bottom-0">
+        <button matRipple matTooltip="View leads" [routerLink]="['/leads']"
+                class="cursor-pointer h-full hover:bg-neutral-100 w-10 flex items-center justify-center invisible group-hover:visible">
+          <mat-icon>arrow_right_alt</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Territories Widget -->
+    <div class="relative overflow-hidden group border border-default rounded-xl shadow-md h-full">
+      <div class="flex gap-5 p-6">
+        <div class="rounded-lg bg-teal-500 w-12 h-12 flex items-center justify-center">
+          <mat-icon >map</mat-icon>
+        </div>
+        <div>
+          <div class="truncate text-sm font-medium">Territories</div>
+          <div class="flex items-center gap-2">
+            <div class="text-2xl font-semibold">{{ displayedAnalytics.totalTerritoryCount }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="absolute right-0 top-0 bottom-0">
+        <button matRipple matTooltip="View territories" [routerLink]="['/territories/salesman']"
+                class="cursor-pointer h-full hover:bg-neutral-100 w-10 flex items-center justify-center invisible group-hover:visible">
+          <mat-icon>arrow_right_alt</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Addresses Widget -->
+    <div class="relative overflow-hidden group border border-default rounded-xl shadow-md h-full">
+      <div class="flex gap-5 p-6">
+        <div class="rounded-lg bg-indigo-500 w-12 h-12 flex items-center justify-center">
+          <mat-icon >location_on</mat-icon>
+        </div>
+        <div>
+          <div class="truncate text-sm font-medium">Addresses</div>
+          <div class="flex items-center gap-2">
+            <div class="text-2xl font-semibold">{{ displayedAnalytics.totalAddressCount }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="absolute right-0 top-0 bottom-0">
+        <button matRipple matTooltip="View addresses" [routerLink]="['/leads']"
+                class="cursor-pointer h-full hover:bg-neutral-100 w-10 flex items-center justify-center invisible group-hover:visible">
+          <mat-icon>arrow_right_alt</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Routes Widget -->
+    <div class="relative overflow-hidden group border border-default rounded-xl shadow-md h-full">
+      <div class="flex gap-5 p-6">
+        <div class="rounded-lg bg-orange-500 w-12 h-12 flex items-center justify-center">
+          <mat-icon >route</mat-icon>
+        </div>
+        <div>
+          <div class="truncate text-sm font-medium">Live Routes</div>
+          <div class="flex items-center gap-2">
+            <div class="text-2xl font-semibold">{{ displayedAnalytics.liveRoutesCount }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="absolute right-0 top-0 bottom-0">
+        <button matRipple matTooltip="View live routes" [routerLink]="['/routes']"
+                class="cursor-pointer h-full hover:bg-neutral-100 w-10 flex items-center justify-center invisible group-hover:visible">
+          <mat-icon>arrow_right_alt</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Unassigned Sales Reps Widget -->
+    <div class="relative overflow-hidden group border border-default rounded-xl shadow-md h-full">
+      <div class="flex gap-5 p-6">
+        <div class="rounded-lg bg-pink-500 w-12 h-12 flex items-center justify-center">
+          <mat-icon >person_off</mat-icon>
+        </div>
+        <div>
+          <div class="truncate text-sm font-medium">Unassigned Sales Reps</div>
+          <div class="flex items-center gap-2">
+            <div class="text-2xl font-semibold">{{ displayedAnalytics.unassignedSalesRepsCount }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="absolute right-0 top-0 bottom-0">
+        <button matRipple matTooltip="View unassigned reps" [routerLink]="['/users/assign']"
+                class="cursor-pointer h-full hover:bg-neutral-100 w-10 flex items-center justify-center invisible group-hover:visible">
+          <mat-icon>arrow_right_alt</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Signed Contracts Widget -->
+    <div class="relative overflow-hidden group border border-default rounded-xl shadow-md h-full">
+      <div class="flex gap-5 p-6">
+        <div class="rounded-lg bg-cyan-500 w-12 h-12 flex items-center justify-center">
+          <mat-icon>assignment_turned_in</mat-icon>
+        </div>
+        <div>
+          <div class="truncate text-sm font-medium">Signed Contracts</div>
+          <div class="flex items-center gap-2">
+            <div class="text-2xl font-semibold">{{ displayedAnalytics.totalSignedContracts }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="absolute right-0 top-0 bottom-0">
+        <button matRipple matTooltip="View signed contracts" [routerLink]="['/contracts/signed']"
+                class="cursor-pointer h-full hover:bg-neutral-100 w-10 flex items-center justify-center invisible group-hover:visible">
+          <mat-icon>arrow_right_alt</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Contract Templates Widget -->
+    <div class="relative overflow-hidden group border border-default rounded-xl shadow-md h-full">
+      <div class="flex gap-5 p-6">
+        <div class="rounded-lg bg-amber-500 w-12 h-12 flex items-center justify-center">
+          <mat-icon>description</mat-icon>
+        </div>
+        <div>
+          <div class="truncate text-sm font-medium">Contract Templates</div>
+          <div class="flex items-center gap-2">
+            <div class="text-2xl font-semibold">{{ displayedAnalytics.totalContractTemplates }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="absolute right-0 top-0 bottom-0">
+        <button matRipple matTooltip="View contract templates" [routerLink]="['/contracts']"
+                class="cursor-pointer h-full hover:bg-neutral-100 w-10 flex items-center justify-center invisible group-hover:visible">
+          <mat-icon>arrow_right_alt</mat-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Section -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+    <!-- User Metrics Bar Chart -->
+    <div class="border border-default rounded-xl shadow-md p-6">
+      <h2 class="text-lg font-semibold">User Metrics</h2>
+      <div class="chart-container">
+        <canvas id="userMetricsChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Visit and Lead Distribution Pie Chart -->
+    <div class="border border-default rounded-xl shadow-md p-6">
+      <h2 class="text-lg font-semibold">Visit & Lead Distribution</h2>
+      <div class="chart-container">
+        <canvas id="visitLeadChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>

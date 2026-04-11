@@ -1,0 +1,76 @@
+name: track
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  equatable: ^2.0.7
+  flutter_bloc: ^9.1.1
+  dio: ^5.8.0+1
+  pretty_dio_logger: ^1.4.0
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  cached_network_image: ^3.4.1
+  get_it: ^8.0.3
+  change_app_package_name: ^1.5.0
+  google_sign_in: ^6.3.0
+  dartz: ^0.10.1
+  go_router: ^15.1.2
+  flutter_svg: ^2.1.0
+  google_fonts: ^6.2.1
+  flutter_animate: ^4.5.2
+  url_launcher: ^6.3.1
+  lottie: ^3.3.1
+  pin_code_fields: ^8.0.1
+  provider: ^6.1.5
+  intl_phone_field: ^3.2.0
+  convex_bottom_bar: ^3.2.0
+  firebase_core: ^3.13.1
+  firebase_auth: ^5.5.4
+  cloud_firestore: ^5.6.8
+  firebase_messaging: ^15.2.6
+  flutter_local_notifications: ^19.2.1
+  google_maps_flutter: ^2.12.3
+  geocoding: ^4.0.0
+  geolocator: ^14.0.1
+  fluttertoast: ^8.2.12
+  file_picker: ^10.2.0
+  permission_handler: ^12.0.0+1
+  webview_flutter: ^4.13.0
+  signature: ^6.3.0
+  connectivity_plus: ^6.1.0
+  intl: ^0.20.2
+  path_provider: ^2.1.5
+  uuid: ^4.5.1
+  pdf: ^3.11.1
+  printing: ^5.13.4
+  web: ^1.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+  build_runner: ^2.4.13
+  hive_generator: ^2.0.1
+
+
+flutter:
+
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/anims/
+    - assets/icons/
+
+
+

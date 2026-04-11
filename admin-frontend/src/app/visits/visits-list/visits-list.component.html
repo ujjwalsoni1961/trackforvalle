@@ -1,0 +1,179 @@
+<div class="p-10">
+    <!-- Header -->
+    <h1 class="text-lg font-bold mb-7">All Visits</h1>
+
+    <!-- Filter Section -->
+    <div class="border border-default rounded-2xl p-6 mb-7">
+        <h3 class="text-md font-medium mb-4">Filter Visits</h3>
+        <form [formGroup]="filterForm" class="grid grid-cols-4 gap-3">
+            <mat-form-field appearance="outline" class="col-span-1">
+                <mat-label>Sales Representative</mat-label>
+                <mat-select formControlName="salesRepId">
+                    <mat-option value="all">All Sales Representatives</mat-option>
+                    <mat-option *ngFor="let salesRep of salesReps" [value]="salesRep.id">
+                        {{ salesRep.first_name }} {{ salesRep.last_name }}
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="col-span-1">
+                <mat-label>Manager</mat-label>
+                <mat-select formControlName="managerId">
+                    <mat-option value="all">All Managers</mat-option>
+                    <mat-option *ngFor="let manager of managers" [value]="manager.id">
+                        {{ manager.first_name }} {{ manager.last_name }}
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="col-span-1">
+                <mat-label>From Date</mat-label>
+                <input matInput [matDatepicker]="fromPicker" formControlName="fromDate">
+                <mat-datepicker-toggle matSuffix [for]="fromPicker"></mat-datepicker-toggle>
+                <mat-datepicker #fromPicker></mat-datepicker>
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="col-span-1">
+                <mat-label>To Date</mat-label>
+                <input matInput [matDatepicker]="toPicker" formControlName="toDate">
+                <mat-datepicker-toggle matSuffix [for]="toPicker"></mat-datepicker-toggle>
+                <mat-datepicker #toPicker></mat-datepicker>
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="col-span-1">
+                <mat-label>Sort By</mat-label>
+                <mat-select formControlName="sortBy">
+                    <mat-option value="check_in_time">Check-in Time</mat-option>
+                    <mat-option value="rep_id">Sales Representative</mat-option>
+                    <mat-option value="lead_id">Lead ID</mat-option>
+                </mat-select>
+            </mat-form-field>
+        </form>
+    </div>
+
+    <!-- View Toggle and Export -->
+    <div class="flex justify-between items-center mb-4">
+        <div>
+            <button mat-stroked-button [color]="viewMode === 'table' ? 'primary' : ''" (click)="setViewMode('table')">
+                <mat-icon>table_view</mat-icon> Table View
+            </button>
+            <button mat-stroked-button [color]="viewMode === 'map' ? 'primary' : ''" (click)="setViewMode('map')">
+                <mat-icon>map</mat-icon> Map View
+            </button>
+        </div>
+        <button mat-flat-button color="primary" (click)="exportVisits()">
+            <mat-icon>download</mat-icon> Export Visits
+        </button>
+    </div>
+
+    <!-- Table View -->
+    <div *ngIf="viewMode === 'table'" class="border border-default rounded-xl overflow-hidden mb-7">
+        <div class="table-container">
+            <table mat-table [dataSource]="filteredVisits" class="not-mat-typography">
+                <ng-container matColumnDef="repName">
+                    <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Sales Representative</th>
+                    <td mat-cell *matCellDef="let visit">
+                        {{ getSalesRepName(visit.rep_id) }}
+                    </td>
+                </ng-container>
+                <!-- <ng-container matColumnDef="managerName">
+                    <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Manager</th>
+                    <td mat-cell *matCellDef="let visit">
+                        {{ getManagerName(visit.created_by) }}
+                    </td>
+                </ng-container> -->
+                <ng-container matColumnDef="leadId">
+                    <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Lead ID</th>
+                    <td mat-cell *matCellDef="let visit">{{ visit.lead_id }}</td>
+                </ng-container>
+                <ng-container matColumnDef="checkInTime">
+                    <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Check-in Time</th>
+                    <td mat-cell *matCellDef="let visit">{{ visit.check_in_time | date:'medium' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="notes">
+                    <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Notes</th>
+                    <td mat-cell *matCellDef="let visit">{{ visit.notes || 'N/A' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="isActive">
+                    <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Active</th>
+                    <td mat-cell *matCellDef="let visit">
+                        <span class="status-badge" [ngClass]="{'true': visit.is_active, 'false': !visit.is_active}">
+                            {{ visit.is_active ? 'Yes' : 'No' }}
+                        </span>
+                    </td>
+                </ng-container>
+                <ng-container matColumnDef="actions">
+                    <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Actions</th>
+                    <td mat-cell *matCellDef="let visit">
+                        <button mat-icon-button matTooltip="View Details" (click)="viewVisitDetails(visit)">
+                            <mat-icon>visibility</mat-icon>
+                        </button>
+                    </td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+            </table>
+        </div>
+        <mat-paginator [pageSizeOptions]="[5, 10, 20]" [pageSize]="10" [length]="totalVisits"
+            (page)="onPageChange($event)" showFirstLastButtons></mat-paginator>
+    </div>
+
+    <!-- Map View -->
+    <div *ngIf="viewMode === 'map'" class="border border-default rounded-xl p-6 mb-7">
+        <div #mapContainer id="map" style="height: 500px;"></div>
+    </div>
+
+    <!-- Progress Bar -->
+    <mat-progress-bar mode="indeterminate" *ngIf="isLoading"></mat-progress-bar>
+
+    <!-- Visit Details Dialog -->
+    <ng-template #visitDetailsDialog>
+    <h2 mat-dialog-title>Visit Details</h2>
+    <mat-dialog-content>
+        <div style="display: grid; grid-template-columns: max-content auto; row-gap: 12px; column-gap: 12px;">
+            <div><strong>Visit ID:</strong></div>
+            <div>{{ selectedVisit?.visit_id }}</div>
+
+            <div><strong>Lead ID:</strong></div>
+            <div>{{ selectedVisit?.lead_id }}</div>
+
+            <div><strong>Lead Name:</strong></div>
+            <div>{{ selectedVisit?.lead?.name || 'N/A' }}</div>
+
+            <div><strong>Sales Representative:</strong></div>
+            <div>{{ getSalesRepName(selectedVisit?.rep_id!) }}</div>
+
+            <div><strong>Check-in Time:</strong></div>
+            <div>{{ selectedVisit?.check_in_time | date:'medium' }}</div>
+
+            <div><strong>Check-out Time:</strong></div>
+            <div>{{ selectedVisit?.check_out_time | date:'medium' }}</div>
+
+            <div style="display: flex; align-items: center;">
+                <strong>Logged At:</strong>
+            </div>
+            <div>
+                {{ selectedVisit?.latitude }}, {{ selectedVisit?.longitude }}
+                <a *ngIf="selectedVisit?.latitude && selectedVisit?.longitude"
+                    [href]="'https://www.google.com/maps/search/?api=1&query=' + selectedVisit?.latitude + ',' + selectedVisit?.longitude"
+                    target="_blank" rel="noopener" style="margin-left: 5px; vertical-align: middle; color: #1976d2;"
+                    matTooltip="Open in Google Maps">
+                    <mat-icon>location_on</mat-icon>
+                </a>
+            </div>
+
+            <div><strong>Notes:</strong></div>
+            <div>{{ selectedVisit?.notes || 'N/A' }}</div>
+
+            <div><strong>Active:</strong></div>
+            <div>{{ selectedVisit?.is_active ? 'Yes' : 'No' }}</div>
+
+            <div><strong>Next Visit Date:</strong></div>
+            <div>{{ selectedVisit?.next_visit_date | date:'mediumDate' }}</div>
+
+            <div><strong>Action Required:</strong></div>
+            <div>{{ selectedVisit?.action_required || 'N/A' }}</div>
+        </div>
+    </mat-dialog-content>
+
+    <mat-dialog-actions>
+        <button mat-button mat-dialog-close>Close</button>
+    </mat-dialog-actions>
+    </ng-template>
+</div>

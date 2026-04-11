@@ -1,0 +1,433 @@
+@reference 'tailwindcss';
+
+.manager-dashboard-widget {
+  padding: theme('spacing.10');
+  background-color: var(--color-background);
+  min-height: 100vh;
+  color: var(--color-on-background);
+
+  .loading-state {
+    .animate-spin {
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  }
+
+  .welcome-header {
+    margin-bottom: theme('spacing.8');
+    
+    h1 {
+      font-size: theme('fontSize.3xl');
+      font-weight: theme('fontWeight.bold');
+      color: var(--color-primary);
+      letter-spacing: theme('letterSpacing.tight');
+      margin-bottom: theme('spacing.2');
+    }
+    
+    p {
+      font-size: theme('fontSize.lg');
+      color: var(--color-on-surface-variant);
+      margin-top: theme('spacing.2');
+    }
+  }
+
+  .metrics-grid {
+    .metric-card {
+      transition: all theme('transitionDuration.300') theme('transitionTimingFunction.in-out');
+      border: theme('borderWidth.DEFAULT') solid var(--color-outline);
+      border-radius: theme('borderRadius.xl');
+      box-shadow: theme('boxShadow.md');
+      background-color: var(--color-surface);
+      overflow: hidden;
+      
+      &:hover {
+        transform: translateY(theme('spacing.1', '-'));
+        box-shadow: theme('boxShadow.lg');
+        border-color: var(--color-primary);
+      }
+      
+      mat-card-content {
+        position: relative;
+        padding: theme('spacing.6');
+        
+        mat-icon {
+          font-size: theme('fontSize.4xl');
+          width: theme('fontSize.4xl');
+          height: theme('fontSize.4xl');
+          margin-bottom: theme('spacing.3');
+        }
+        
+        h3 {
+          font-size: theme('fontSize.2xl');
+          font-weight: theme('fontWeight.bold');
+          color: var(--color-on-surface);
+          letter-spacing: theme('letterSpacing.tight');
+        }
+        
+        p {
+          font-size: theme('fontSize.sm');
+          opacity: 0.9;
+        }
+        
+        span {
+          font-size: theme('fontSize.sm');
+        }
+      }
+    }
+  }
+
+  .performance-card {
+    transition: all theme('transitionDuration.300') theme('transitionTimingFunction.in-out');
+    border: theme('borderWidth.DEFAULT') solid var(--color-outline);
+    border-radius: theme('borderRadius.xl');
+    box-shadow: theme('boxShadow.md');
+    background-color: var(--color-surface);
+    
+    &:hover {
+      transform: translateY(theme('spacing.1', '-'));
+      box-shadow: theme('boxShadow.lg');
+      border-color: var(--color-primary);
+    }
+    
+    mat-card-header {
+      padding-bottom: theme('spacing.4');
+      
+      mat-card-title {
+        font-size: theme('fontSize.xl');
+        font-weight: theme('fontWeight.semibold');
+        color: var(--color-on-surface);
+        
+        mat-icon {
+          margin-right: theme('spacing.2');
+          color: var(--color-primary);
+        }
+      }
+    }
+    
+    mat-progress-bar {
+      height: theme('spacing.2');
+      border-radius: theme('borderRadius.md');
+      background-color: var(--color-surface-variant);
+      
+      .mdc-linear-progress__bar-inner {
+        border-radius: theme('borderRadius.md');
+        background-color: var(--color-primary);
+      }
+    }
+  }
+
+  .team-performance-card {
+    transition: all theme('transitionDuration.300') theme('transitionTimingFunction.in-out');
+    border: theme('borderWidth.DEFAULT') solid var(--color-outline);
+    border-radius: theme('borderRadius.xl');
+    box-shadow: theme('boxShadow.md');
+    background-color: var(--color-surface);
+    
+    &:hover {
+      transform: translateY(theme('spacing.1', '-'));
+      box-shadow: theme('boxShadow.lg');
+      border-color: var(--color-primary);
+    }
+    
+    mat-card-header {
+      padding-bottom: theme('spacing.6');
+      
+      mat-card-title {
+        font-size: theme('fontSize.2xl');
+        font-weight: theme('fontWeight.bold');
+        color: var(--color-on-surface);
+        
+        mat-icon {
+          margin-right: theme('spacing.2');
+          color: var(--color-primary);
+        }
+      }
+      
+      mat-card-subtitle {
+        color: var(--color-on-surface-variant);
+        font-size: theme('fontSize.sm');
+        margin-top: theme('spacing.2');
+      }
+      
+      button {
+        background-color: var(--color-primary);
+        color: var(--color-on-primary);
+        border: none;
+        border-radius: theme('borderRadius.lg');
+        box-shadow: theme('boxShadow.sm');
+        transition: all theme('transitionDuration.300') theme('transitionTimingFunction.in-out');
+        
+        &:hover {
+          transform: translateY(theme('spacing.0.5', '-'));
+          box-shadow: theme('boxShadow.md');
+          background-color: var(--color-primary-dark);
+        }
+        
+        mat-icon {
+          margin-right: theme('spacing.2');
+        }
+      }
+    }
+    
+    .table-container {
+      overflow-x: auto;
+      border-radius: theme('borderRadius.lg');
+      
+      .performance-table {
+        width: 100%;
+        
+        th {
+          background-color: var(--color-surface-container);
+          color: var(--color-on-surface-variant);
+          font-weight: theme('fontWeight.semibold');
+          padding: theme('spacing.4');
+          text-align: left;
+          border-bottom: theme('borderWidth.DEFAULT') solid var(--color-outline-variant);
+        }
+        
+        td {
+          padding: theme('spacing.4');
+          border-bottom: theme('borderWidth.DEFAULT') solid var(--color-outline-variant);
+          color: var(--color-on-surface);
+        }
+        
+        tr:hover {
+          background-color: var(--color-surface-container-low);
+        }
+        
+        .performance-chip {
+          font-weight: theme('fontWeight.semibold');
+          padding: theme('spacing.1') theme('spacing.3');
+          border-radius: theme('borderRadius.full');
+          font-size: theme('fontSize.xs');
+          
+          &[color="primary"] {
+            background-color: var(--color-primary);
+            color: var(--color-on-primary);
+          }
+          
+          &[color="accent"] {
+            background-color: var(--color-secondary);
+            color: var(--color-on-secondary);
+          }
+          
+          &[color="warn"] {
+            background-color: var(--color-error);
+            color: var(--color-on-error);
+          }
+        }
+        
+        mat-progress-bar {
+          height: theme('spacing.1.5');
+          border-radius: theme('borderRadius.sm');
+          background-color: var(--color-surface-variant);
+          
+          .mdc-linear-progress__bar-inner {
+            border-radius: theme('borderRadius.sm');
+            background-color: var(--color-primary);
+          }
+        }
+      }
+    }
+  }
+
+  .quick-actions-card {
+    transition: all theme('transitionDuration.300') theme('transitionTimingFunction.in-out');
+    border: theme('borderWidth.DEFAULT') solid var(--color-outline);
+    border-radius: theme('borderRadius.xl');
+    box-shadow: theme('boxShadow.md');
+    background-color: var(--color-surface);
+    
+    &:hover {
+      transform: translateY(theme('spacing.1', '-'));
+      box-shadow: theme('boxShadow.lg');
+      border-color: var(--color-primary);
+    }
+    
+    mat-card-header {
+      padding-bottom: theme('spacing.6');
+      
+      mat-card-title {
+        font-size: theme('fontSize.2xl');
+        font-weight: theme('fontWeight.bold');
+        color: var(--color-on-surface);
+        
+        mat-icon {
+          margin-right: theme('spacing.2');
+          color: var(--color-primary);
+        }
+      }
+    }
+    
+    .action-button {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: theme('spacing.2');
+      padding: theme('spacing.6');
+      height: 120px;
+      transition: all theme('transitionDuration.300') theme('transitionTimingFunction.in-out');
+      border: theme('borderWidth.2') solid transparent;
+      background-color: var(--color-surface-container-low);
+      border-radius: theme('borderRadius.lg');
+      box-shadow: theme('boxShadow.sm');
+      color: var(--color-on-surface);
+      
+      &:hover {
+        transform: translateY(theme('spacing.1', '-'));
+        box-shadow: theme('boxShadow.md');
+        border-color: var(--color-outline);
+        background-color: var(--color-surface-container);
+      }
+      
+      &[color="primary"] {
+        &:hover {
+          background-color: var(--color-primary-container);
+          border-color: var(--color-primary);
+          color: var(--color-on-primary-container);
+        }
+      }
+      
+      &[color="accent"] {
+        &:hover {
+          background-color: var(--color-secondary-container);
+          border-color: var(--color-secondary);
+          color: var(--color-on-secondary-container);
+        }
+      }
+      
+      mat-icon {
+        font-size: theme('fontSize.3xl');
+        width: theme('fontSize.3xl');
+        height: theme('fontSize.3xl');
+        margin-bottom: theme('spacing.1');
+      }
+      
+      span {
+        font-weight: theme('fontWeight.semibold');
+        font-size: theme('fontSize.sm');
+        text-align: center;
+      }
+    }
+  }
+
+  .error-state {
+    mat-icon {
+      font-size: theme('fontSize.6xl');
+      width: theme('fontSize.6xl');
+      height: theme('fontSize.6xl');
+      color: var(--color-error);
+    }
+    
+    h3 {
+      color: var(--color-on-surface);
+      font-size: theme('fontSize.xl');
+      font-weight: theme('fontWeight.semibold');
+      margin-bottom: theme('spacing.2');
+    }
+    
+    p {
+      color: var(--color-on-surface-variant);
+      margin-bottom: theme('spacing.8');
+    }
+    
+    .retry-button {
+      background-color: var(--color-primary);
+      color: var(--color-on-primary);
+      border: none;
+      box-shadow: theme('boxShadow.lg');
+      transition: all theme('transitionDuration.300') theme('transitionTimingFunction.in-out');
+      font-weight: theme('fontWeight.semibold');
+      padding: theme('spacing.4') theme('spacing.8');
+      
+      &:hover {
+        transform: translateY(theme('spacing.1', '-'));
+        box-shadow: theme('boxShadow.xl');
+        background-color: var(--color-primary-dark);
+      }
+      
+      &:active {
+        transform: translateY(0);
+        box-shadow: theme('boxShadow.md');
+      }
+      
+      &:disabled {
+        opacity: 0.6;
+        transform: none;
+        cursor: not-allowed;
+        
+        &:hover {
+          transform: none;
+          box-shadow: theme('boxShadow.lg');
+        }
+      }
+      
+      mat-icon {
+        margin-right: theme('spacing.2');
+        animation: none;
+        
+        &.loading {
+          animation: spin 1s linear infinite;
+        }
+      }
+    }
+  }
+}
+
+// Responsive Design
+@media (max-width: theme('screens.md')) {
+  .manager-dashboard-widget {
+    padding: theme('spacing.4');
+    
+    .metrics-grid {
+      grid-template-columns: 1fr;
+      gap: theme('spacing.4');
+    }
+    
+    .welcome-header h1 {
+      font-size: theme('fontSize.2xl');
+    }
+    
+    .team-performance-card {
+      mat-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: theme('spacing.4');
+        
+        button {
+          width: 100%;
+        }
+      }
+    }
+    
+    .quick-actions-card {
+      .grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: theme('spacing.4');
+      }
+      
+      .action-button {
+        height: 100px;
+        padding: theme('spacing.4');
+        
+        mat-icon {
+          font-size: theme('fontSize.2xl');
+          width: theme('fontSize.2xl');
+          height: theme('fontSize.2xl');
+        }
+        
+        span {
+          font-size: theme('fontSize.xs');
+        }
+      }
+    }
+  }
+}
+
+// Dark mode is automatically handled by CSS custom properties
+// The theme system automatically switches values based on html.dark class

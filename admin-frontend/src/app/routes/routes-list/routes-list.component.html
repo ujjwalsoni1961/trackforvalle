@@ -1,0 +1,139 @@
+<div class="p-10">
+    <!-- Header -->
+    <h1 class="text-lg font-bold mb-7">All Routes</h1>
+
+    <!-- Filter Section -->
+    <div class="border border-default rounded-2xl p-6 mb-7">
+        <h3 class="text-md font-medium mb-4">Filter Routes</h3>
+        <form [formGroup]="filterForm" class="grid grid-cols-4 gap-3">
+            <mat-form-field appearance="outline" class="col-span-1">
+                <mat-label>Sales Representative</mat-label>
+                <mat-select formControlName="salesRepId">
+                    <mat-option value="all">All Sales Representatives</mat-option>
+                    <mat-option *ngFor="let salesRep of salesReps" [value]="salesRep.id">
+                        {{ salesRep.first_name }} {{ salesRep.last_name }}
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="col-span-1">
+                <mat-label>Manager</mat-label>
+                <mat-select formControlName="managerId">
+                    <mat-option value="all">All Managers</mat-option>
+                    <mat-option *ngFor="let manager of managers" [value]="manager.id">
+                        {{ manager.first_name }} {{ manager.last_name }}
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="col-span-1">
+                <mat-label>Route Date</mat-label>
+                <input matInput [matDatepicker]="picker" formControlName="routeDate">
+                <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+                <mat-datepicker #picker></mat-datepicker>
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="col-span-1">
+                <mat-label>Sort By</mat-label>
+                <mat-select formControlName="sortBy">
+                    <mat-option value="route_date">Route Date</mat-option>
+                    <mat-option value="rep_id">Sales Representative</mat-option>
+                    <mat-option value="distance">Total Distance</mat-option>
+                </mat-select>
+            </mat-form-field>
+        </form>
+    </div>
+
+    <!-- View Toggle and Export -->
+    <div class="flex justify-between items-center mb-4">
+        <div>
+            <button mat-stroked-button [color]="viewMode === 'table' ? 'primary' : ''" (click)="setViewMode('table')">
+                <mat-icon>table_view</mat-icon> Table View
+            </button>
+            <button mat-stroked-button [color]="viewMode === 'map' ? 'primary' : ''" (click)="setViewMode('map')">
+                <mat-icon>map</mat-icon> Map View
+            </button>
+        </div>
+        <button mat-flat-button color="primary" (click)="exportRoutes()">
+            <mat-icon>download</mat-icon> Export Routes
+        </button>
+    </div>
+
+    <!-- Table View -->
+    <div *ngIf="viewMode === 'table'" class="border border-default rounded-xl overflow-hidden mb-7">
+        <div class="table-container">
+            <table mat-table [dataSource]="filteredRoutes" class="not-mat-typography">
+                <ng-container matColumnDef="repName">
+                    <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Sales Representative</th>
+                    <td mat-cell *matCellDef="let route">
+                        {{ getSalesRepName(route.rep_id) }}
+                    </td>
+                </ng-container>
+                <ng-container matColumnDef="managerName">
+                    <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Manager</th>
+                    <td mat-cell *matCellDef="let route">
+                        {{ getManagerName(route.created_by) }}
+                    </td>
+                </ng-container>
+                <ng-container matColumnDef="routeDate">
+                    <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Route Date</th>
+                    <td mat-cell *matCellDef="let route">{{ route.route_date | date:'mediumDate' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="visitCount">
+                    <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Visits</th>
+                    <td mat-cell *matCellDef="let route">{{ route.route_order.length }}</td>
+                </ng-container>
+                <ng-container matColumnDef="totalDistance">
+                    <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Total Distance (km)</th>
+                    <td mat-cell *matCellDef="let route">{{ calculateTotalDistance(route.route_order) | number:'1.2-2' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="isActive">
+                    <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Active</th>
+                    <td mat-cell *matCellDef="let route">
+                        <span class="status-badge" [ngClass]="{'true': route.is_active, 'false': !route.is_active}">
+                            {{ route.is_active ? 'Yes' : 'No' }}
+                        </span>
+                    </td>
+                </ng-container>
+                <ng-container matColumnDef="actions">
+                    <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Actions</th>
+                    <td mat-cell *matCellDef="let route">
+                        <button mat-icon-button matTooltip="View Details" (click)="viewRouteDetails(route)">
+                            <mat-icon>visibility</mat-icon>
+                        </button>
+                    </td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+            </table>
+        </div>
+        <mat-paginator [pageSizeOptions]="[5, 10, 20]" [pageSize]="10" [length]="totalRoutes"
+            (page)="onPageChange($event)" showFirstLastButtons></mat-paginator>
+    </div>
+
+    <!-- Map View -->
+    <div *ngIf="viewMode === 'map'" class="border border-default rounded-xl p-6 mb-7">
+        <div #mapContainer id="map" style="height: 500px;"></div>
+    </div>
+
+    <!-- Progress Bar -->
+    <mat-progress-bar mode="indeterminate" *ngIf="isLoading"></mat-progress-bar>
+
+    <!-- Route Details Dialog -->
+    <ng-template #routeDetailsDialog>
+        <h2 mat-dialog-title>Route Details</h2>
+        <mat-dialog-content>
+            <p>Route ID: {{ selectedRoute?.route_id }}</p>
+            <p>Sales Representative: {{ getSalesRepName(selectedRoute?.rep_id!) }}</p>
+            <p>Manager: {{ getManagerName(selectedRoute?.created_by!) }}</p>
+            <p>Route Date: {{ selectedRoute?.route_date | date:'mediumDate' }}</p>
+            <p>Active: {{ selectedRoute?.is_active ? 'Yes' : 'No' }}</p>
+            <h3>Visits:</h3>
+            <ul>
+                <li *ngFor="let visit of selectedRoute?.route_order">
+                    Visit ID: {{ visit.visit_id }} | Lead ID: {{ visit.lead_id }} | ETA: {{ visit.eta }} | Distance: {{ visit.distance | number:'1.2-2' }} km
+                </li>
+            </ul>
+        </mat-dialog-content>
+        <mat-dialog-actions>
+            <button mat-button mat-dialog-close>Close</button>
+        </mat-dialog-actions>
+    </ng-template>
+</div>

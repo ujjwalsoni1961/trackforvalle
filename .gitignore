@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.pub-cache/
+
+# Build artifacts
+dist/
+build/
+*.js.map
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+*.iml
+
+# Vercel
+.vercel/
+
+# Firebase
+.firebase/
+.firebaserc
+
+# Logs
+*.log
+npm-debug.log*

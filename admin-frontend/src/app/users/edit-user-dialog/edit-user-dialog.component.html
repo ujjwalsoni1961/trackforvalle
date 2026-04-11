@@ -1,0 +1,41 @@
+<div class="p-4">
+  <h2 mat-dialog-title class="text-md font-medium">Edit User</h2>
+  <mat-dialog-content style="padding-top: 4px;">
+    <form [formGroup]="userForm" (ngSubmit)="onSubmit()">
+      <div class="grid grid-cols-2 gap-3">
+        <mat-form-field appearance="outline" class="col-span-1">
+          <mat-label>First Name</mat-label>
+          <input matInput formControlName="first_name" placeholder="Enter first name">
+          <mat-error *ngIf="userForm.get('first_name')?.touched && userForm.get('first_name')?.invalid">
+            {{ getErrorMessage('first_name') }}
+          </mat-error>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="col-span-1">
+          <mat-label>Last Name</mat-label>
+          <input matInput formControlName="last_name" placeholder="Enter last name">
+          <mat-error *ngIf="userForm.get('last_name')?.touched && userForm.get('last_name')?.invalid">
+            {{ getErrorMessage('last_name') }}
+          </mat-error>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="col-span-1">
+          <mat-label>Email</mat-label>
+          <input matInput formControlName="email" placeholder="Enter email address">
+          <mat-error *ngIf="userForm.get('email')?.touched && userForm.get('email')?.invalid">
+            {{ getErrorMessage('email') }}
+          </mat-error>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="col-span-1">
+          <mat-label>Phone Number</mat-label>
+          <input matInput formControlName="phone" placeholder="Enter phone number">
+          <mat-error *ngIf="userForm.get('phone')?.touched && userForm.get('phone')?.invalid">
+            {{ getErrorMessage('phone') }}
+          </mat-error>
+        </mat-form-field>
+      </div>
+    </form>
+  </mat-dialog-content>
+  <mat-dialog-actions class="flex justify-end gap-2">
+    <button mat-button (click)="onCancel()">Cancel</button>
+    <button mat-flat-button color="primary" (click)="onSubmit()" [disabled]="userForm.invalid">Save</button>
+  </mat-dialog-actions>
+</div>

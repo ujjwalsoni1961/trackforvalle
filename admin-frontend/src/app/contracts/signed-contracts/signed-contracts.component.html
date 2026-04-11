@@ -1,0 +1,143 @@
+<div class="p-10">
+  <!-- Header -->
+  <div class="flex justify-between items-center mb-7">
+    <h1 class="text-lg font-bold">Signed Contracts</h1>
+  </div>
+
+  <!-- Filter Section -->
+  <div class="border border-default rounded-2xl p-6 mb-7">
+    <h3 class="text-md font-medium mb-4">Filter Signed Contracts</h3>
+    <form [formGroup]="filterForm" class="grid grid-cols-4 gap-3">
+      <mat-form-field appearance="outline" class="col-span-1">
+        <mat-label>Manager</mat-label>
+        <mat-select formControlName="managerId">
+          <mat-option value="all">All Managers</mat-option>
+          <mat-option *ngFor="let manager of managers" [value]="manager.id">
+            {{ manager.first_name }} {{ manager.last_name }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="col-span-1">
+        <mat-label>Salesman</mat-label>
+        <mat-select formControlName="salesmanId">
+          <mat-option value="all">All Salesmen</mat-option>
+          <mat-option *ngFor="let salesman of salesmen" [value]="salesman.id">
+            {{ salesman.first_name }} {{ salesman.last_name }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="col-span-1">
+        <mat-label>Status</mat-label>
+        <mat-select formControlName="status">
+          <mat-option value="all">All Statuses</mat-option>
+          <mat-option value="draft">Draft</mat-option>
+          <mat-option value="active">Active</mat-option>
+          <mat-option value="archived">Archived</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="col-span-1">
+        <mat-label>Search by Title</mat-label>
+        <input matInput formControlName="search" placeholder="Enter contract title">
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="col-span-1">
+        <mat-label>Sort By</mat-label>
+        <mat-select formControlName="sortBy">
+          <mat-option value="signed_at">Signed Date</mat-option>
+          <mat-option value="title">Title</mat-option>
+          <mat-option value="deal_amount">Deal Amount</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </form>
+  </div>
+
+  <!-- Table View -->
+  <div class="border border-default rounded-xl overflow-hidden mb-7">
+    <div class="table-container">
+      <table mat-table [dataSource]="filteredContracts" class="not-mat-typography">
+        <ng-container matColumnDef="title">
+          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Title</th>
+          <td mat-cell *matCellDef="let contract">{{ contract.template.title }}</td>
+        </ng-container>
+        <ng-container matColumnDef="customerName">
+          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Customer</th>
+          <td mat-cell *matCellDef="let contract">{{ contract.metadata.customer_name }}</td>
+        </ng-container>
+        <ng-container matColumnDef="dealAmount">
+          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Deal Amount</th>
+          <td mat-cell *matCellDef="let contract">{{ contract.metadata.deal_amount }}</td>
+        </ng-container>
+        <ng-container matColumnDef="salesmanName">
+          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Salesman</th>
+          <td mat-cell *matCellDef="let contract">{{ getSalesmanName(contract.visit.rep_id) }}</td>
+        </ng-container>
+        <ng-container matColumnDef="signedAt">
+          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Signed At</th>
+          <td mat-cell *matCellDef="let contract">{{ contract.signed_at | date:'medium' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Status</th>
+          <td mat-cell *matCellDef="let contract">
+            <span class="status-badge" [ngClass]="contract.template.status">
+              {{ contract.template.status | titlecase }}
+            </span>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Actions</th>
+          <td mat-cell *matCellDef="let contract">
+            <button mat-icon-button matTooltip="View" (click)="viewContract(contract)">
+              <mat-icon>visibility</mat-icon>
+            </button>
+            <button mat-icon-button matTooltip="Download PDF" (click)="downloadContract(contract)">
+              <mat-icon>download</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </div>
+    <mat-paginator [pageSizeOptions]="[5, 10, 20]" [pageSize]="10" [length]="totalContracts"
+      (page)="onPageChange($event)" showFirstLastButtons></mat-paginator>
+  </div>
+
+  <!-- Progress Bar -->
+  <mat-progress-bar mode="indeterminate" *ngIf="isLoading"></mat-progress-bar>
+
+  <!-- View Contract Dialog -->
+  <ng-template #viewContractDialog>
+    <ng-container *ngIf="selectedContract as contract">
+      <h2 mat-dialog-title>{{ contract.template.title }}</h2>
+      <mat-dialog-content>
+        <h3>Contract Details</h3>
+        <p><strong>Customer:</strong> {{ contract.metadata.customer_name }}</p>
+        <p><strong>Deal Amount:</strong> {{ contract.metadata.deal_amount }}</p>
+        <p><strong>Signed At:</strong> {{ contract.signed_at | date: 'medium' }}</p>
+        <div *ngIf="contract.metadata.signature_image_url">
+          <strong>Signature:</strong><br>
+          <img [src]="contract.metadata.signature_image_url" alt="Customer Signature" 
+               style="max-width: 200px; max-height: 100px; border: 1px solid #ccc; margin-top: 5px;">
+        </div>
+        <p><strong>Customer Email:</strong> {{ contract.metadata.customer_email }}</p>
+        <p><strong>Customer Address:</strong> {{ contract.metadata.customer_address }}</p>
+        <p><strong>Payment Method:</strong> {{ contract.metadata.payment_method }}</p>
+        <p><strong>Product:</strong> {{ contract.metadata.product_name }}</p>
+        <p><strong>Subscription Frequency:</strong> {{ contract.metadata.subscription_frequency }}</p>
+        <p><strong>Cancellation Notice:</strong> {{ contract.metadata.cancellation_notice }}</p>
+        <h3>Visit Details</h3>
+        <p><strong>Salesman:</strong> {{ getSalesmanName((contract.visit.rep_id || '').toString()) }}</p>
+        <p><strong>Manager:</strong> {{ getManagerName(contract.visit.created_by || '') }}</p>
+        <p><strong>Check-In Time:</strong> {{ contract.visit.check_in_time | date: 'medium' }}</p>
+        <p><strong>Check-Out Time:</strong> {{ contract.visit.check_out_time | date: 'medium' }}</p>
+        <p><strong>Notes:</strong> {{ contract.visit.notes }}</p>
+        <h3>Contract Content</h3>
+        <div class="rendered-contract" [innerHTML]="sanitizeHtml(contract.rendered_html)" 
+             style="border: 1px solid #ccc; padding: 20px; max-height: 400px; overflow-y: auto; background: white;"></div>
+      </mat-dialog-content>
+      <mat-dialog-actions>
+        <button mat-button mat-dialog-close>Close</button>
+        <button mat-flat-button color="primary" (click)="downloadContract(contract)">Download PDF</button>
+      </mat-dialog-actions>
+    </ng-container>
+  </ng-template>
+</div>
