@@ -337,7 +337,7 @@ export class TerritoryListComponent implements OnInit {
       next: (data: any) => {
         this.salesmen = data.data.map((salesman: any) => ({
           id: salesman.user_id,
-          name: salesman.full_name
+          name: salesman.full_name || salesman.email || 'Unknown'
         }));
       },
       error: () => this.snackBar.open('Failed to load salesmen', 'Close', { duration: 3000 })
