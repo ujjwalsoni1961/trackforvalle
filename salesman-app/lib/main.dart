@@ -1,5 +1,6 @@
 // import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -49,9 +50,25 @@ Future<void> main() async {
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
-    );
-    await FirebaseNotificationManager.init();
-    await FirebaseChatUtilsManager.autheticate();
+    ).timeout(const Duration(seconds: 10), onTimeout: () {
+      debugPrint('Firebase initialization timed out');
+      return Firebase.app();
+    });
+
+    if (kIsWeb) {
+      // On web, run notification and chat init non-blocking to prevent hanging
+      FirebaseNotificationManager.init().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => debugPrint('Notification init timed out on web'),
+      ).catchError((e) => debugPrint('Notification init error: $e'));
+      FirebaseChatUtilsManager.autheticate().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => debugPrint('Firebase chat auth timed out on web'),
+      ).catchError((e) => debugPrint('Firebase chat auth error: $e'));
+    } else {
+      await FirebaseNotificationManager.init();
+      await FirebaseChatUtilsManager.autheticate();
+    }
   } catch (e) {
     debugPrint('Firebase initialization error: $e');
   }
