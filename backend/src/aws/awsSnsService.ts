@@ -1,5 +1,3 @@
-import AWS from "aws-sdk";
-
 export enum EmailType {
   RESET_PASSWORD,
   LOGIN_REQUEST,
@@ -7,14 +5,11 @@ export enum EmailType {
   VERIFY_PHONE,
 }
 
-// AWS configuration
-AWS.config.update({
-  accessKeyId: process.env.AWS_ACCESS_KEY,
-  secretAccessKey: process.env.AWS_SECRET_KEY,
-  region: process.env.AWS_REGION,
-});
-
-const sns = new AWS.SNS({ apiVersion: "2010–03–31" });
+/**
+ * Send an SMS message. Previously used AWS SNS.
+ * Currently logs the message since SMS provider is being migrated.
+ * TODO: Integrate a new SMS provider if needed (Twilio, etc.)
+ */
 export const sendMessage = async (
   otpOrLink: string,
   phone: string,
@@ -39,15 +34,6 @@ export const sendMessage = async (
       throw new Error("Invalid message type");
   }
 
-  const params = {
-    Message: message,
-    PhoneNumber: phone,
-  };
-
-  try {
-    const data = await sns.publish(params).promise();
-    console.log(`MessageID is ${data.MessageId}`);
-  } catch (err) {
-    console.error(err);
-  }
+  // Log SMS for development - replace with actual SMS provider in production
+  console.log(`[SMS] To: ${phone}, Message: ${message}`);
 };

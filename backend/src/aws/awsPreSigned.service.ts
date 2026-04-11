@@ -1,47 +1,65 @@
-import AWS from 'aws-sdk';
+import { getSupabaseServiceClient } from "../config/supabase";
 
-AWS.config.update({
-  accessKeyId: process.env.AWS_ACCESS_KEY,
-  secretAccessKey: process.env.AWS_SECRET_KEY,
-  region: process.env.AWS_REGION,
-});
+/**
+ * Extract bucket name and object path from a Supabase Storage public URL.
+ * URL format: https://<project>.supabase.co/storage/v1/object/public/<bucket>/<path>
+ */
+const extractBucketAndPath = (
+  objectUrl: string
+): { bucket: string; path: string } => {
+  const url = new URL(objectUrl);
+  const publicPrefix = "/storage/v1/object/public/";
+  const idx = url.pathname.indexOf(publicPrefix);
 
-const s3 = new AWS.S3();
+  if (idx === -1) {
+    // Not a public URL – treat entire pathname as path in a default bucket
+    return { bucket: "visit-logs-images", path: url.pathname.substring(1) };
+  }
 
-const extractKeyFromUrl = (url:string) => {
-  const urlObj = new URL(url);
-  // Remove the bucket name part from the pathname
-  return urlObj.pathname.substring(1); // Removes the leading '/'
+  const rest = url.pathname.substring(idx + publicPrefix.length);
+  const slashIdx = rest.indexOf("/");
+  if (slashIdx === -1) {
+    return { bucket: rest, path: "" };
+  }
+  return { bucket: rest.substring(0, slashIdx), path: rest.substring(slashIdx + 1) };
 };
 
 /**
- * Generates a presigned URL for accessing an object in an S3 bucket.
+ * Generates a signed URL for accessing a file in Supabase Storage.
+ * For public buckets this returns the public URL directly.
+ * For private buckets it creates a time-limited signed URL.
  *
- * @param {string} objectKey - The key (path) of the object within the S3 bucket.
- * @param {number} [expiresIn=3600] - The expiration time in seconds for the presigned URL. Defaults to 3600 seconds (1 hour).
- * @returns {string} The presigned URL for accessing the specified object in S3.
+ * @param objectUrl - The full public URL or storage path of the object.
+ * @param expiresIn - Expiration time in seconds (default 36000 = 10 hours).
+ * @returns The signed or public URL string.
  */
-export const generatePresignedUrl = (
+export const generatePresignedUrl = async (
   objectUrl: string,
-  expiresIn = 36000,
-) => {
+  expiresIn = 36000
+): Promise<string> => {
   if (
     !objectUrl ||
-    typeof objectUrl !== 'string' ||
-    objectUrl.trim() === ''
+    typeof objectUrl !== "string" ||
+    objectUrl.trim() === ""
   ) {
     throw new Error(
-      'Invalid S3 object key. It cannot be empty or undefined.',
+      "Invalid object URL. It cannot be empty or undefined."
     );
   }
 
-  const objectKey = extractKeyFromUrl(objectUrl);
+  const supabase = getSupabaseServiceClient();
+  const { bucket, path } = extractBucketAndPath(objectUrl);
 
-  const params = {
-    Bucket: process.env.AWS_S3_BUCKET_NAME,
-    Key: objectKey,
-    Expires: expiresIn, // Expiration time in seconds
-  };
+  // Try to create a signed URL (works for both public and private buckets)
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(path, expiresIn);
 
-  return s3.getSignedUrl('getObject', params);
+  if (error) {
+    // If signed URL fails, return the original URL as fallback (public bucket)
+    console.warn("Signed URL generation failed, returning original URL:", error.message);
+    return objectUrl;
+  }
+
+  return data.signedUrl;
 };

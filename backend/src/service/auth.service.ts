@@ -17,7 +17,7 @@ import {
 import { OtpService } from "./otp.service";
 import { UserTokenQuery } from "../query/usertoken.query";
 import { OAuth2Client } from "google-auth-library";
-import { getDataSource } from "../config/data-source"; // Updated import
+import { getDataSource } from "../config/data-source";
 import { OrganizationQuery } from "../query/organization.query";
 import { OtpMedium } from "../enum/otpMedium";
 import { OtpType } from "../enum/otpType";
@@ -28,6 +28,7 @@ import { sendEmail } from "./email.service";
 import { Roles } from "../enum/roles";
 import { RefreshToken } from "../models/RefreshToken.entity";
 import { EntityManager, EntityNotFoundError } from "typeorm";
+import { getSupabaseServiceClient } from "../config/supabase";
 
 const userQuery = new UserQuery();
 const otpService = new OtpService();
@@ -101,6 +102,14 @@ export class AuthService {
           status: httpStatusCodes.UNAUTHORIZED,
           message: "Invalid credentials",
         };
+      }
+
+      // Also sign in via Supabase Auth (non-blocking, for session sync)
+      try {
+        const supabase = getSupabaseServiceClient();
+        await supabase.auth.signInWithPassword({ email, password });
+      } catch (supabaseError) {
+        console.warn("Supabase Auth sign-in failed (non-blocking):", supabaseError);
       }
 
       const token = jwtSign(
@@ -513,6 +522,18 @@ export class AuthService {
           org_id: undefined,
         });
         role_id = newRole.role_id;
+      }
+
+      // Create user in Supabase Auth as additional auth provider
+      try {
+        const supabase = getSupabaseServiceClient();
+        await supabase.auth.admin.createUser({
+          email: param.email,
+          password: param.password,
+          email_confirm: false,
+        });
+      } catch (supabaseError) {
+        console.warn("Supabase Auth user creation failed (non-blocking):", supabaseError);
       }
 
       const newUser = await userQuery.addUser(queryRunner.manager, {

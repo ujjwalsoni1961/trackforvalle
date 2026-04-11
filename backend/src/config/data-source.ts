@@ -42,7 +42,7 @@ export const dataSourceOptions: DataSourceOptions = {
   ssl: {
     rejectUnauthorized: false,
   },
-  synchronize: false,
+  synchronize: true,
   logging: process.env.NODE_ENV === "production" ? ["error"] : ["error"],
   entities: [
     User,

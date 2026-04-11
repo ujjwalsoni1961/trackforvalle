@@ -1,10 +1,11 @@
 import { VisitController } from "../controllers/visits.controller";
 import { verifyToken } from "../middleware/auth.middleware";
-import multer from "multer";
 import { permissionMiddleware } from "../middleware/permission.middleware";
 const visitController = new VisitController();
 import express from "express";
-import { upload } from "../aws/aws.service";
+import { upload, supabaseUploadMiddleware } from "../aws/aws.service";
+import { STORAGE_BUCKETS } from "../config/supabase";
+
 const router = express.Router();
 router.post(
   "/plan",
@@ -15,7 +16,8 @@ router.post(
 router.post(
   "/log",
   verifyToken,
- upload.array("photos"),
+  upload.array("photos"),
+  supabaseUploadMiddleware(STORAGE_BUCKETS.VISIT_LOGS),
   // permissionMiddleware("customer_import"),
   visitController.logVisit
 );

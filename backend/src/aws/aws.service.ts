@@ -1,117 +1,147 @@
-import {
-  DeleteObjectCommand,
-  PutObjectCommand,
-  PutObjectCommandOutput,
-  S3Client,
-} from "@aws-sdk/client-s3";
 import multer from "multer";
-import multerS3 from "multer-s3";
 import path from "path";
 import dotenv from "dotenv";
+import {
+  getSupabaseServiceClient,
+  STORAGE_BUCKETS,
+} from "../config/supabase";
 
 dotenv.config();
-// Ensure AWS credentials and bucket name are set
-if (
-  !process.env.AWS_ACCESS_KEY ||
-  !process.env.AWS_SECRET_KEY ||
-  !process.env.AWS_REGION ||
-  !process.env.VISIT_AWS_S3_BUCKET_NAME ||
-  !process.env.CONTRACT_AWS_BUCKET_NAME
-) {
-  throw new Error("Missing AWS credentials in environment variables");
+
+// Use memory storage - files are buffered in memory then uploaded to Supabase
+const memoryStorage = multer.memoryStorage();
+
+/**
+ * Helper to upload a file buffer to Supabase Storage and attach a `location`
+ * property (public URL) to the multer file object, keeping the same interface
+ * that controllers/services expect from the old S3 multer setup.
+ */
+async function uploadToSupabase(
+  file: Express.Multer.File,
+  bucket: string,
+  keyPrefix: string = ""
+): Promise<void> {
+  const supabase = getSupabaseServiceClient();
+  const uniqueName = `${keyPrefix}${Date.now().toString()}_${path.basename(
+    file.originalname
+  )}`;
+
+  const { error } = await supabase.storage
+    .from(bucket)
+    .upload(uniqueName, file.buffer, {
+      contentType: file.mimetype,
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error(`Supabase Storage upload failed: ${error.message}`);
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(bucket).getPublicUrl(uniqueName);
+
+  // Attach the public URL as `location` so existing code (signatureFile.location, p.location) works unchanged
+  (file as any).location = publicUrl;
+  (file as any).key = uniqueName;
+  (file as any).bucket = bucket;
 }
 
-// Configure S3 client using AWS SDK v3
-const s3 = new S3Client({
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY,
-    secretAccessKey: process.env.AWS_SECRET_KEY,
-  },
-  region: process.env.AWS_REGION,
-});
+/**
+ * Multer middleware for visit photos → uploads to Supabase "visit-logs-images" bucket.
+ * After multer parses the file into memory, a post-processing step uploads it.
+ */
+export const upload = multer({ storage: memoryStorage });
 
-export const upload = multer({
-  storage: multerS3({
-    s3: s3,
-    bucket: process.env.VISIT_AWS_S3_BUCKET_NAME,
-    metadata: (req, file, cb) => {
-      cb(null, { fieldName: file.fieldname });
-    },
-    key: (req, file, cb) => {
-      const uniqueName = `${Date.now().toString()}_${path.basename(
-        file.originalname
-      )}`;
-      cb(null, uniqueName);
-    },
-  }),
-});
-export const uploadContractImage = multer({
-  storage: multerS3({
-    s3: s3,
-    bucket: process.env.CONTRACT_AWS_BUCKET_NAME,
-    metadata: (req, file, cb) => {
-      cb(null, { fieldName: file.fieldname });
-    },
-    key: (req, file, cb) => {
-      const uniqueName = `${Date.now().toString()}_${path.basename(
-        file.originalname
-      )}`;
-      cb(null, uniqueName);
-    },
-  }),
-});
+/**
+ * Multer middleware for contract signature images → memory storage.
+ */
+export const uploadContractImage = multer({ storage: memoryStorage });
 
+/**
+ * Multer middleware for contract PDFs → memory storage with PDF-only filter.
+ */
 export const uploadContractPdf = multer({
-  storage: multerS3({
-    s3: s3,
-    bucket: process.env.CONTRACT_AWS_BUCKET_NAME,
-    metadata: (req, file, cb) => {
-      cb(null, { fieldName: file.fieldname });
-    },
-    key: (req, file, cb) => {
-      const uniqueName = `contracts/pdf/${Date.now().toString()}_${path.basename(
-        file.originalname
-      )}`;
-      cb(null, uniqueName);
-    },
-  }),
+  storage: memoryStorage,
   fileFilter: (req, file, cb) => {
-    // Only allow PDF files
-    if (file.mimetype === 'application/pdf') {
+    if (file.mimetype === "application/pdf") {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF files are allowed'));
+      cb(new Error("Only PDF files are allowed"));
     }
   },
 });
+
+/**
+ * Middleware to upload parsed files to Supabase Storage.
+ * Call this AFTER multer parses the files but BEFORE the controller.
+ */
+export function supabaseUploadMiddleware(bucket: string, keyPrefix: string = "") {
+  return async (req: any, res: any, next: any) => {
+    try {
+      // Handle single file
+      if (req.file) {
+        await uploadToSupabase(req.file, bucket, keyPrefix);
+      }
+      // Handle array of files
+      if (req.files && Array.isArray(req.files)) {
+        for (const file of req.files) {
+          await uploadToSupabase(file, bucket, keyPrefix);
+        }
+      }
+      next();
+    } catch (error: any) {
+      console.error("Supabase upload middleware error:", error);
+      return res.status(500).json({ message: `File upload failed: ${error.message}` });
+    }
+  };
+}
+
+/**
+ * Upload a raw buffer to Supabase Storage. Returns the public URL.
+ */
 export const uploadFileBufferToS3 = async (
   buffer: Buffer,
   key: string
-): Promise<PutObjectCommandOutput> => {
-  const params = {
-    Bucket: process.env.AWS_S3_BUCKET_NAME!,
-    Key: key,
-    Body: buffer,
-  };
+): Promise<{ publicUrl: string }> => {
+  const supabase = getSupabaseServiceClient();
+  const bucket = STORAGE_BUCKETS.VISIT_LOGS;
 
-  const command = new PutObjectCommand(params);
-  return await s3.send(command);
+  const { error } = await supabase.storage.from(bucket).upload(key, buffer, {
+    upsert: false,
+  });
+
+  if (error) {
+    throw new Error(`Supabase Storage upload failed: ${error.message}`);
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(bucket).getPublicUrl(key);
+
+  return { publicUrl };
 };
 
+/**
+ * Delete a file from Supabase Storage by its public URL.
+ */
 export const deleteFileFromS3 = async (objectUrl: string): Promise<void> => {
-  const objectKey = extractKeyFromUrl(objectUrl);
+  const supabase = getSupabaseServiceClient();
 
-  const params = {
-    Bucket: process.env.AWS_S3_BUCKET_NAME!,
-    Key: objectKey,
-  };
+  // Extract bucket and path from the Supabase public URL
+  // URL format: https://<project>.supabase.co/storage/v1/object/public/<bucket>/<path>
+  const url = new URL(objectUrl);
+  const pathParts = url.pathname.split("/storage/v1/object/public/");
+  if (pathParts.length < 2) {
+    throw new Error("Invalid Supabase Storage URL");
+  }
 
-  const command = new DeleteObjectCommand(params);
-  await s3.send(command);
-};
+  const [bucket, ...rest] = pathParts[1].split("/");
+  const objectPath = rest.join("/");
 
-const extractKeyFromUrl = (url: string) => {
-  const urlObj = new URL(url);
-  // Remove the bucket name part from the pathname
-  return urlObj.pathname.substring(1); // Removes the leading '/'
+  const { error } = await supabase.storage.from(bucket).remove([objectPath]);
+
+  if (error) {
+    throw new Error(`Supabase Storage delete failed: ${error.message}`);
+  }
 };

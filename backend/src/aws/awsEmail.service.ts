@@ -1,98 +1,73 @@
-import AWS from 'aws-sdk';
-import * as nodemailer from 'nodemailer';
+import * as nodemailer from "nodemailer";
+import dotenv from "dotenv";
 
-AWS.config.update({
-  accessKeyId: process.env.AWS_ACCESS_KEY,
-  secretAccessKey: process.env.AWS_SECRET_KEY,
-  region: process.env.AWS_REGION,
-});
+dotenv.config();
 
-const ses = new AWS.SES({ apiVersion: '2010-12-01' });
+const getTransporter = () => {
+  return nodemailer.createTransport({
+    service: "gmail",
+    secure: true,
+    auth: {
+      user: process.env.EMAIL_USER || process.env.EMAIL_FROM,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+};
 
 export async function sendSESEmail(
   email: string,
   subject: string,
-  htmlContent: string,
+  htmlContent: string
 ): Promise<void> {
-  const params = {
-    Destination: {
-      ToAddresses: [email],
-    },
-    Message: {
-      Body: {
-        Html: {
-          Data: htmlContent,
-        },
-      },
-      Subject: {
-        Data: subject,
-      },
-    },
-    Source: 'admin@voxapp.com',
-  };
+  const transporter = getTransporter();
+  const from = process.env.EMAIL_FROM || process.env.EMAIL_USER || "noreply@trackforvalle.com";
 
   try {
-    await ses.sendEmail(params).promise();
+    await transporter.sendMail({
+      from,
+      to: email,
+      subject,
+      html: htmlContent,
+    });
   } catch (error) {
-    console.log(error);
+    console.error("Error sending email:", error);
   }
 }
+
 export async function sendSESEmailWithAttachment(
   email: string,
   subject: string,
   htmlContent: string,
-  attachmentBuffer: any, // Pass the PDF buffer here
-  attachmentFilename: string = 'Call_Summary.pdf', // Default filename for the PDF
+  attachmentBuffer: any,
+  attachmentFilename: string = "Call_Summary.pdf"
 ): Promise<void> {
-  const transporter = nodemailer.createTransport({
-    SES: { ses, aws: AWS },
-  });
-
-  const mailOptions = {
-    from: 'admin@voxapp.com',
-    to: email,
-    subject,
-    html: htmlContent,
-    attachments: [
-      {
-        filename: attachmentFilename,
-        content: attachmentBuffer,
-        contentType: 'application/pdf',
-      },
-    ],
-  };
+  const transporter = getTransporter();
+  const from = process.env.EMAIL_FROM || process.env.EMAIL_USER || "noreply@trackforvalle.com";
 
   try {
-    await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully');
+    await transporter.sendMail({
+      from,
+      to: email,
+      subject,
+      html: htmlContent,
+      attachments: [
+        {
+          filename: attachmentFilename,
+          content: attachmentBuffer,
+          contentType: "application/pdf",
+        },
+      ],
+    });
+    console.log("Email sent successfully");
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error("Error sending email:", error);
   }
 }
 
 /**
- * return if the email is verified or not
- *
- * @param email email for which we want to check
- * @returns
+ * Check if an email identity is verified.
+ * With nodemailer/Gmail this always returns true since we don't have SES verification.
  */
-export async function isSesIdentityVerified(
-  email: string,
-): Promise<boolean> {
-  try {
-    const verificationResponse = await ses
-      .getIdentityVerificationAttributes({
-        Identities: [email],
-      })
-      .promise();
-
-    // Check if the email is verified
-    const verificationStatus =
-      verificationResponse.VerificationAttributes[email]
-        ?.VerificationStatus;
-
-    return verificationStatus === 'Success';
-  } catch (error) {
-    return false;
-  }
+export async function isSesIdentityVerified(email: string): Promise<boolean> {
+  return true;
 }

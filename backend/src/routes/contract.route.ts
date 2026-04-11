@@ -3,7 +3,12 @@ import { AuthController } from "../controllers/auth.controller";
 import { verifyToken } from "../middleware/auth.middleware";
 import { ContractTemplateController } from "../controllers/contract.controller";
 import { VisitController } from "../controllers/visits.controller";
-import { uploadContractImage, uploadContractPdf } from "../aws/aws.service";
+import {
+  uploadContractImage,
+  uploadContractPdf,
+  supabaseUploadMiddleware,
+} from "../aws/aws.service";
+import { STORAGE_BUCKETS } from "../config/supabase";
 
 const router = express.Router();
 
@@ -21,12 +26,14 @@ router.post(
   "/submit",
   verifyToken,
   uploadContractImage.single("signature"),
+  supabaseUploadMiddleware(STORAGE_BUCKETS.CONTRACT_SIGNATURES),
   visitController.submitVisitWithContract
 );
 router.post(
   "/submit-pdf",
   verifyToken,
   uploadContractPdf.single("contract_pdf"),
+  supabaseUploadMiddleware(STORAGE_BUCKETS.CONTRACT_SIGNATURES, "contracts/pdf/"),
   visitController.submitContractPdf
 );
 router.get("/:contractId/pdf", (req, res) =>
