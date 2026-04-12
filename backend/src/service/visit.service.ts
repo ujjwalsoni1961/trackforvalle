@@ -172,25 +172,16 @@ export class VisitService {
     contractId: number,
     templateId: number,
     renderedHtml: string,
-    customerName: string
+    customerName: string,
+    signatureUrl?: string
   ): Promise<void> {
     try {
       const dataSource = await getDataSource();
 
-      // Fetch the full styled HTML from the contract endpoint
-      const backendUrl = process.env.BACKEND_URL
-        || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
-        || "https://trackforvalle-backend.vercel.app";
-      
-      let styledHtml = renderedHtml;
-      try {
-        const response = await axios.get(`${backendUrl}/api/contract/${contractId}/pdf`);
-        if (response.data && typeof response.data === "string") {
-          styledHtml = response.data;
-        }
-      } catch (fetchErr) {
-        console.error("Could not fetch styled HTML, using raw:", fetchErr);
-      }
+      // Generate styled HTML directly (no HTTP self-call, avoids race conditions)
+      const { generateStyledContractHTML } = await import("../utils/styled-html-generator");
+      const styledHtml = generateStyledContractHTML(renderedHtml, signatureUrl || "");
+      console.log(`Styled HTML generated for contract ${contractId}, signatureUrl: ${signatureUrl || 'none'}`);
 
       // Generate PDF from styled HTML (lazy import to avoid module-level failures)
       let pdfBuffer: Buffer;
@@ -229,18 +220,18 @@ export class VisitService {
       }
 
       // Look up the partner from the contract template
-      const template = await dataSource.getRepository(ContractTemplate).findOne({
-        where: { id: templateId },
-        relations: { partner: true },
-      });
-
-      if (template?.partner_id) {
-        const partner = await dataSource.getRepository(Partner).findOne({
-          where: { partner_id: template.partner_id },
+      try {
+        const template = await dataSource.getRepository(ContractTemplate).findOne({
+          where: { id: templateId },
         });
 
-        if (partner?.contact_email) {
-          try {
+        if (template?.partner_id) {
+          const partner = await dataSource.getRepository(Partner).findOne({
+            where: { partner_id: template.partner_id },
+          });
+          console.log(`Partner lookup for template ${templateId}: partner_id=${template.partner_id}, email=${partner?.contact_email || 'not found'}`);
+
+          if (partner?.contact_email) {
             await sendEmail({
               to: partner.contact_email,
               subject: `Contract Signed - ${customerName}`,
@@ -250,10 +241,12 @@ export class VisitService {
               attachments: [attachment],
             });
             console.log(`Contract signed email sent to partner: ${partner.contact_email}`);
-          } catch (emailError) {
-            console.error("Failed to send contract email to partner:", emailError);
           }
+        } else {
+          console.log(`No partner_id on template ${templateId}, skipping partner email`);
         }
+      } catch (partnerError) {
+        console.error("Failed to send contract email to partner:", partnerError);
       }
     } catch (error) {
       console.error("Error in sendContractSignedEmails:", error);
@@ -404,11 +397,13 @@ export class VisitService {
 
       // Send email notifications (non-blocking, after commit)
       const customerName = payload.parsedMetaData?.customer_name || "Customer";
+      const sigUrl = payload.signatureFile?.location || "";
       this.sendContractSignedEmails(
         savedContract.id,
         payload.contract_template_id,
         renderedHtml,
-        customerName
+        customerName,
+        sigUrl
       ).catch((err) => console.error("Email notification error:", err));
 
       return {
@@ -573,7 +568,8 @@ export class VisitService {
         savedContract.id,
         payload.contract_template_id,
         renderedHtml,
-        customerName
+        customerName,
+        "" // PDF submission has no separate signature URL
       ).catch((err) => console.error("Email notification error:", err));
 
       return {
