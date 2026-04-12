@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormGroup, FormBuilder, Validators, FormArray } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -16,6 +16,7 @@ import { QuillModule } from 'ngx-quill';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import { UsersService } from '../../users/users.service';
 import { PartnerService } from '../../partner/partner.service';
+import { DocusealBuilderComponent } from '@docuseal/angular';
 
 interface SalesRep {
   id: string;
@@ -57,8 +58,10 @@ interface DropdownField {
     MatIconModule,
     MatExpansionModule,
     MatProgressBar,
-    QuillModule
+    QuillModule,
+    DocusealBuilderComponent
   ],
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
   templateUrl: './add-contract.component.html',
   styleUrl: './add-contract.component.scss'
 })
@@ -86,6 +89,11 @@ export class AddContractComponent implements OnInit {
       ['link']
     ]
   };
+
+  // DocuSeal builder state
+  showBuilder = false;
+  builderToken: string | null = null;
+  docusealHost = 'docuseal-585556848696.europe-west1.run.app';
 
   predefinedTemplates: ContractTemplate[] = [
     {
@@ -396,6 +404,44 @@ export class AddContractComponent implements OnInit {
         this.snackBar.open('Error loading sales reps: ' + err.message, 'Close', { duration: 3000 });
       }
     });
+  }
+
+  openBuilder() {
+    const existingTemplateId = this.contractForm.get('docuseal_template_id')?.value;
+    const params: any = {};
+    if (existingTemplateId) {
+      params.template_id = existingTemplateId;
+    }
+    const title = this.contractForm.get('title')?.value;
+    if (title) {
+      params.name = title;
+    }
+
+    this.contractsService.getDocuSealBuilderToken(params).subscribe({
+      next: (response) => {
+        this.builderToken = response.data.token;
+        this.showBuilder = true;
+      },
+      error: (err) => {
+        this.snackBar.open('Error getting builder token: ' + (err.error?.message || err.message), 'Close', { duration: 3000 });
+      }
+    });
+  }
+
+  onBuilderSave(event: any) {
+    const detail = event?.detail || event;
+    const templateId = detail?.id || detail?.template_id;
+    if (templateId) {
+      this.contractForm.patchValue({ docuseal_template_id: templateId });
+      this.snackBar.open(`DocuSeal template #${templateId} linked successfully`, 'Close', { duration: 3000 });
+    }
+    this.showBuilder = false;
+    this.builderToken = null;
+  }
+
+  closeBuilder() {
+    this.showBuilder = false;
+    this.builderToken = null;
   }
 
   saveContract() {

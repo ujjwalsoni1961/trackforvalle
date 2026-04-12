@@ -5,9 +5,9 @@
     <div class="flex gap-3">
       <button mat-stroked-button
               color="primary"
-              (click)="openDocuSeal()"
+              (click)="openBuilderForNew()"
               *ngIf="canCreateContracts">
-        <mat-icon>open_in_new</mat-icon> Create in DocuSeal
+        <mat-icon>description</mat-icon> New DocuSeal Template
       </button>
       <button mat-flat-button
               color="primary"
@@ -117,10 +117,10 @@
               <mat-icon>assignment_ind</mat-icon>
             </button>
             <button mat-icon-button
-                    matTooltip="Link DocuSeal Template"
-                    (click)="openLinkDocuSealDialog(contract)"
+                    [matTooltip]="contract.docuseal_template_id ? 'Edit DocuSeal Template' : 'Create DocuSeal Template'"
+                    (click)="openBuilderForContract(contract)"
                     *ngIf="canEditContract(contract)">
-              <mat-icon>link</mat-icon>
+              <mat-icon>{{ contract.docuseal_template_id ? 'edit_document' : 'note_add' }}</mat-icon>
             </button>
             <button mat-icon-button
                     matTooltip="Delete"
@@ -184,30 +184,24 @@
     </mat-dialog-actions>
   </ng-template>
 
-  <!-- Link DocuSeal Template Dialog -->
-  <ng-template #linkDocuSealDialog>
-    <h2 mat-dialog-title>Link DocuSeal Template</h2>
-    <mat-dialog-content>
-      <p class="mb-4 text-sm text-gray-600">Enter the DocuSeal template ID to link to this contract template. You can find the ID in DocuSeal after creating a template.</p>
-      <mat-form-field appearance="outline" class="w-full">
-        <mat-label>DocuSeal Template ID</mat-label>
-        <input matInput type="number" [(ngModel)]="docusealTemplateIdInput" placeholder="e.g. 12345">
-      </mat-form-field>
-      <div *ngIf="docuSealTemplates.length > 0" class="mt-2">
-        <p class="text-sm font-medium mb-2">Or select from available DocuSeal templates:</p>
-        <mat-form-field appearance="outline" class="w-full">
-          <mat-label>DocuSeal Templates</mat-label>
-          <mat-select [(ngModel)]="docusealTemplateIdInput">
-            <mat-option *ngFor="let t of docuSealTemplates" [value]="t.id">
-              {{ t.name }} (ID: {{ t.id }})
-            </mat-option>
-          </mat-select>
-        </mat-form-field>
+  <!-- Embedded DocuSeal Builder Overlay -->
+  <div *ngIf="showBuilder" class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl w-full max-w-6xl h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center p-4 border-b">
+        <h2 class="text-lg font-bold">DocuSeal Template Builder</h2>
+        <button mat-icon-button (click)="closeBuilder()">
+          <mat-icon>close</mat-icon>
+        </button>
       </div>
-    </mat-dialog-content>
-    <mat-dialog-actions>
-      <button mat-button mat-dialog-close>Cancel</button>
-      <button mat-flat-button color="primary" (click)="linkDocuSealTemplate()" [disabled]="!docusealTemplateIdInput">Link</button>
-    </mat-dialog-actions>
-  </ng-template>
+      <div class="flex-1 overflow-hidden">
+        <docuseal-builder
+          *ngIf="builderToken"
+          [token]="builderToken"
+          [host]="docusealHost"
+          (save)="onBuilderSave($event)"
+          style="width: 100%; height: 100%;">
+        </docuseal-builder>
+      </div>
+    </div>
+  </div>
 </div>

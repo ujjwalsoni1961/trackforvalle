@@ -373,4 +373,8 @@ export class ContractsService {
   getDocuSealSubmission(id: number): Observable<any> {
     return this.http.get<any>(`${this.baseUrl}/docuseal/submissions/${id}`);
   }
+
+  getDocuSealBuilderToken(params?: { template_id?: number; document_urls?: string[]; name?: string }): Observable<{ success: boolean; data: { token: string } }> {
+    return this.http.post<{ success: boolean; data: { token: string } }>(`${this.baseUrl}/docuseal/builder-token`, params || {});
+  }
 }

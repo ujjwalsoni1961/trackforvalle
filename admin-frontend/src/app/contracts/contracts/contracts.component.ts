@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, TemplateRef } from '@angular/core';
+import { Component, OnInit, ViewChild, TemplateRef, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormGroup, FormBuilder, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -19,6 +19,7 @@ import { UsersService } from '../../users/users.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { AuthService } from '../../auth/auth.service';
 import { MatChipsModule } from '@angular/material/chips';
+import { DocusealBuilderComponent } from '@docuseal/angular';
 
 interface DropdownOption {
   label: string;
@@ -79,20 +80,24 @@ interface SalesRep {
     MatDialogModule,
     MatTooltipModule,
     MatPaginatorModule,
-    MatChipsModule
+    MatChipsModule,
+    DocusealBuilderComponent
   ],
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
   templateUrl: './contracts.component.html',
   styleUrl: './contracts.component.scss'
 })
 export class ContractsComponent implements OnInit {
   @ViewChild('viewContractDialog') viewContractDialog!: TemplateRef<any>;
   @ViewChild('reassignContractDialog') reassignContractDialog!: TemplateRef<any>;
-  @ViewChild('linkDocuSealDialog') linkDocuSealDialog!: TemplateRef<any>;
   contracts: Contract[] = [];
   filteredContracts: Contract[] = [];
   salesReps: SalesRep[] = [];
-  docuSealTemplates: any[] = [];
-  docusealTemplateIdInput: number | null = null;
+  // DocuSeal builder state
+  showBuilder = false;
+  builderToken: string | null = null;
+  builderContractId: number | null = null;
+  docusealHost = 'docuseal-585556848696.europe-west1.run.app';
   displayedColumns: string[] = ['title', 'partnerCompany', 'docusealId', 'salesRepNames', 'status', 'createdAt', 'actions'];
   filterForm: FormGroup;
   contractForm: FormGroup;
@@ -345,42 +350,63 @@ export class ContractsComponent implements OnInit {
     return this.canEditAllContracts;
   }
 
-  openDocuSeal() {
-    window.open('https://docuseal-585556848696.europe-west1.run.app', '_blank');
-  }
-
-  openLinkDocuSealDialog(contract: Contract) {
-    this.selectedContract = contract;
-    this.docusealTemplateIdInput = contract.docuseal_template_id || null;
-    // Load DocuSeal templates list
-    this.contractsService.getDocuSealTemplates().subscribe({
-      next: (response: any) => {
-        this.docuSealTemplates = response?.data || [];
+  openBuilderForNew() {
+    this.builderContractId = null;
+    this.contractsService.getDocuSealBuilderToken({}).subscribe({
+      next: (response) => {
+        this.builderToken = response.data.token;
+        this.showBuilder = true;
       },
-      error: () => {
-        this.docuSealTemplates = [];
+      error: (err) => {
+        this.snackBar.open('Error getting builder token: ' + (err.error?.message || err.message), 'Close', { duration: 3000 });
       }
     });
-    this.dialog.open(this.linkDocuSealDialog, { width: '500px' });
   }
 
-  linkDocuSealTemplate() {
-    if (!this.selectedContract || !this.docusealTemplateIdInput) return;
-
-    this.isLoading = true;
-    this.contractsService.updateContract(this.selectedContract.id, {
-      docuseal_template_id: this.docusealTemplateIdInput
-    } as any).pipe(
-      finalize(() => this.isLoading = false)
-    ).subscribe({
-      next: () => {
-        this.snackBar.open('DocuSeal template linked successfully', 'Close', { duration: 3000 });
-        this.dialog.closeAll();
-        this.loadContracts();
+  openBuilderForContract(contract: Contract) {
+    this.builderContractId = contract.id;
+    const params: any = {};
+    if (contract.docuseal_template_id) {
+      params.template_id = contract.docuseal_template_id;
+    }
+    if (contract.title) {
+      params.name = contract.title;
+    }
+    this.contractsService.getDocuSealBuilderToken(params).subscribe({
+      next: (response) => {
+        this.builderToken = response.data.token;
+        this.showBuilder = true;
       },
-      error: () => {
-        this.snackBar.open('Error linking DocuSeal template', 'Close', { duration: 3000 });
+      error: (err) => {
+        this.snackBar.open('Error getting builder token: ' + (err.error?.message || err.message), 'Close', { duration: 3000 });
       }
     });
+  }
+
+  onBuilderSave(event: any) {
+    const detail = event?.detail || event;
+    const templateId = detail?.id || detail?.template_id;
+    if (templateId && this.builderContractId) {
+      this.contractsService.updateContract(this.builderContractId, {
+        docuseal_template_id: templateId
+      } as any).subscribe({
+        next: () => {
+          this.snackBar.open(`DocuSeal template #${templateId} linked successfully`, 'Close', { duration: 3000 });
+          this.loadContracts();
+        },
+        error: () => {
+          this.snackBar.open('Error linking DocuSeal template', 'Close', { duration: 3000 });
+        }
+      });
+    } else if (templateId) {
+      this.snackBar.open(`DocuSeal template #${templateId} created. Link it to a contract via Edit.`, 'Close', { duration: 5000 });
+    }
+    this.closeBuilder();
+  }
+
+  closeBuilder() {
+    this.showBuilder = false;
+    this.builderToken = null;
+    this.builderContractId = null;
   }
 }

@@ -1,4 +1,5 @@
 import express, { Request, Response } from "express";
+import jwt from "jsonwebtoken";
 import { verifyToken } from "../middleware/auth.middleware";
 import * as docusealService from "../service/docuseal.service";
 import { getDataSource } from "../config/data-source";
@@ -10,6 +11,37 @@ import { ApiResponse } from "../utils/api.response";
 const router = express.Router();
 
 // ─── Authenticated routes ───
+
+// Generate JWT for embedded DocuSeal builder
+router.post("/builder-token", verifyToken, async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { template_id, document_urls, name } = req.body;
+    const apiKey = process.env.DOCUSEAL_API_KEY;
+    if (!apiKey) {
+      return ApiResponse.error(res, 500, "DOCUSEAL_API_KEY is not configured");
+    }
+
+    const payload: Record<string, any> = {
+      user_email: process.env.DOCUSEAL_ADMIN_EMAIL || "ujjwalsoni1961@gmail.com",
+    };
+
+    if (template_id) {
+      payload.template_id = template_id;
+    }
+    if (document_urls) {
+      payload.document_urls = document_urls;
+    }
+    if (name) {
+      payload.name = name;
+    }
+
+    const token = jwt.sign(payload, apiKey);
+    return ApiResponse.result(res, { token }, 200, null, "Builder token generated");
+  } catch (error: any) {
+    console.error("Error generating builder token:", error);
+    return ApiResponse.error(res, 500, error.message || "Failed to generate builder token");
+  }
+});
 
 router.get("/templates", verifyToken, async (req: Request, res: Response): Promise<any> => {
   try {
@@ -38,7 +70,9 @@ router.post("/submissions", verifyToken, async (req: Request, res: Response): Pr
       return ApiResponse.error(res, 400, "template_id and submitters array are required");
     }
     const submission = await docusealService.createSubmission(template_id, submitters, metadata);
-    return ApiResponse.result(res, submission, 201, null, "DocuSeal submission created");
+    // Return the submitters array directly so frontends can access embed_src
+    const submittersList = Array.isArray(submission) ? submission : (submission.submitters || [submission]);
+    return ApiResponse.result(res, submittersList, 201, null, "DocuSeal submission created");
   } catch (error: any) {
     console.error("Error creating DocuSeal submission:", error);
     return ApiResponse.error(res, 500, error.message || "Failed to create submission");

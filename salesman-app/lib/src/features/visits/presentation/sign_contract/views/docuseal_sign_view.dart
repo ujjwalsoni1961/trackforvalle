@@ -9,15 +9,17 @@ class DocuSealSignViewParams extends Equatable {
   final String signingUrl;
   final String templateName;
   final int leadId;
+  final String? signerEmail;
 
   const DocuSealSignViewParams({
     required this.signingUrl,
     required this.templateName,
     required this.leadId,
+    this.signerEmail,
   });
 
   @override
-  List<Object?> get props => [signingUrl, templateName, leadId];
+  List<Object?> get props => [signingUrl, templateName, leadId, signerEmail];
 }
 
 class DocuSealSignView extends StatefulWidget {
@@ -30,24 +32,41 @@ class DocuSealSignView extends StatefulWidget {
 
 class _DocuSealSignViewState extends State<DocuSealSignView> {
   late final String _viewType;
+  bool _isCompleted = false;
 
   @override
   void initState() {
     super.initState();
-    _viewType = 'docuseal-signing-${widget.params.leadId}-${DateTime.now().millisecondsSinceEpoch}';
+    _viewType = 'docuseal-form-${widget.params.leadId}-${DateTime.now().millisecondsSinceEpoch}';
 
-    // Register the iframe as an HTML element view
     ui_web.platformViewRegistry.registerViewFactory(
       _viewType,
       (int viewId) {
-        final iframe = html.IFrameElement()
-          ..src = widget.params.signingUrl
-          ..style.border = 'none'
+        final div = html.DivElement()
           ..style.width = '100%'
-          ..style.height = '100%'
-          ..allow = 'camera;microphone'
-          ..setAttribute('allowfullscreen', 'true');
-        return iframe;
+          ..style.height = '100%';
+
+        // Create the docuseal-form element
+        final formElement = html.Element.tag('docuseal-form')
+          ..setAttribute('data-src', widget.params.signingUrl)
+          ..setAttribute('data-send-copy-email', 'false')
+          ..style.width = '100%'
+          ..style.height = '100%';
+
+        if (widget.params.signerEmail != null) {
+          formElement.setAttribute('data-email', widget.params.signerEmail!);
+        }
+
+        div.append(formElement);
+
+        // Listen for completed event
+        formElement.addEventListener('completed', (event) {
+          if (mounted) {
+            setState(() => _isCompleted = true);
+          }
+        });
+
+        return div;
       },
     );
   }
@@ -61,6 +80,26 @@ class _DocuSealSignViewState extends State<DocuSealSignView> {
           Expanded(
             child: HtmlElementView(viewType: _viewType),
           ),
+          if (_isCompleted)
+            Container(
+              padding: const EdgeInsets.all(16),
+              color: Colors.green.shade50,
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Signing completed successfully!',
+                      style: TextStyle(
+                        color: Colors.green.shade700,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -78,6 +117,10 @@ class _DocuSealSignViewState extends State<DocuSealSignView> {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () {
+                    if (_isCompleted) {
+                      context.pop(true);
+                      return;
+                    }
                     showDialog(
                       context: context,
                       builder: (ctx) => AlertDialog(
@@ -102,8 +145,8 @@ class _DocuSealSignViewState extends State<DocuSealSignView> {
                       ),
                     );
                   },
-                  icon: const Icon(Icons.check_circle),
-                  label: const Text('Finished Signing'),
+                  icon: Icon(_isCompleted ? Icons.check_circle : Icons.check_circle_outline),
+                  label: Text(_isCompleted ? 'Done' : 'Finished Signing'),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(

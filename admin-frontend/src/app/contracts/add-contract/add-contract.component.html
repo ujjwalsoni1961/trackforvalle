@@ -44,11 +44,16 @@
           </mat-option>
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>DocuSeal Template ID (Optional)</mat-label>
-        <input matInput type="number" formControlName="docuseal_template_id" placeholder="e.g. 12345">
-        <mat-hint>Link a DocuSeal template for e-signing</mat-hint>
-      </mat-form-field>
+      <div class="flex items-center gap-2">
+        <mat-form-field appearance="outline" class="flex-1">
+          <mat-label>DocuSeal Template ID</mat-label>
+          <input matInput type="number" formControlName="docuseal_template_id" placeholder="Auto-linked from builder" readonly>
+        </mat-form-field>
+        <button mat-stroked-button color="primary" type="button" (click)="openBuilder()" class="mb-5">
+          <mat-icon>{{ contractForm.get('docuseal_template_id')?.value ? 'edit' : 'add' }}</mat-icon>
+          {{ contractForm.get('docuseal_template_id')?.value ? 'Edit Template' : 'Create Template' }}
+        </button>
+      </div>
     </div>
     <div>
       <label class="block text-sm font-medium mb-2">Content</label>
@@ -201,4 +206,25 @@
     </div>
   </form>
   <mat-progress-bar mode="indeterminate" *ngIf="isLoading"></mat-progress-bar>
+
+  <!-- Embedded DocuSeal Builder -->
+  <div *ngIf="showBuilder" class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl w-full max-w-6xl h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center p-4 border-b">
+        <h2 class="text-lg font-bold">DocuSeal Template Builder</h2>
+        <button mat-icon-button (click)="closeBuilder()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <div class="flex-1 overflow-hidden">
+        <docuseal-builder
+          *ngIf="builderToken"
+          [token]="builderToken"
+          [host]="docusealHost"
+          (save)="onBuilderSave($event)"
+          style="width: 100%; height: 100%;">
+        </docuseal-builder>
+      </div>
+    </div>
+  </div>
 </div>
