@@ -119,6 +119,10 @@ export class CustomerService {
       customer.assigned_rep_id = userId;
       customer.status = LeadStatus.Prospect;
       customer.pending_assignment = false;
+      // Auto-assign territory to the lead based on polygon match
+      if (territory) {
+        customer.territory_id = territory.territory_id;
+      }
       customer.is_active = true;
       customer.source = Source.Manual;
       customer.created_by = userId.toString();
@@ -1044,6 +1048,33 @@ export class CustomerService {
               newAddresses[index].latitude = coords.latitude;
               newAddresses[index].longitude = coords.longitude;
             });
+
+            // After geocoding, do polygon-based territory assignment for leads that
+            // didn't get a territory from postal_code/region/subregion matching
+            for (let idx = 0; idx < newAddresses.length; idx++) {
+              const addr = newAddresses[idx];
+              if (!addr.territory_id && addr.latitude && addr.longitude) {
+                try {
+                  const matchedTerritory = await territoryService.assignTerritory({
+                    lat: addr.latitude,
+                    lng: addr.longitude,
+                    org_id,
+                  });
+                  if (matchedTerritory) {
+                    addr.territory_id = matchedTerritory.territory_id;
+                    addr.polygon_id = matchedTerritory.polygon_id || undefined;
+                    // Also update the corresponding customer
+                    const custIdx = [...customerToAddressIndex.entries()]
+                      .find(([, aIdx]) => aIdx === idx)?.[0];
+                    if (custIdx !== undefined && newCustomers[custIdx]) {
+                      newCustomers[custIdx].territory_id = matchedTerritory.territory_id;
+                    }
+                  }
+                } catch (e) {
+                  // Silently continue if polygon matching fails
+                }
+              }
+            }
           }
           if (newAddresses.length) {
             const savedAddresses = await queryRunner.manager
