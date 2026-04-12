@@ -50,6 +50,7 @@
     "echarts": "^5.5.0",
     "emoji-toolkit": "^8.0.0",
     "emojibase-data": "^16.0.2",
+    "html2pdf.js": "^0.14.0",
     "iconify-icon": "^2.3.0",
     "libphonenumber-js": "^1.11.15",
     "material-symbols": "^0.27.1",

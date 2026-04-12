@@ -16,6 +16,7 @@ import { ContractsService } from '../contracts.service';
 import { UsersService } from '../../users/users.service';
 import { DomSanitizer, SafeHtml, SafeUrl } from '@angular/platform-browser';
 import { finalize } from 'rxjs/operators';
+import { downloadPdfFromHtml } from '../../shared/pdf-generator';
 
 interface SignedContract {
   id: number;
@@ -276,47 +277,44 @@ export class SignedContractsComponent implements OnInit {
 
   viewContract(contract: SignedContract) {
     this.isLoading = true;
-    
-    try {
-      // Use direct URL approach since it works in browser
-      const pdfUrl = this.contractsService.getContractPdfUrl(contract.id);
-      
-      // Open PDF URL directly in new tab
-      const newWindow = window.open(pdfUrl, '_blank');
-      
-      if (!newWindow) {
-        throw new Error('Pop-up blocked. Please allow pop-ups for this site.');
+    this.contractsService.getContractHtml(contract.id).pipe(
+      finalize(() => this.isLoading = false)
+    ).subscribe({
+      next: (html: string) => {
+        const newWindow = window.open('', '_blank');
+        if (newWindow) {
+          newWindow.document.write(html);
+          newWindow.document.close();
+        } else {
+          this.snackBar.open('Pop-up blocked. Please allow pop-ups.', 'Close', { duration: 3000 });
+        }
+      },
+      error: () => {
+        this.snackBar.open('Error loading contract', 'Close', { duration: 3000 });
       }
-      
-      this.isLoading = false;
-      
-    } catch (error) {
-      this.isLoading = false;
-      console.error('Error opening PDF:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      this.snackBar.open(`Error opening PDF: ${errorMessage}`, 'Close', { duration: 3000 });
-    }
+    });
   }
 
-  downloadContract(contract: SignedContract) {
+  async downloadContract(contract: SignedContract) {
     this.isLoading = true;
-    
-    try {
-      // Use download URL with query parameter to force download
-      const downloadUrl = this.contractsService.getContractPdfDownloadUrl(contract.id);
-      
-      // Open download URL in current window to trigger download
-      window.location.href = downloadUrl;
-      
-      this.isLoading = false;
-      this.snackBar.open('PDF download started', 'Close', { duration: 2000 });
-      
-    } catch (error) {
-      this.isLoading = false;
-      console.error('Error downloading PDF:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      this.snackBar.open(`Error downloading PDF: ${errorMessage}`, 'Close', { duration: 3000 });
-    }
+    this.contractsService.getContractHtml(contract.id).subscribe({
+      next: async (html: string) => {
+        try {
+          const title = (contract.metadata as any)?.title || contract.contract_template_id || 'contract';
+          await downloadPdfFromHtml(html, `contract_${title}_${contract.id}.pdf`);
+          this.snackBar.open('PDF download started', 'Close', { duration: 2000 });
+        } catch (err) {
+          console.error('PDF generation error:', err);
+          this.snackBar.open('Error generating PDF', 'Close', { duration: 3000 });
+        } finally {
+          this.isLoading = false;
+        }
+      },
+      error: () => {
+        this.isLoading = false;
+        this.snackBar.open('Error loading contract', 'Close', { duration: 3000 });
+      }
+    });
   }
 
   onPageChange(event: PageEvent) {

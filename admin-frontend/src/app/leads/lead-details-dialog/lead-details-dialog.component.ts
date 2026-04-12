@@ -18,6 +18,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatPaginatorModule, MatPaginator } from '@angular/material/paginator';
 import { MatTooltipModule } from '@angular/material/tooltip'; // Added for notes tooltip
 import { ContractsService } from '../../contracts/contracts.service';
+import { downloadPdfFromHtml } from '../../shared/pdf-generator';
 
 // Define LeadStatus type
 type LeadStatus = 'Get Back' | 'Not Available' | 'Not Interested' | 'Meeting' | 'Hot Lead' | 'Signed' | 'Start Signing' | 'Not Sellable' | 'Prospect';
@@ -445,16 +446,23 @@ export class LeadDetailsDialogComponent implements OnInit {
       return;
     }
 
-    this.contractService.getContractPdf(contractId).subscribe({
-      next: (response: Blob) => {
-        const blob = new Blob([response], { type: 'application/pdf' });
-        const url = window.URL.createObjectURL(blob);
-        window.open(url, '_blank');
-        window.URL.revokeObjectURL(url);
+    this.contractService.getContractHtml(contractId).subscribe({
+      next: async (html: string) => {
+        try {
+          await downloadPdfFromHtml(html, `contract_${contractId}.pdf`);
+        } catch (err) {
+          console.error('PDF generation error:', err);
+          // Fallback: open HTML in new tab
+          const newWindow = window.open('', '_blank');
+          if (newWindow) {
+            newWindow.document.write(html);
+            newWindow.document.close();
+          }
+        }
       },
       error: (err: any) => {
-        console.error('Error fetching contract PDF:', err);
-        this.snackBar.open('Failed to load contract PDF', 'Close', { duration: 3000 });
+        console.error('Error fetching contract:', err);
+        this.snackBar.open('Failed to load contract', 'Close', { duration: 3000 });
       }
     });
   }

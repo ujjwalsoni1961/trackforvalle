@@ -11,6 +11,7 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { PartnerService } from '../partner.service';
 import { environment } from '../../../environments/environment';
+import { downloadPdfFromHtml } from '../../shared/pdf-generator';
 
 @Component({
   selector: 'app-partner-contracts',
@@ -175,9 +176,32 @@ export class PartnerContractsComponent implements OnInit {
     });
   }
 
-  downloadSignedContract(contract: any): void {
-    const downloadUrl = `${this.baseUrl}/contract/${contract.id}/pdf?download=true`;
-    window.open(downloadUrl, '_blank');
+  async downloadSignedContract(contract: any): Promise<void> {
+    try {
+      this.loadingHtml = true;
+      // Fetch the HTML from the backend
+      this.partnerService.getContractHtml(contract.id).subscribe({
+        next: async (html: string) => {
+          try {
+            const title = contract.template?.title || contract.contract_template_id || 'contract';
+            await downloadPdfFromHtml(html, `contract_${title}_${contract.id}.pdf`);
+            this.snackBar.open('PDF download started', 'Close', { duration: 2000 });
+          } catch (err) {
+            console.error('PDF generation error:', err);
+            this.snackBar.open('Error generating PDF', 'Close', { duration: 3000 });
+          } finally {
+            this.loadingHtml = false;
+          }
+        },
+        error: () => {
+          this.loadingHtml = false;
+          this.snackBar.open('Error loading contract', 'Close', { duration: 3000 });
+        }
+      });
+    } catch (err) {
+      this.loadingHtml = false;
+      this.snackBar.open('Error downloading PDF', 'Close', { duration: 3000 });
+    }
   }
 
   getLeadName(contract: any): string {

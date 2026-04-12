@@ -1,26 +1,26 @@
 /**
  * Launch a headless browser for PDF generation.
- * Puppeteer is loaded dynamically - install it separately if PDF generation is needed:
- *   npm install puppeteer
+ * Uses @sparticuz/chromium for serverless environments (Vercel/AWS Lambda)
+ * and puppeteer-core as the browser driver.
  */
 export async function getBrowser(): Promise<any> {
   try {
-    // @ts-ignore - puppeteer is an optional dependency
-    const puppeteer = await import("puppeteer");
-    return puppeteer.default.launch({
-      headless: true,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-web-security",
-        "--allow-running-insecure-content",
-      ],
+    const chromium = await import("@sparticuz/chromium");
+    const puppeteerCore = await import("puppeteer-core");
+
+    const executablePath = await chromium.default.executablePath();
+
+    return puppeteerCore.default.launch({
+      args: chromium.default.args,
+      defaultViewport: chromium.default.defaultViewport,
+      executablePath,
+      headless: chromium.default.headless,
     });
   } catch (error) {
+    console.error("Chromium launch error:", error);
     throw new Error(
-      "Puppeteer is not available. PDF generation requires puppeteer to be installed. " +
-        "Install it with: npm install puppeteer"
+      "Failed to launch browser for PDF generation. " +
+        "Ensure @sparticuz/chromium and puppeteer-core are installed."
     );
   }
 }
