@@ -33,7 +33,8 @@ import { ContractPDF } from "../models/ContractPdf.entity";
 import { Partner } from "../models/Partner.entity";
 import { getFinnishTime } from "../utils/timezone";
 import { sendEmail } from "./email.service";
-import { generateContractPdf } from "../utils/pdf-generator";
+// Lazy import to avoid breaking the service if pdf-lib has issues
+// import { generateContractPdf } from "../utils/pdf-generator";
 
 require("dotenv").config();
 
@@ -177,9 +178,9 @@ export class VisitService {
       const dataSource = await getDataSource();
 
       // Fetch the full styled HTML from the contract endpoint
-      const backendUrl = process.env.BACKEND_URL || process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : "https://trackforvalle-backend.vercel.app";
+      const backendUrl = process.env.BACKEND_URL
+        || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+        || "https://trackforvalle-backend.vercel.app";
       
       let styledHtml = renderedHtml;
       try {
@@ -191,9 +192,10 @@ export class VisitService {
         console.error("Could not fetch styled HTML, using raw:", fetchErr);
       }
 
-      // Generate PDF from styled HTML
+      // Generate PDF from styled HTML (lazy import to avoid module-level failures)
       let pdfBuffer: Buffer;
       try {
+        const { generateContractPdf } = await import("../utils/pdf-generator");
         pdfBuffer = await generateContractPdf(styledHtml);
         console.log(`PDF generated for contract ${contractId}: ${pdfBuffer.length} bytes`);
       } catch (pdfErr) {
