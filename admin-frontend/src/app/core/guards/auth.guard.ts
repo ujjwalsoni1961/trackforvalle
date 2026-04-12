@@ -24,12 +24,18 @@ export class AuthGuard implements CanActivate, CanLoad {
   private static isRecoveryMode = false;
 
   private async checkAuth(): Promise<boolean> {
-    // Check if the URL hash contains recovery type (Supabase redirect)
-    // This handles the case where Supabase redirects to the root URL
     if (typeof window !== 'undefined') {
+      // PKCE flow: check for ?code= in the URL (Supabase recovery redirect)
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      if (code) {
+        this.router.navigate(['/auth/set-new-password'], { queryParams: { code } });
+        return false;
+      }
+
+      // Implicit flow fallback: check for #type=recovery in hash
       const hash = window.location.hash;
       if (hash && hash.includes('type=recovery')) {
-        // Redirect to set-new-password and preserve the hash
         window.location.href = '/auth/set-new-password' + hash;
         return false;
       }

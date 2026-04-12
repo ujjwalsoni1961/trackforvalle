@@ -216,6 +216,17 @@ export class AuthService {
     );
   }
 
+  resetPasswordWithToken(token: string, newPassword: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/auth/reset-password`, {
+      token,
+      newPassword
+    }).pipe(
+      catchError((error) => {
+        return throwError(() => error);
+      })
+    );
+  }
+
   // Role-based access methods using API role names
   hasRole(roleName: string): boolean {
     const currentUser = this.getCurrentUser();

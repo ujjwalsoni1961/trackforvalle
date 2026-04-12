@@ -13,7 +13,7 @@ export class SupabaseService {
     this.supabase = createClient(environment.supabaseUrl, environment.supabaseKey, {
       auth: {
         detectSessionInUrl: true,
-        flowType: 'implicit',
+        flowType: 'pkce',
       }
     });
   }
@@ -50,5 +50,9 @@ export class SupabaseService {
 
   onAuthStateChange(callback: (event: string, session: Session | null) => void) {
     return this.supabase.auth.onAuthStateChange(callback);
+  }
+
+  exchangeCodeForSession(code: string) {
+    return this.supabase.auth.exchangeCodeForSession(code);
   }
 }

@@ -41,6 +41,8 @@ export class SetNewPasswordComponent implements OnInit {
   successMessage: string | null = null;
   loading = false;
   sessionReady = false;
+  resetMode: 'jwt' | 'supabase' = 'supabase';
+  jwtToken: string | null = null;
 
   form = new FormGroup({
     password: new FormControl('', [
@@ -54,37 +56,63 @@ export class SetNewPasswordComponent implements OnInit {
   constructor() {}
 
   async ngOnInit() {
-    // First try getting existing session
-    const { data: { session } } = await this._supabaseService.getSession();
-    if (session) {
-      this.sessionReady = true;
-      return;
-    }
-
-    // If no session yet, wait for Supabase to process the hash fragment
-    // This happens when redirected from password reset email
-    const { data: { subscription } } = this._supabaseService.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+    this._route.queryParams.subscribe(async (params) => {
+      // Flow 1: JWT token from backend (salesman app forgot password)
+      const token = params['token'];
+      if (token) {
+        this.jwtToken = token;
         this.sessionReady = true;
-        this.errorMessage = null;
-        subscription.unsubscribe();
+        this.resetMode = 'jwt';
+        return;
       }
-    });
 
-    // Give Supabase up to 5 seconds to process the hash
-    setTimeout(async () => {
-      if (!this.sessionReady) {
-        // One more attempt to get session
-        const { data: { session: retrySession } } = await this._supabaseService.getSession();
-        if (retrySession) {
-          this.sessionReady = true;
-          this.errorMessage = null;
-        } else {
-          this.errorMessage = 'Auth session expired. Please request a new password reset link.';
+      // Flow 2: PKCE code from Supabase (admin forgot password)
+      const code = params['code'];
+      if (code) {
+        try {
+          const { data, error } = await this._supabaseService.exchangeCodeForSession(code);
+          if (error) {
+            this.errorMessage = 'Reset link expired or already used. Please request a new one.';
+            return;
+          }
+          if (data.session) {
+            this.sessionReady = true;
+            this.resetMode = 'supabase';
+            this.errorMessage = null;
+            return;
+          }
+        } catch (e) {
+          this.errorMessage = 'Reset link expired or already used. Please request a new one.';
+          return;
         }
-        subscription.unsubscribe();
       }
-    }, 5000);
+
+      // Flow 3: check for existing Supabase session
+      const { data: { session } } = await this._supabaseService.getSession();
+      if (session) {
+        this.sessionReady = true;
+        this.resetMode = 'supabase';
+        this.errorMessage = null;
+        return;
+      }
+
+      // Flow 4: listen for PASSWORD_RECOVERY event
+      const { data: { subscription } } = this._supabaseService.onAuthStateChange((event, session) => {
+        if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+          this.sessionReady = true;
+          this.resetMode = 'supabase';
+          this.errorMessage = null;
+          subscription.unsubscribe();
+        }
+      });
+
+      setTimeout(() => {
+        if (!this.sessionReady) {
+          this.errorMessage = 'No active reset session. Please request a new password reset link.';
+          subscription.unsubscribe();
+        }
+      }, 3000);
+    });
   }
 
   passwordMatchValidator(): any {
@@ -102,22 +130,44 @@ export class SetNewPasswordComponent implements OnInit {
   resetPassword() {
     if (this.form.valid && this.sessionReady) {
       this.loading = true;
-      this._authService.resetPassword('recovery', this.form.get('password')?.value!).subscribe({
-        next: (response: any) => {
-          this.successMessage = response.message || 'Password updated successfully!';
-          this.errorMessage = null;
-          this.loading = false;
-          this.form.markAsUntouched();
-          setTimeout(() => {
-            this._router.navigateByUrl('/auth/sign-in');
-          }, 2000);
-        },
-        error: (error) => {
-          this.errorMessage = error.error?.error?.message || error.message || 'An error occurred';
-          this.successMessage = null;
-          this.loading = false;
-        }
-      });
+
+      if (this.resetMode === 'jwt' && this.jwtToken) {
+        // Backend JWT flow: call backend resetPassword endpoint
+        this._authService.resetPasswordWithToken(this.jwtToken, this.form.get('password')?.value!).subscribe({
+          next: (response: any) => {
+            this.successMessage = response.message || 'Password updated successfully!';
+            this.errorMessage = null;
+            this.loading = false;
+            this.form.markAsUntouched();
+            setTimeout(() => {
+              this._router.navigateByUrl('/auth/sign-in');
+            }, 2000);
+          },
+          error: (error) => {
+            this.errorMessage = error.error?.error?.message || error.message || 'An error occurred';
+            this.successMessage = null;
+            this.loading = false;
+          }
+        });
+      } else {
+        // Supabase flow: update password via Supabase Auth
+        this._authService.resetPassword('recovery', this.form.get('password')?.value!).subscribe({
+          next: (response: any) => {
+            this.successMessage = response.message || 'Password updated successfully!';
+            this.errorMessage = null;
+            this.loading = false;
+            this.form.markAsUntouched();
+            setTimeout(() => {
+              this._router.navigateByUrl('/auth/sign-in');
+            }, 2000);
+          },
+          error: (error) => {
+            this.errorMessage = error.error?.error?.message || error.message || 'An error occurred';
+            this.successMessage = null;
+            this.loading = false;
+          }
+        });
+      }
     }
   }
 }
