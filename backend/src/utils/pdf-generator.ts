@@ -1,4 +1,5 @@
-import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { PDFDocument, rgb, StandardFonts, PDFImage } from "pdf-lib";
+import axios from "axios";
 
 /**
  * Strip HTML tags and decode entities for plain text extraction
@@ -31,6 +32,7 @@ function extractContractSections(html: string): {
   body: string;
   hasSigned: boolean;
   signedDate: string;
+  signatureImageUrl: string;
 } {
   // Extract title
   const titleMatch = html.match(
@@ -53,7 +55,28 @@ function extractContractSections(html: string): {
   const signedMatch = html.match(/Signed:\s*([^<]+)/);
   const signedDate = signedMatch ? signedMatch[1].trim() : "";
 
-  return { title, date, body: body || stripHtml(html), hasSigned, signedDate };
+  // Extract signature image URL (skip SVG data URIs)
+  const imgMatches = html.match(/<img[^>]+src="(https?:\/\/[^"]+)"/g) || [];
+  let signatureImageUrl = "";
+  for (const imgTag of imgMatches) {
+    const srcMatch = imgTag.match(/src="(https?:\/\/[^"]+)"/);
+    if (srcMatch && srcMatch[1].includes("signature")) {
+      signatureImageUrl = srcMatch[1];
+      break;
+    }
+  }
+  // Fallback: any non-SVG https image
+  if (!signatureImageUrl) {
+    for (const imgTag of imgMatches) {
+      const srcMatch = imgTag.match(/src="(https?:\/\/[^"]+)"/);
+      if (srcMatch) {
+        signatureImageUrl = srcMatch[1];
+        break;
+      }
+    }
+  }
+
+  return { title, date, body: body || stripHtml(html), hasSigned, signedDate, signatureImageUrl };
 }
 
 /**
@@ -110,8 +133,25 @@ export async function generateContractPdf(
   const margin = 50;
   const contentWidth = pageWidth - 2 * margin;
 
-  const { title, date, body, hasSigned, signedDate } =
+  const { title, date, body, hasSigned, signedDate, signatureImageUrl } =
     extractContractSections(styledHtml);
+
+  // Try to download and embed signature image
+  let signatureImage: PDFImage | null = null;
+  if (signatureImageUrl) {
+    try {
+      const imgResponse = await axios.get(signatureImageUrl, { responseType: "arraybuffer", timeout: 10000 });
+      const imgBytes = new Uint8Array(imgResponse.data);
+      // Detect image type from first bytes
+      if (imgBytes[0] === 0x89 && imgBytes[1] === 0x50) {
+        signatureImage = await pdfDoc.embedPng(imgBytes);
+      } else {
+        signatureImage = await pdfDoc.embedJpg(imgBytes);
+      }
+    } catch (imgErr) {
+      console.error("Could not embed signature image:", imgErr);
+    }
+  }
 
   let page = pdfDoc.addPage([pageWidth, pageHeight]);
   let y = pageHeight - margin;
@@ -204,14 +244,15 @@ export async function generateContractPdf(
   // --- Signature section ---
   if (hasSigned) {
     y -= 20;
-    ensureSpace(80);
+    const sigBoxHeight = signatureImage ? 160 : 80;
+    ensureSpace(sigBoxHeight);
 
     // Signature box
     page.drawRectangle({
       x: margin,
-      y: y - 60,
+      y: y - sigBoxHeight + 10,
       width: contentWidth,
-      height: 70,
+      height: sigBoxHeight,
       borderColor: rgb(0.7, 0.2, 0.2),
       borderWidth: 1,
       color: rgb(1, 0.98, 0.98),
@@ -225,9 +266,36 @@ export async function generateContractPdf(
       color: rgb(0.3, 0.3, 0.3),
     });
 
-    page.drawText("✓ Verified", {
+    // Embed signature image
+    if (signatureImage) {
+      const imgDims = signatureImage.scale(1);
+      const maxImgWidth = contentWidth - 40;
+      const maxImgHeight = 80;
+      const scale = Math.min(maxImgWidth / imgDims.width, maxImgHeight / imgDims.height, 1);
+      const imgWidth = imgDims.width * scale;
+      const imgHeight = imgDims.height * scale;
+
+      page.drawImage(signatureImage, {
+        x: margin + 15,
+        y: y - 25 - imgHeight,
+        width: imgWidth,
+        height: imgHeight,
+      });
+
+      page.drawText("Customer Signature", {
+        x: margin + 10,
+        y: y - 25 - imgHeight - 15,
+        size: 8,
+        font: helvetica,
+        color: rgb(0.5, 0.5, 0.5),
+      });
+    }
+
+    // Verified status
+    const verifiedY = signatureImage ? y - sigBoxHeight + 40 : y - 25;
+    page.drawText("Status: Verified", {
       x: margin + 10,
-      y: y - 25,
+      y: verifiedY,
       size: 11,
       font: helveticaBold,
       color: rgb(0.1, 0.6, 0.1),
@@ -236,14 +304,14 @@ export async function generateContractPdf(
     if (signedDate) {
       page.drawText(`Signed: ${signedDate}`, {
         x: margin + 10,
-        y: y - 45,
+        y: verifiedY - 16,
         size: 9,
         font: helvetica,
         color: rgb(0.4, 0.4, 0.4),
       });
     }
 
-    y -= 80;
+    y -= sigBoxHeight;
   }
 
   // --- Footer ---
