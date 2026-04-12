@@ -1,8 +1,9 @@
+import 'dart:html' as html;
+import 'dart:ui_web' as ui_web;
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:track/src/core/ui/widgets/my_scaffold.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
 class DocuSealSignViewParams extends Equatable {
   final String signingUrl;
@@ -28,84 +29,87 @@ class DocuSealSignView extends StatefulWidget {
 }
 
 class _DocuSealSignViewState extends State<DocuSealSignView> {
-  late final WebViewController _controller;
-  bool _isLoading = true;
+  late final String _viewType;
 
   @override
   void initState() {
     super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageStarted: (String url) {
-            setState(() => _isLoading = true);
-          },
-          onPageFinished: (String url) {
-            setState(() => _isLoading = false);
-          },
-          onWebResourceError: (WebResourceError error) {
-            debugPrint('WebView error: ${error.description}');
-          },
-        ),
-      )
-      ..loadRequest(Uri.parse(widget.params.signingUrl));
+    _viewType = 'docuseal-signing-${widget.params.leadId}-${DateTime.now().millisecondsSinceEpoch}';
+
+    // Register the iframe as an HTML element view
+    ui_web.platformViewRegistry.registerViewFactory(
+      _viewType,
+      (int viewId) {
+        final iframe = html.IFrameElement()
+          ..src = widget.params.signingUrl
+          ..style.border = 'none'
+          ..style.width = '100%'
+          ..style.height = '100%'
+          ..allow = 'camera;microphone'
+          ..setAttribute('allowfullscreen', 'true');
+        return iframe;
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return MyScaffold(
       title: 'Sign: ${widget.params.templateName}',
-      body: Stack(
+      body: Column(
         children: [
-          WebViewWidget(controller: _controller),
-          if (_isLoading)
-            const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Loading signing form...'),
-                ],
-              ),
+          Expanded(
+            child: HtmlElementView(viewType: _viewType),
+          ),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, -2),
+                ),
+              ],
             ),
-          Positioned(
-            bottom: 16,
-            left: 16,
-            right: 16,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Done Signing?'),
-                    content: const Text(
-                      'If the customer has completed signing, you can go back. '
-                      'The signed contract will be processed automatically.',
+            child: SafeArea(
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Done Signing?'),
+                        content: const Text(
+                          'If the customer has completed signing, you can go back. '
+                          'The signed contract will be processed automatically.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(),
+                            child: const Text('Continue Signing'),
+                          ),
+                          FilledButton(
+                            onPressed: () {
+                              Navigator.of(ctx).pop();
+                              context.pop(true);
+                            },
+                            child: const Text('Done'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.check_circle),
+                  label: const Text('Finished Signing'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(ctx).pop(),
-                        child: const Text('Continue Signing'),
-                      ),
-                      FilledButton(
-                        onPressed: () {
-                          Navigator.of(ctx).pop();
-                          context.pop(true);
-                        },
-                        child: const Text('Done'),
-                      ),
-                    ],
                   ),
-                );
-              },
-              icon: const Icon(Icons.check_circle),
-              label: const Text('Finished Signing'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
