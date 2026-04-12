@@ -33,6 +33,7 @@ import { ContractPDF } from "../models/ContractPdf.entity";
 import { Partner } from "../models/Partner.entity";
 import { getFinnishTime } from "../utils/timezone";
 import { sendEmail } from "./email.service";
+import { generateContractPdf } from "../utils/pdf-generator";
 
 require("dotenv").config();
 
@@ -175,10 +176,38 @@ export class VisitService {
     try {
       const dataSource = await getDataSource();
 
-      // Generate a simple PDF-like content from the HTML
-      // We use the rendered HTML as the email body and attach it as an HTML file
-      // since full PDF generation may not be available in serverless
-      const htmlBuffer = Buffer.from(renderedHtml, "utf-8");
+      // Fetch the full styled HTML from the contract endpoint
+      const backendUrl = process.env.BACKEND_URL || process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : "https://trackforvalle-backend.vercel.app";
+      
+      let styledHtml = renderedHtml;
+      try {
+        const response = await axios.get(`${backendUrl}/api/contract/${contractId}/pdf`);
+        if (response.data && typeof response.data === "string") {
+          styledHtml = response.data;
+        }
+      } catch (fetchErr) {
+        console.error("Could not fetch styled HTML, using raw:", fetchErr);
+      }
+
+      // Generate PDF from styled HTML
+      let pdfBuffer: Buffer;
+      try {
+        pdfBuffer = await generateContractPdf(styledHtml);
+        console.log(`PDF generated for contract ${contractId}: ${pdfBuffer.length} bytes`);
+      } catch (pdfErr) {
+        console.error("PDF generation failed, falling back to HTML attachment:", pdfErr);
+        // Fallback to HTML attachment if PDF generation fails
+        pdfBuffer = Buffer.from(styledHtml, "utf-8");
+      }
+
+      const isPdf = pdfBuffer.length > 0 && pdfBuffer[0] === 0x25; // PDF starts with %
+      const attachment = {
+        filename: isPdf ? `contract_${contractId}.pdf` : `contract_${contractId}.html`,
+        content: pdfBuffer,
+        contentType: isPdf ? "application/pdf" : "text/html",
+      };
 
       const adminEmail = process.env.ADMIN_EMAIL || "ujjwalsoni1961@gmail.com";
 
@@ -189,14 +218,8 @@ export class VisitService {
           subject: `Contract Signed - ${customerName}`,
           body: `<p>A new contract has been signed by <strong>${customerName}</strong>.</p>
                  <p>Contract ID: ${contractId}</p>
-                 <p>Please find the signed contract attached.</p>`,
-          attachments: [
-            {
-              filename: `contract_${contractId}.html`,
-              content: htmlBuffer,
-              contentType: "text/html",
-            },
-          ],
+                 <p>Please find the signed contract PDF attached.</p>`,
+          attachments: [attachment],
         });
         console.log(`Contract signed email sent to admin: ${adminEmail}`);
       } catch (emailError) {
@@ -221,14 +244,8 @@ export class VisitService {
               subject: `Contract Signed - ${customerName}`,
               body: `<p>A new contract has been signed by <strong>${customerName}</strong> using your template "<strong>${template.title}</strong>".</p>
                      <p>Contract ID: ${contractId}</p>
-                     <p>Please find the signed contract attached.</p>`,
-              attachments: [
-                {
-                  filename: `contract_${contractId}.html`,
-                  content: htmlBuffer,
-                  contentType: "text/html",
-                },
-              ],
+                     <p>Please find the signed contract PDF attached.</p>`,
+              attachments: [attachment],
             });
             console.log(`Contract signed email sent to partner: ${partner.contact_email}`);
           } catch (emailError) {
