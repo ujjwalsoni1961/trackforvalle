@@ -67,4 +67,24 @@ class ContractsRepositoryImpl extends ContractsRepository {
       return Left(APIFailure.fromAPIException(e));
     }
   }
+
+  @override
+  ResultFuture<Map<String, dynamic>> createDocuSealSubmission({
+    required int templateId,
+    required String signerEmail,
+    required String signerName,
+    Map<String, dynamic>? metadata,
+  }) async {
+    try {
+      final result = await _remoteDataSource.createDocuSealSubmission(
+        templateId: templateId,
+        signerEmail: signerEmail,
+        signerName: signerName,
+        metadata: metadata,
+      );
+      return Right(result);
+    } on APIException catch (e) {
+      return Left(APIFailure.fromAPIException(e));
+    }
+  }
 }

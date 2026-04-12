@@ -269,6 +269,7 @@ export class AddContractComponent implements OnInit {
       assigned_sales_rep_ids: [[], Validators.required],
       status: ['draft', Validators.required],
       partner_id: [null],
+      docuseal_template_id: [null],
       templateId: [''], // For template selection
       dropdownFields: this.fb.array([]) // For dynamic dropdown fields
     });
@@ -323,7 +324,8 @@ export class AddContractComponent implements OnInit {
           content: this.currentTemplate.content,
           assigned_sales_rep_ids: this.currentTemplate.assigned_sales_rep_ids,
           status: this.currentTemplate.status,
-          partner_id: this.currentTemplate.partner_id || null
+          partner_id: this.currentTemplate.partner_id || null,
+          docuseal_template_id: this.currentTemplate.docuseal_template_id || null
         });
         
         // Load existing dropdown fields
@@ -403,7 +405,7 @@ export class AddContractComponent implements OnInit {
     }
 
     this.isLoading = true;
-    const { title, content, assigned_sales_rep_ids, status, partner_id } = this.contractForm.value;
+    const { title, content, assigned_sales_rep_ids, status, partner_id, docuseal_template_id } = this.contractForm.value;
     const dropdownFields = this.buildDropdownFieldsPayload();
 
     const contractData: any = {
@@ -412,7 +414,8 @@ export class AddContractComponent implements OnInit {
       assigned_sales_rep_ids,
       status,
       ...(Object.keys(dropdownFields).length > 0 && { dropdown_fields: dropdownFields }),
-      ...(partner_id && { partner_id })
+      ...(partner_id && { partner_id }),
+      ...(docuseal_template_id && { docuseal_template_id })
     };
     
     const apiCall = this.isEditMode && this.templateId

@@ -36,6 +36,7 @@ interface Contract {
   dropdown_fields?: { [key: string]: DropdownField };
   partner_id?: number;
   partner?: { partner_id: number; company_name: string } | null;
+  docuseal_template_id?: number | null;
 }
 
 interface SignedContract {
@@ -238,7 +239,8 @@ export class ContractsService {
             created_at: item.created_at,
             updated_at: item.updated_at,
             partner_id: item.partner_id || null,
-            partner: item.partner || null
+            partner: item.partner || null,
+            docuseal_template_id: item.docuseal_template_id || null
           })),
           pagination: { total: response.data.length }
         }
@@ -289,7 +291,8 @@ export class ContractsService {
           updated_at: response.data.updated_at,
           dropdown_fields: response.data.dropdown_fields || {},
           partner_id: response.data.partner_id || null,
-          partner: response.data.partner || null
+          partner: response.data.partner || null,
+          docuseal_template_id: response.data.docuseal_template_id || null
         }
       }))
     );
@@ -340,5 +343,34 @@ export class ContractsService {
 
   getContractHtml(id: number): Observable<string> {
     return this.http.get(`${this.baseUrl}/contract/${id}/pdf`, { responseType: 'text' });
+  }
+
+  // ─── DocuSeal API methods ───
+
+  getDocuSealTemplates(): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/docuseal/templates`);
+  }
+
+  getDocuSealTemplate(id: number): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/docuseal/templates/${id}`);
+  }
+
+  createDocuSealSubmission(data: {
+    template_id: number;
+    submitters: Array<{ email: string; name?: string; role?: string; fields?: any[] }>;
+    metadata?: Record<string, any>;
+  }): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/docuseal/submissions`, data);
+  }
+
+  getDocuSealSubmissions(params?: { template_id?: number; limit?: number }): Observable<any> {
+    let httpParams = new HttpParams();
+    if (params?.template_id) httpParams = httpParams.set('template_id', params.template_id.toString());
+    if (params?.limit) httpParams = httpParams.set('limit', params.limit.toString());
+    return this.http.get<any>(`${this.baseUrl}/docuseal/submissions`, { params: httpParams });
+  }
+
+  getDocuSealSubmission(id: number): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/docuseal/submissions/${id}`);
   }
 }

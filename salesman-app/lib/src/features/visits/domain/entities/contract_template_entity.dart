@@ -35,16 +35,20 @@ class ContractTemplateEntity extends Equatable {
   final String templateString;
   final String title;
   final Map<String, DropdownField>? dropdownFields;
+  final int? docusealTemplateId;
 
   const ContractTemplateEntity({
     required this.id,
     required this.title,
     required this.templateString,
     this.dropdownFields,
+    this.docusealTemplateId,
   });
 
+  bool get hasDocuSeal => docusealTemplateId != null && docusealTemplateId! > 0;
+
   @override
-  List<Object?> get props => [id, title, templateString, dropdownFields];
+  List<Object?> get props => [id, title, templateString, dropdownFields, docusealTemplateId];
 }
 
 class ContractTemplateListEntity extends Equatable {

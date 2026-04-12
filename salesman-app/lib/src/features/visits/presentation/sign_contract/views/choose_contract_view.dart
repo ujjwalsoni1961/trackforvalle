@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:track/src/core/injector/injector.dart';
 import 'package:track/src/core/ui/routes/routes.dart';
 import 'package:track/src/core/ui/utility/center_loading_text_widget.dart';
 import 'package:track/src/core/ui/utility/toast.dart';
@@ -10,7 +11,9 @@ import 'package:track/src/core/ui/widgets/center_error_widget.dart';
 import 'package:track/src/core/ui/widgets/gap.dart';
 import 'package:track/src/core/ui/widgets/my_scaffold.dart';
 import 'package:track/src/features/visits/domain/entities/contract_template_entity.dart';
+import 'package:track/src/features/visits/domain/repositories/contracts_repository.dart';
 import 'package:track/src/features/visits/presentation/sign_contract/cubit/get_contract_templates_cubit.dart';
+import 'package:track/src/features/visits/presentation/sign_contract/views/docuseal_sign_view.dart';
 import 'package:track/src/features/visits/presentation/sign_contract/views/sign_contract_view.dart';
 import 'package:track/src/features/visits/presentation/sign_contract/widgets/contract_preview.dart';
 
@@ -72,6 +75,8 @@ class _ChooseContractViewState extends State<ChooseContractView> {
     return variables.map((v) => v.toLowerCase()).toSet().toList();
   }
 
+  bool _isCreatingSubmission = false;
+
   void _submitForm(List<ContractTemplateEntity> templates) {
     if (_selectedId == null) {
       context.errorBar("Choose a template...");
@@ -79,6 +84,14 @@ class _ChooseContractViewState extends State<ChooseContractView> {
     }
 
     final selectedTemplate = templates.firstWhere((t) => t.id == _selectedId);
+
+    // If template has a DocuSeal template ID, create a submission and open WebView
+    if (selectedTemplate.hasDocuSeal) {
+      _startDocuSealSigning(selectedTemplate);
+      return;
+    }
+
+    // Otherwise use the existing signing flow
     context.push(
       Routes.signContractView,
       extra: SignContractViewPageParams(
@@ -89,6 +102,56 @@ class _ChooseContractViewState extends State<ChooseContractView> {
         dropdownFields: selectedTemplate.dropdownFields,
       ),
     );
+  }
+
+  Future<void> _startDocuSealSigning(ContractTemplateEntity template) async {
+    if (_isCreatingSubmission) return;
+    setState(() => _isCreatingSubmission = true);
+
+    try {
+      final repo = sl<ContractsRepository>();
+      final result = await repo.createDocuSealSubmission(
+        templateId: template.docusealTemplateId!,
+        signerEmail: 'customer@example.com',
+        signerName: 'Customer',
+        metadata: {
+          'lead_id': widget.params.leadId,
+          'visit_id': widget.params.visitId,
+          'contract_template_id': template.id,
+        },
+      );
+
+      result.fold(
+        (failure) {
+          if (mounted) {
+            context.errorBar('Failed to create signing session: ${failure.message}');
+          }
+        },
+        (data) {
+          final embedSrc = data['embed_src'] as String?;
+          if (embedSrc != null && embedSrc.isNotEmpty && mounted) {
+            context.push(
+              RoutePaths.docusealSign,
+              extra: DocuSealSignViewParams(
+                signingUrl: embedSrc,
+                templateName: template.title,
+                leadId: widget.params.leadId,
+              ),
+            );
+          } else if (mounted) {
+            context.errorBar('No signing URL received from DocuSeal');
+          }
+        },
+      );
+    } catch (e) {
+      if (mounted) {
+        context.errorBar('Error: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isCreatingSubmission = false);
+      }
+    }
   }
 
   @override
@@ -234,12 +297,19 @@ class _ChooseContractViewState extends State<ChooseContractView> {
                     ),
                   ),
                   const GapV(32),
-                  ButtonPrimary(
-                    text: "Continue",
-                    onPressed: () {
-                      _submitForm(state.templates);
-                    },
-                  ),
+                  if (_isCreatingSubmission)
+                    const Center(child: CircularProgressIndicator())
+                  else
+                    ButtonPrimary(
+                      text: _selectedId != null &&
+                              state.templates
+                                  .any((t) => t.id == _selectedId && t.hasDocuSeal)
+                          ? "Sign with DocuSeal"
+                          : "Continue",
+                      onPressed: () {
+                        _submitForm(state.templates);
+                      },
+                    ),
                   const GapV(32),
                 ],
               ),

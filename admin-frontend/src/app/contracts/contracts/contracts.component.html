@@ -2,12 +2,20 @@
   <!-- Header -->
   <div class="flex justify-between items-center mb-7">
     <h1 class="text-lg font-bold">Contract Templates</h1>
-    <button mat-flat-button
-            color="primary"
-            (click)="navigateToAddContract()"
-            *ngIf="canCreateContracts">
-      <mat-icon>add</mat-icon> Create Contract
-    </button>
+    <div class="flex gap-3">
+      <button mat-stroked-button
+              color="primary"
+              (click)="openDocuSeal()"
+              *ngIf="canCreateContracts">
+        <mat-icon>open_in_new</mat-icon> Create in DocuSeal
+      </button>
+      <button mat-flat-button
+              color="primary"
+              (click)="navigateToAddContract()"
+              *ngIf="canCreateContracts">
+        <mat-icon>add</mat-icon> Create Contract
+      </button>
+    </div>
   </div>
 
   <!-- Filter Section -->
@@ -68,6 +76,15 @@
           <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Assigned Sales Reps</th>
           <td mat-cell *matCellDef="let contract">{{ getSalesRepNames(contract) }}</td>
         </ng-container>
+        <ng-container matColumnDef="docusealId">
+          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">DocuSeal ID</th>
+          <td mat-cell *matCellDef="let contract">
+            <span *ngIf="contract.docuseal_template_id" class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">
+              #{{ contract.docuseal_template_id }}
+            </span>
+            <span *ngIf="!contract.docuseal_template_id" class="text-gray-400">-</span>
+          </td>
+        </ng-container>
         <ng-container matColumnDef="status">
           <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Status</th>
           <td mat-cell *matCellDef="let contract">
@@ -98,6 +115,12 @@
                     (click)="openReassignContractDialog(contract)"
                     *ngIf="canEditContract(contract)">
               <mat-icon>assignment_ind</mat-icon>
+            </button>
+            <button mat-icon-button
+                    matTooltip="Link DocuSeal Template"
+                    (click)="openLinkDocuSealDialog(contract)"
+                    *ngIf="canEditContract(contract)">
+              <mat-icon>link</mat-icon>
             </button>
             <button mat-icon-button
                     matTooltip="Delete"
@@ -158,6 +181,33 @@
     <mat-dialog-actions>
       <button mat-button mat-dialog-close>Cancel</button>
       <button mat-flat-button color="primary" (click)="reassignContract()" [disabled]="contractForm.get('assigned_sales_rep_ids')?.invalid">Save</button>
+    </mat-dialog-actions>
+  </ng-template>
+
+  <!-- Link DocuSeal Template Dialog -->
+  <ng-template #linkDocuSealDialog>
+    <h2 mat-dialog-title>Link DocuSeal Template</h2>
+    <mat-dialog-content>
+      <p class="mb-4 text-sm text-gray-600">Enter the DocuSeal template ID to link to this contract template. You can find the ID in DocuSeal after creating a template.</p>
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>DocuSeal Template ID</mat-label>
+        <input matInput type="number" [(ngModel)]="docusealTemplateIdInput" placeholder="e.g. 12345">
+      </mat-form-field>
+      <div *ngIf="docuSealTemplates.length > 0" class="mt-2">
+        <p class="text-sm font-medium mb-2">Or select from available DocuSeal templates:</p>
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>DocuSeal Templates</mat-label>
+          <mat-select [(ngModel)]="docusealTemplateIdInput">
+            <mat-option *ngFor="let t of docuSealTemplates" [value]="t.id">
+              {{ t.name }} (ID: {{ t.id }})
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </mat-dialog-content>
+    <mat-dialog-actions>
+      <button mat-button mat-dialog-close>Cancel</button>
+      <button mat-flat-button color="primary" (click)="linkDocuSealTemplate()" [disabled]="!docusealTemplateIdInput">Link</button>
     </mat-dialog-actions>
   </ng-template>
 </div>

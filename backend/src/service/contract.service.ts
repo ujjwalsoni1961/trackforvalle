@@ -13,6 +13,7 @@ export const ContractTemplateService = {
     status: string;
     assigned_sales_rep_ids: number[];
     partner_id?: number;
+    docuseal_template_id?: number;
     dropdown_fields?: {
       [fieldName: string]: {
         label: string;
@@ -44,6 +45,7 @@ export const ContractTemplateService = {
         assigned_sales_reps: salesReps,
         dropdown_fields: payload.dropdown_fields || undefined,
         ...(payload.partner_id && { partner_id: payload.partner_id }),
+        ...(payload.docuseal_template_id && { docuseal_template_id: payload.docuseal_template_id }),
       });
 
       const savedTemplate = await contractRepo.save(newTemplate);
@@ -280,6 +282,7 @@ export const ContractTemplateService = {
       content?: string;
       status?: string;
       assigned_sales_rep_ids?: number[];
+      docuseal_template_id?: number | null;
       dropdown_fields?: {
         [fieldName: string]: {
           label: string;
@@ -327,6 +330,9 @@ export const ContractTemplateService = {
       }
       if (updates.dropdown_fields !== undefined) {
         existingTemplate.dropdown_fields = updates.dropdown_fields;
+      }
+      if (updates.docuseal_template_id !== undefined) {
+        existingTemplate.docuseal_template_id = updates.docuseal_template_id as any;
       }
 
       // Update assigned sales reps if provided

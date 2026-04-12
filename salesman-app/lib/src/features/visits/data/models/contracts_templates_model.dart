@@ -7,6 +7,7 @@ class ContractsTemplatesModel extends ContractTemplateEntity {
     required super.templateString,
     required super.title,
     super.dropdownFields,
+    super.docusealTemplateId,
   });
 
   factory ContractsTemplatesModel.fromMap(DataMap map) {
@@ -42,6 +43,7 @@ class ContractsTemplatesModel extends ContractTemplateEntity {
       templateString: map['content'] as String,
       title: map['title'] as String,
       dropdownFields: dropdownFields,
+      docusealTemplateId: map['docuseal_template_id'] as int?,
     );
   }
 }

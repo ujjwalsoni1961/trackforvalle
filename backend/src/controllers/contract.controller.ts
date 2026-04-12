@@ -14,7 +14,7 @@ export class ContractTemplateController {
     this.getContractByLead = this.getContractByLead.bind(this);
   }
   async create(req: any, res: Response): Promise<void> {
-    const { title, content, assigned_manager_ids, assigned_sales_rep_ids, status, dropdown_fields, partner_id } =
+    const { title, content, assigned_manager_ids, assigned_sales_rep_ids, status, dropdown_fields, partner_id, docuseal_template_id } =
       req.body;
 
     // Support both old field name (assigned_manager_ids) and new (assigned_sales_rep_ids) for backwards compatibility
@@ -27,6 +27,7 @@ export class ContractTemplateController {
       assigned_sales_rep_ids: repIds,
       dropdown_fields,
       ...(partner_id && { partner_id }),
+      ...(docuseal_template_id && { docuseal_template_id }),
     });
     if (newTemplate.status >= 400) {
       ApiResponse.error(res, newTemplate.status, newTemplate.message);

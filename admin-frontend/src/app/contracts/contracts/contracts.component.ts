@@ -18,6 +18,7 @@ import { finalize } from 'rxjs/operators';
 import { UsersService } from '../../users/users.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { AuthService } from '../../auth/auth.service';
+import { MatChipsModule } from '@angular/material/chips';
 
 interface DropdownOption {
   label: string;
@@ -51,6 +52,7 @@ interface Contract {
   dropdown_fields?: { [key: string]: DropdownField };
   partner_id?: number;
   partner?: { partner_id: number; company_name: string } | null;
+  docuseal_template_id?: number | null;
 }
 
 interface SalesRep {
@@ -76,7 +78,8 @@ interface SalesRep {
     MatSnackBarModule,
     MatDialogModule,
     MatTooltipModule,
-    MatPaginatorModule
+    MatPaginatorModule,
+    MatChipsModule
   ],
   templateUrl: './contracts.component.html',
   styleUrl: './contracts.component.scss'
@@ -84,10 +87,13 @@ interface SalesRep {
 export class ContractsComponent implements OnInit {
   @ViewChild('viewContractDialog') viewContractDialog!: TemplateRef<any>;
   @ViewChild('reassignContractDialog') reassignContractDialog!: TemplateRef<any>;
+  @ViewChild('linkDocuSealDialog') linkDocuSealDialog!: TemplateRef<any>;
   contracts: Contract[] = [];
   filteredContracts: Contract[] = [];
   salesReps: SalesRep[] = [];
-  displayedColumns: string[] = ['title', 'partnerCompany', 'salesRepNames', 'status', 'createdAt', 'actions'];
+  docuSealTemplates: any[] = [];
+  docusealTemplateIdInput: number | null = null;
+  displayedColumns: string[] = ['title', 'partnerCompany', 'docusealId', 'salesRepNames', 'status', 'createdAt', 'actions'];
   filterForm: FormGroup;
   contractForm: FormGroup;
   isLoading = false;
@@ -337,5 +343,44 @@ export class ContractsComponent implements OnInit {
 
   canDeleteContract(contract: Contract): boolean {
     return this.canEditAllContracts;
+  }
+
+  openDocuSeal() {
+    window.open('https://docuseal-585556848696.europe-west1.run.app', '_blank');
+  }
+
+  openLinkDocuSealDialog(contract: Contract) {
+    this.selectedContract = contract;
+    this.docusealTemplateIdInput = contract.docuseal_template_id || null;
+    // Load DocuSeal templates list
+    this.contractsService.getDocuSealTemplates().subscribe({
+      next: (response: any) => {
+        this.docuSealTemplates = response?.data || [];
+      },
+      error: () => {
+        this.docuSealTemplates = [];
+      }
+    });
+    this.dialog.open(this.linkDocuSealDialog, { width: '500px' });
+  }
+
+  linkDocuSealTemplate() {
+    if (!this.selectedContract || !this.docusealTemplateIdInput) return;
+
+    this.isLoading = true;
+    this.contractsService.updateContract(this.selectedContract.id, {
+      docuseal_template_id: this.docusealTemplateIdInput
+    } as any).pipe(
+      finalize(() => this.isLoading = false)
+    ).subscribe({
+      next: () => {
+        this.snackBar.open('DocuSeal template linked successfully', 'Close', { duration: 3000 });
+        this.dialog.closeAll();
+        this.loadContracts();
+      },
+      error: () => {
+        this.snackBar.open('Error linking DocuSeal template', 'Close', { duration: 3000 });
+      }
+    });
   }
 }

@@ -26,6 +26,9 @@ export class ContractTemplate {
   @Column({ type: "varchar", default: "active" })
   status: string;
 
+  @Column({ type: "int", nullable: true })
+  docuseal_template_id: number;
+
   @Column({ type: "json", nullable: true })
   dropdown_fields: {
     [fieldName: string]: {

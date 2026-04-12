@@ -26,6 +26,12 @@ abstract class ContractsRemoteDataSource {
     required int contractTemplateID,
     required File contractPdf,
   });
+  Future<Map<String, dynamic>> createDocuSealSubmission({
+    required int templateId,
+    required String signerEmail,
+    required String signerName,
+    Map<String, dynamic>? metadata,
+  });
 }
 
 class ContractsRemoteDataSourceImpl extends ContractsRemoteDataSource {
@@ -84,6 +90,48 @@ class ContractsRemoteDataSourceImpl extends ContractsRemoteDataSource {
       } else {
         throw APIException(
           message: response.data?['error']?['message']?.toString() ?? 'Request failed',
+          statusCode: response.statusCode ?? 500,
+        );
+      }
+    } on APIException {
+      rethrow;
+    } catch (e) {
+      throw APIException(
+        message: e.toString(),
+        statusCode: 505,
+      );
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> createDocuSealSubmission({
+    required int templateId,
+    required String signerEmail,
+    required String signerName,
+    Map<String, dynamic>? metadata,
+  }) async {
+    try {
+      final response = await _api.dio.post('/docuseal/submissions', data: {
+        'template_id': templateId,
+        'submitters': [
+          {
+            'email': signerEmail,
+            'name': signerName,
+            'role': 'Signer',
+          }
+        ],
+        if (metadata != null) 'metadata': metadata,
+      });
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data['data'];
+        // The response is an array of submitters with embed_src
+        if (data is List && data.isNotEmpty) {
+          return Map<String, dynamic>.from(data[0] as Map);
+        }
+        return Map<String, dynamic>.from(data as Map);
+      } else {
+        throw APIException(
+          message: response.data?['message']?.toString() ?? 'Failed to create submission',
           statusCode: response.statusCode ?? 500,
         );
       }
