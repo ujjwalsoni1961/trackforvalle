@@ -339,6 +339,6 @@ export class ContractsService {
   }
 
   getContractHtml(id: number): Observable<string> {
-    return this.http.get(`${this.baseUrl}/contract/${id}`, { responseType: 'text' });
+    return this.http.get(`${this.baseUrl}/contract/${id}/pdf`, { responseType: 'text' });
   }
 }

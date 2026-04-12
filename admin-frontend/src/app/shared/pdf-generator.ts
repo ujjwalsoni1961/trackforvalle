@@ -18,27 +18,89 @@ function loadHtml2Pdf(): Promise<void> {
 }
 
 /**
- * Generate a PDF from HTML string and trigger download
+ * Extract styles and body from a full HTML document string
+ */
+function extractContent(htmlDoc: string): { styles: string; body: string } {
+  // Extract all <style> content
+  const styleMatches = htmlDoc.match(/<style[^>]*>([\s\S]*?)<\/style>/gi) || [];
+  const styles = styleMatches.map(s => {
+    const match = s.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+    return match ? match[1] : '';
+  }).join('\n');
+
+  // Extract <body> content, or fall back to everything
+  const bodyMatch = htmlDoc.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  const body = bodyMatch ? bodyMatch[1] : htmlDoc;
+
+  return { styles, body };
+}
+
+/**
+ * Generate a PDF from HTML string and trigger download.
+ * Handles full HTML documents (with <html>, <head>, <style>, <body>)
+ * by extracting styles and injecting them into the render container.
  */
 export async function downloadPdfFromHtml(htmlContent: string, filename: string): Promise<void> {
   await loadHtml2Pdf();
 
-  // Create a temporary container
+  const { styles, body } = extractContent(htmlContent);
+
+  // Create a temporary container with extracted styles
   const container = document.createElement('div');
-  container.innerHTML = htmlContent;
-  container.style.position = 'absolute';
-  container.style.left = '-9999px';
+  if (styles) {
+    const styleEl = document.createElement('style');
+    styleEl.textContent = styles;
+    container.appendChild(styleEl);
+  }
+
+  const contentDiv = document.createElement('div');
+  contentDiv.innerHTML = body;
+  container.appendChild(contentDiv);
+
+  // Position off-screen but still renderable by html2canvas
+  container.style.position = 'fixed';
+  container.style.left = '0';
   container.style.top = '0';
-  container.style.width = '210mm'; // A4 width
+  container.style.width = '210mm';
+  container.style.zIndex = '-1000';
+  container.style.opacity = '0';
+  container.style.background = 'white';
   document.body.appendChild(container);
+
+  // Wait for images to load
+  const images = container.querySelectorAll('img');
+  if (images.length) {
+    await Promise.all(
+      Array.from(images).map(
+        (img) =>
+          new Promise<void>((resolve) => {
+            if (img.complete) {
+              resolve();
+            } else {
+              img.onload = () => resolve();
+              img.onerror = () => resolve();
+            }
+          })
+      )
+    );
+  }
+
+  // Small delay for styles to apply
+  await new Promise((resolve) => setTimeout(resolve, 200));
 
   try {
     const opt = {
-      margin: [10, 10, 10, 10],
+      margin: [5, 5, 5, 5],
       filename: filename.endsWith('.pdf') ? filename : `${filename}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, allowTaint: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
     };
 
     await html2pdf().set(opt).from(container).save();
