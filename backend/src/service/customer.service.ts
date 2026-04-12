@@ -22,6 +22,7 @@ import { Territory } from "../models/Territory.entity";
 import { Brackets, In } from "typeorm";
 import { GeocodingService } from "../utils/geoCode.service";
 import { ManagerSalesRep } from "../models/ManagerSalesRep.entity";
+import { Partner } from "../models/Partner.entity";
 
 const addressService = new AddressService();
 const territoryService = new TerritoryService();
@@ -123,6 +124,9 @@ export class CustomerService {
       customer.created_by = userId.toString();
       customer.updated_by = userId.toString();
       customer.org_id = org_id;
+      if (data.partner_id) {
+        customer.partner_id = data.partner_id;
+      }
       const savedCustomer = await queryRunner.manager.save(Leads, customer);
       await queryRunner.commitTransaction();
       return {
@@ -534,6 +538,8 @@ export class CustomerService {
       source?: string;
       managerId?: number;
       salesmanId?: number;
+      partnerId?: number;
+      territoryId?: string;
     },
     userId: number
   ): Promise<{
@@ -629,6 +635,24 @@ export class CustomerService {
       // Filter by source
       if (source) {
         query.andWhere("leads.source = :source", { source });
+      }
+
+      // Filter by partner
+      if (filters.partnerId) {
+        query.andWhere("leads.partner_id = :partnerId", {
+          partnerId: filters.partnerId,
+        });
+      }
+
+      // Filter by territory
+      if (filters.territoryId) {
+        if (filters.territoryId === "none") {
+          query.andWhere("leads.territory_id IS NULL");
+        } else {
+          query.andWhere("leads.territory_id = :territoryId", {
+            territoryId: parseInt(filters.territoryId),
+          });
+        }
       }
 
       // Pagination and sorting
@@ -801,6 +825,19 @@ export class CustomerService {
           );
         }
       });
+      // Build partner name → id lookup (case-insensitive)
+      const partners = await dataSource.manager
+        .find(Partner, {
+          where: { org_id, is_active: true },
+          select: ["partner_id", "company_name"],
+        })
+        .catch((e) => {
+          throw new Error(`Partner fetch failed: ${e.message}`);
+        });
+      const partnerLookup = new Map<string, number>(
+        partners.map((p) => [p.company_name.toLowerCase(), p.partner_id])
+      );
+
       const geocodeCache = new Map<
         string,
         { latitude: number; longitude: number }
@@ -948,6 +985,15 @@ export class CustomerService {
             }
             addresses.push(address);
 
+            // Resolve partner_id from partner_name or direct partner_id
+            let resolvedPartnerId: number | undefined;
+            if (row.partner_id) {
+              resolvedPartnerId = typeof row.partner_id === 'number' ? row.partner_id : parseInt(row.partner_id);
+            } else if (row.partner_name) {
+              const partnerName = row.partner_name.trim().toLowerCase();
+              resolvedPartnerId = partnerLookup.get(partnerName) || undefined;
+            }
+
             const customer = queryRunner.manager.create(Leads, {
               pending_assignment: true,
               is_active: true,
@@ -962,6 +1008,7 @@ export class CustomerService {
                 ? existingAddress.address_id
                 : undefined,
               territory_id: territoryId,
+              partner_id: resolvedPartnerId,
             });
             newCustomers.push(customer);
             customerToAddressIndex.set(

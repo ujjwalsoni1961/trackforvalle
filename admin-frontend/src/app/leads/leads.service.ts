@@ -91,7 +91,9 @@ export class LeadsService {
     page: number = 1,
     limit: number = 10,
     salesmanId: number | null = null,
-    managerId: number | null = null
+    managerId: number | null = null,
+    partnerId: number | null = null,
+    territoryId: string | null = null
   ): Observable<ApiResponse> {
     let params = new HttpParams()
       .set('search', search)
@@ -104,8 +106,24 @@ export class LeadsService {
     if (managerId) {
       params = params.set('managerId', managerId.toString());
     }
+    if (partnerId) {
+      params = params.set('partnerId', partnerId.toString());
+    }
+    if (territoryId) {
+      params = params.set('territoryId', territoryId);
+    }
 
     return this.http.get<ApiResponse>(`${this.baseUrl}/leads`, { params });
+  }
+
+  getPartners(): Observable<any> {
+    const params = new HttpParams().set('limit', '500');
+    return this.http.get(`${this.baseUrl}/partner`, { params });
+  }
+
+  getTerritories(): Observable<any> {
+    const params = new HttpParams().set('limit', '500');
+    return this.http.get(`${this.baseUrl}/territory`, { params });
   }
 
   importLeads(payload: any): Observable<any> {

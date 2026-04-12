@@ -40,6 +40,25 @@
       </mat-select>
     </mat-form-field>
     <mat-form-field class="w-1/4">
+      <mat-label>Partner</mat-label>
+      <mat-select [(ngModel)]="partnerFilter" (selectionChange)="onPartnerFilterChange($event.value)">
+        <mat-option [value]="null">All Partners</mat-option>
+        <mat-option *ngFor="let partner of partners" [value]="partner.partner_id">
+          {{ partner.company_name }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field class="w-1/4">
+      <mat-label>Territory</mat-label>
+      <mat-select [(ngModel)]="territoryFilter" (selectionChange)="onTerritoryFilterChange($event.value)">
+        <mat-option [value]="null">All Territories</mat-option>
+        <mat-option value="none">No Territory</mat-option>
+        <mat-option *ngFor="let territory of territories" [value]="territory.territory_id.toString()">
+          {{ territory.name }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field class="w-1/4">
       <mat-label>Bulk Assign to Sales Rep</mat-label>
       <mat-select [(ngModel)]="selectedSalesman">
         <mat-option value="">Select Sales Rep</mat-option>

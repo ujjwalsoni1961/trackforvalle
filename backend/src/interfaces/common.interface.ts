@@ -77,6 +77,8 @@ export class LeadImportDto {
   country?: string;
   org_id: number;
   status?: LeadStatus;
+  partner_id?: number;
+  partner_name?: string;
 }
 export class UpdateLeadDto {
   contact_name?: string;

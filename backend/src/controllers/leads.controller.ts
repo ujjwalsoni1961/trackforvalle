@@ -143,6 +143,10 @@ export class LeadsController {
     const salesmanId = req.query.salesmanId
       ? parseInt(req.query.salesmanId)
       : undefined;
+    const partnerId = req.query.partnerId
+      ? parseInt(req.query.partnerId)
+      : undefined;
+    const territoryId = req.query.territoryId as string | undefined;
     const filters = {
       page,
       limit,
@@ -151,6 +155,8 @@ export class LeadsController {
       source,
       managerId,
       salesmanId,
+      partnerId,
+      territoryId,
     };
     const userId = parseInt(req.user.user_id);
     const response = await customerService.getAllCustomers(filters, userId);

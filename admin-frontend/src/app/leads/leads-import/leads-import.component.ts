@@ -19,6 +19,7 @@ interface Lead {
   postalCode?: string;
   country?: string;
   comments?: string;
+  partner?: string;
   errors?: string[];
 }
 
@@ -44,6 +45,7 @@ export class LeadsImportComponent implements OnInit {
   columns: string[] = [];
   mappings: Mapping[] = [];
   previewData: Lead[] = [];
+  partners: { partner_id: number; company_name: string }[] = [];
   systemFields = [
     { id: 'customerName', label: 'Customer Name' },
     { id: 'email', label: 'Email' },
@@ -53,7 +55,8 @@ export class LeadsImportComponent implements OnInit {
     { id: 'state', label: 'State' },
     { id: 'postalCode', label: 'Postal Code' },
     { id: 'country', label: 'Country' },
-    { id: 'comments', label: 'Comments' }
+    { id: 'comments', label: 'Comments' },
+    { id: 'partner', label: 'Partner' }
   ];
   requiredFields = ['streetAddress', 'city', 'postalCode'];
   displayedColumns: string[] = ['serialNumber'];
@@ -79,7 +82,21 @@ export class LeadsImportComponent implements OnInit {
     });
   }
 
-  ngOnInit() { }
+  ngOnInit() {
+    this.loadPartners();
+  }
+
+  loadPartners(): void {
+    this.leadsService.getPartners().subscribe({
+      next: (response: any) => {
+        this.partners = (response.data || []).map((p: any) => ({
+          partner_id: p.partner_id,
+          company_name: p.company_name
+        }));
+      },
+      error: () => {}
+    });
+  }
 
   get leads(): FormArray {
     return this.manualLeadsForm.get('leads') as FormArray;
@@ -95,7 +112,8 @@ export class LeadsImportComponent implements OnInit {
       state: [''],
       postalCode: [''],
       country: [''],
-      comments: ['']
+      comments: [''],
+      partner_id: [null]
     });
   }
 
@@ -151,7 +169,8 @@ export class LeadsImportComponent implements OnInit {
         state: lead.state,
         postal_code: lead.postalCode,
         country: lead.country,
-        comments: this.isBlankish(lead.comments) ? '' : lead.comments
+        comments: this.isBlankish(lead.comments) ? '' : lead.comments,
+        partner_id: (lead as any).partner_id || undefined
       }));
 
 
@@ -298,6 +317,7 @@ export class LeadsImportComponent implements OnInit {
     if (lowerCol.includes('postal') || lowerCol.includes('postin')) return 'postalCode';
     if (lowerCol.includes('country')) return 'country';
     if (lowerCol.includes('comment') || lowerCol.includes('huomio') || lowerCol.includes('kommentti')) return 'comments';
+    if (lowerCol.includes('partner') || lowerCol.includes('kumppani')) return 'partner';
     return '';
   }
 
@@ -405,7 +425,8 @@ export class LeadsImportComponent implements OnInit {
       state: row.state,
       postal_code: row.postalCode,
       country: row.country,
-      comments: row.comments
+      comments: row.comments,
+      partner_name: row.partner || undefined
     }));
 
     if (!leads.length) {

@@ -123,8 +123,12 @@ export class AllLeadsComponent implements OnInit, OnDestroy {
   statusFilter: LeadStatus | '' = '';
   salesmanFilter: number | null = null;
   managerFilter: number | null = null;
+  partnerFilter: number | null = null;
+  territoryFilter: string | null = null;
   salesmen: User[] = [];
   managers: User[] = [];
+  partners: { partner_id: number; company_name: string }[] = [];
+  territories: { territory_id: number; name: string }[] = [];
   currentUserRole: string = '';
   canEditLeads = false;
   canDeleteLeads = false;
@@ -162,6 +166,8 @@ export class AllLeadsComponent implements OnInit, OnDestroy {
     this.setupSearchDebounce();
     this.loadSalesmen();
     this.loadManagers();
+    this.loadPartners();
+    this.loadTerritories();
     this.fetchLeadStatusColors(); // Fetch status colors on init
     this.fetchLeads();
   }
@@ -217,6 +223,47 @@ export class AllLeadsComponent implements OnInit, OnDestroy {
     });
   }
 
+  loadPartners(): void {
+    this.leadsService.getPartners().subscribe({
+      next: (response: any) => {
+        this.partners = (response.data || []).map((p: any) => ({
+          partner_id: p.partner_id,
+          company_name: p.company_name
+        }));
+      },
+      error: (err: any) => {
+        console.error('Error loading partners:', err);
+      }
+    });
+  }
+
+  loadTerritories(): void {
+    this.leadsService.getTerritories().subscribe({
+      next: (response: any) => {
+        const data = response.data?.territories || response.data || [];
+        this.territories = data.map((t: any) => ({
+          territory_id: t.territory_id,
+          name: t.name
+        }));
+      },
+      error: (err: any) => {
+        console.error('Error loading territories:', err);
+      }
+    });
+  }
+
+  onPartnerFilterChange(partnerId: number | null): void {
+    this.partnerFilter = partnerId;
+    this.currentPage = 1;
+    this.fetchLeads();
+  }
+
+  onTerritoryFilterChange(territoryId: string | null): void {
+    this.territoryFilter = territoryId;
+    this.currentPage = 1;
+    this.fetchLeads();
+  }
+
   // Fetch lead status colors from API
   fetchLeadStatusColors(): void {
     this.leadsService.getLeadStatusColors().subscribe({
@@ -253,7 +300,9 @@ export class AllLeadsComponent implements OnInit, OnDestroy {
       this.currentPage,
       this.pageSize,
       this.salesmanFilter,
-      this.managerFilter
+      this.managerFilter,
+      this.partnerFilter,
+      this.territoryFilter
     ).subscribe({
       next: (response) => {
         let leads = response.data.leads;

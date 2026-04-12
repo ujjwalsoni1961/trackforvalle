@@ -47,6 +47,15 @@
               <mat-label>Country</mat-label>
               <input matInput formControlName="country">
             </mat-form-field>
+            <mat-form-field class="w-full">
+              <mat-label>Partner</mat-label>
+              <mat-select formControlName="partner_id">
+                <mat-option [value]="null">None</mat-option>
+                <mat-option *ngFor="let partner of partners" [value]="partner.partner_id">
+                  {{ partner.company_name }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
             <mat-form-field class="w-full col-span-2">
               <mat-label>Comments</mat-label>
               <textarea matInput formControlName="comments" rows="3"></textarea>
