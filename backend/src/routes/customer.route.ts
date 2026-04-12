@@ -40,6 +40,12 @@ router.post(
   leadController.updateStatus
 );
 
+router.get(
+  "/lead-sets",
+  verifyToken,
+  leadController.getLeadSets
+);
+
 router.delete(
   "/:id",
   verifyToken,

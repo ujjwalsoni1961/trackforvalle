@@ -125,10 +125,12 @@ export class AllLeadsComponent implements OnInit, OnDestroy {
   managerFilter: number | null = null;
   partnerFilter: number | null = null;
   territoryFilter: string | null = null;
+  leadSetFilter: string | null = null;
   salesmen: User[] = [];
   managers: User[] = [];
   partners: { partner_id: number; company_name: string }[] = [];
   territories: { territory_id: number; name: string }[] = [];
+  leadSets: string[] = [];
   currentUserRole: string = '';
   canEditLeads = false;
   canDeleteLeads = false;
@@ -168,6 +170,7 @@ export class AllLeadsComponent implements OnInit, OnDestroy {
     this.loadManagers();
     this.loadPartners();
     this.loadTerritories();
+    this.loadLeadSets();
     this.fetchLeadStatusColors(); // Fetch status colors on init
     this.fetchLeads();
   }
@@ -252,6 +255,23 @@ export class AllLeadsComponent implements OnInit, OnDestroy {
     });
   }
 
+  loadLeadSets(): void {
+    this.leadsService.getLeadSets().subscribe({
+      next: (response: any) => {
+        this.leadSets = response.data || [];
+      },
+      error: (err: any) => {
+        console.error('Error loading lead sets:', err);
+      }
+    });
+  }
+
+  onLeadSetFilterChange(leadSet: string | null): void {
+    this.leadSetFilter = leadSet;
+    this.currentPage = 1;
+    this.fetchLeads();
+  }
+
   onPartnerFilterChange(partnerId: number | null): void {
     this.partnerFilter = partnerId;
     this.currentPage = 1;
@@ -302,7 +322,8 @@ export class AllLeadsComponent implements OnInit, OnDestroy {
       this.salesmanFilter,
       this.managerFilter,
       this.partnerFilter,
-      this.territoryFilter
+      this.territoryFilter,
+      this.leadSetFilter
     ).subscribe({
       next: (response) => {
         let leads = response.data.leads;

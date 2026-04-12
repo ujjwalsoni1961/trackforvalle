@@ -59,6 +59,15 @@
       </mat-select>
     </mat-form-field>
     <mat-form-field class="w-1/4">
+      <mat-label>Lead Set</mat-label>
+      <mat-select [(ngModel)]="leadSetFilter" (selectionChange)="onLeadSetFilterChange($event.value)">
+        <mat-option [value]="null">All Lead Sets</mat-option>
+        <mat-option *ngFor="let leadSet of leadSets" [value]="leadSet">
+          {{ leadSet }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field class="w-1/4">
       <mat-label>Bulk Assign to Sales Rep</mat-label>
       <mat-select [(ngModel)]="selectedSalesman">
         <mat-option value="">Select Sales Rep</mat-option>

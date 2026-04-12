@@ -48,13 +48,13 @@
               <input matInput formControlName="country">
             </mat-form-field>
             <mat-form-field class="w-full">
-              <mat-label>Partner</mat-label>
+              <mat-label>Partner *</mat-label>
               <mat-select formControlName="partner_id">
-                <mat-option [value]="null">None</mat-option>
                 <mat-option *ngFor="let partner of partners" [value]="partner.partner_id">
                   {{ partner.company_name }}
                 </mat-option>
               </mat-select>
+              <mat-error *ngIf="leads.at(i).get('partner_id')?.hasError('required')">Partner is required</mat-error>
             </mat-form-field>
             <mat-form-field class="w-full col-span-2">
               <mat-label>Comments</mat-label>
@@ -67,7 +67,7 @@
         <button mat-flat-button color="accent" (click)="addLeadForm()">
           <mat-icon>add</mat-icon>Add Another Lead
         </button>
-        <button mat-flat-button color="primary" [disabled]="isSubmitting" (click)="submitManualLeads()">
+        <button mat-flat-button color="primary" [disabled]="isSubmitting || manualLeadsForm.invalid" (click)="submitManualLeads()">
           <mat-icon *ngIf="isSubmitting" class="animate-spin">autorenew</mat-icon>Import Manual Leads
         </button>
       </div>
@@ -84,10 +84,35 @@
   <!-- File Upload Section -->
   <div class="border border-default dark:border-gray-700 rounded-2xl p-8 mb-7 bg-white dark:bg-gray-800">
     <h3 class="text-md font-medium dark:text-gray-300 mb-5">Upload CSV or Excel File</h3>
+
+    <!-- Mandatory Partner & Lead Set Name -->
+    <div class="grid grid-cols-2 gap-4 mb-5">
+      <mat-form-field class="w-full">
+        <mat-label>Partner *</mat-label>
+        <mat-select [(ngModel)]="csvPartner">
+          <mat-option *ngFor="let partner of partners" [value]="partner.partner_id">
+            {{ partner.company_name }}
+          </mat-option>
+        </mat-select>
+        <mat-error>Partner is required</mat-error>
+      </mat-form-field>
+      <mat-form-field class="w-full">
+        <mat-label>Lead Set Name *</mat-label>
+        <input matInput [(ngModel)]="csvLeadSetName" placeholder="e.g. Helsinki Q2 2026">
+        <mat-error>Lead Set Name is required</mat-error>
+      </mat-form-field>
+    </div>
+
+    <div *ngIf="!csvPartner || !csvLeadSetName.trim()" class="text-sm text-amber-600 dark:text-amber-400 mb-4">
+      Please select a Partner and enter a Lead Set Name before uploading a file.
+    </div>
+
     <div class="flex items-center justify-center border-2 border-dashed border-neutral-300 dark:border-gray-600 rounded-md p-6 hover:bg-neutral-100 dark:hover:bg-gray-700"
+         [class.opacity-50]="!csvPartner || !csvLeadSetName.trim()"
+         [class.pointer-events-none]="!csvPartner || !csvLeadSetName.trim()"
          (dragover)="onDragOver($event)" (drop)="onDrop($event)">
-      <input type="file" accept=".csv,.xlsx" (change)="onFileSelected($event)" class="hidden" #fileInput>
-      <button mat-flat-button color="primary" (click)="fileInput.click()">
+      <input type="file" accept=".csv,.xlsx" (change)="onFileSelected($event)" class="hidden" #fileInput [disabled]="!csvPartner || !csvLeadSetName.trim()">
+      <button mat-flat-button color="primary" (click)="fileInput.click()" [disabled]="!csvPartner || !csvLeadSetName.trim()">
         <mat-icon>upload</mat-icon> Choose File
       </button>
       <span class="ml-3 text-sm text-neutral-500 dark:text-neutral-400">or drag and drop here</span>

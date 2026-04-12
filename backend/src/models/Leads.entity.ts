@@ -86,6 +86,9 @@ export class Leads {
   @Column({ type: "int", nullable: true })
   partner_id: number;
 
+  @Column({ type: "varchar", length: 255, nullable: true })
+  lead_set: string;
+
   @ManyToOne(() => Organization, { onDelete: "SET NULL" })
   @JoinColumn({ name: "org_id" })
   organization: Organization;

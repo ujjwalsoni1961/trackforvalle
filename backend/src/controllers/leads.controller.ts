@@ -147,6 +147,7 @@ export class LeadsController {
       ? parseInt(req.query.partnerId)
       : undefined;
     const territoryId = req.query.territoryId as string | undefined;
+    const leadSet = req.query.leadSet as string | undefined;
     const filters = {
       page,
       limit,
@@ -157,6 +158,7 @@ export class LeadsController {
       salesmanId,
       partnerId,
       territoryId,
+      leadSet,
     };
     const userId = parseInt(req.user.user_id);
     const response = await customerService.getAllCustomers(filters, userId);
@@ -226,14 +228,39 @@ export class LeadsController {
     );
   }
 
+  async getLeadSets(req: any, res: Response): Promise<void> {
+    try {
+      const response = await customerService.getDistinctLeadSets();
+      if (response.status >= 400) {
+        return ApiResponse.error(res, response.status, response.message);
+      }
+      return ApiResponse.result(
+        res,
+        response.data ?? [],
+        response.status,
+        null,
+        response.message
+      );
+    } catch (error: any) {
+      return ApiResponse.error(
+        res,
+        httpStatusCodes.INTERNAL_SERVER_ERROR,
+        `Failed to get lead sets: ${error.message}`
+      );
+    }
+  }
+
   async importLeads(req: any, res: Response): Promise<void> {
     try {
       let data: LeadImportDto[] = req.body.leads;
+      const lead_set: string | undefined = req.body.lead_set;
       const { user_id, org_id } = req.user;
       const response = await customerService.importCustomers(
         data,
         user_id,
-        org_id
+        org_id,
+        500,
+        lead_set
       );
       if (response.status >= 400) {
         return ApiResponse.error(

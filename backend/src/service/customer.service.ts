@@ -38,6 +38,14 @@ export class CustomerService {
     data?: any;
     message: string;
   }> {
+    // Validate partner_id is provided
+    if (!data.partner_id) {
+      return {
+        status: httpStatusCodes.BAD_REQUEST,
+        message: "Partner is required. Please select a partner before creating a lead.",
+      };
+    }
+
     const dataSource = await getDataSource();
     const queryRunner = dataSource.createQueryRunner();
     await queryRunner.startTransaction();
@@ -544,6 +552,7 @@ export class CustomerService {
       salesmanId?: number;
       partnerId?: number;
       territoryId?: string;
+      leadSet?: string;
     },
     userId: number
   ): Promise<{
@@ -659,6 +668,13 @@ export class CustomerService {
         }
       }
 
+      // Filter by lead set
+      if (filters.leadSet) {
+        query.andWhere("leads.lead_set = :leadSet", {
+          leadSet: filters.leadSet,
+        });
+      }
+
       // Pagination and sorting
       query
         .skip(filters.skip)
@@ -768,7 +784,8 @@ export class CustomerService {
     data: LeadImportDto[],
     adminId: number,
     org_id: number,
-    batchSize: number = 500
+    batchSize: number = 500,
+    lead_set?: string
   ): Promise<{
     status: number;
     message: string;
@@ -790,6 +807,21 @@ export class CustomerService {
           message: "Import failed: No data provided",
           data: null,
           errors,
+        };
+      }
+
+      // Validate that all leads have a partner_id
+      const leadsWithoutPartner = data.filter(
+        (row) => !row.partner_id && !row.partner_name
+      );
+      if (leadsWithoutPartner.length === data.length) {
+        // No leads have partner info — require partner_id at the batch level
+        return {
+          status: httpStatusCodes.BAD_REQUEST,
+          message:
+            "Partner is required. Please select a partner before importing leads.",
+          data: null,
+          errors: ["Partner is required for all imported leads"],
         };
       }
 
@@ -1013,6 +1045,7 @@ export class CustomerService {
                 : undefined,
               territory_id: territoryId,
               partner_id: resolvedPartnerId,
+              lead_set: lead_set || undefined,
             });
             newCustomers.push(customer);
             customerToAddressIndex.set(
@@ -1256,6 +1289,36 @@ export class CustomerService {
       };
     } finally {
       await queryRunner.release();
+    }
+  }
+
+  async getDistinctLeadSets(): Promise<{
+    status: number;
+    data?: string[];
+    message: string;
+  }> {
+    const dataSource = await getDataSource();
+    try {
+      const results = await dataSource.manager
+        .createQueryBuilder(Leads, "leads")
+        .select("DISTINCT leads.lead_set", "lead_set")
+        .where("leads.lead_set IS NOT NULL")
+        .andWhere("leads.lead_set != ''")
+        .andWhere("leads.is_active = :isActive", { isActive: true })
+        .getRawMany();
+
+      const leadSets = results.map((r: any) => r.lead_set).sort();
+
+      return {
+        status: httpStatusCodes.OK,
+        data: leadSets,
+        message: "Lead sets retrieved successfully",
+      };
+    } catch (error: any) {
+      return {
+        status: httpStatusCodes.INTERNAL_SERVER_ERROR,
+        message: `Failed to retrieve lead sets: ${error.message}`,
+      };
     }
   }
 }

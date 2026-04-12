@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormGroup, FormBuilder, FormArray } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormGroup, FormBuilder, FormArray, Validators } from '@angular/forms';
 import { Papa, ParseResult } from 'ngx-papaparse';
 import { read, utils } from 'xlsx';
 import { LeadsService } from '../leads.service';
@@ -66,6 +66,8 @@ export class LeadsImportComponent implements OnInit {
   isSubmitting = false;
   mappingForm: FormGroup;
   manualLeadsForm: FormGroup;
+  csvPartner: number | null = null;
+  csvLeadSetName: string = '';
   private rawData: any[] = [];
 
   constructor(
@@ -113,7 +115,7 @@ export class LeadsImportComponent implements OnInit {
       postalCode: [''],
       country: [''],
       comments: [''],
-      partner_id: [null]
+      partner_id: [null, Validators.required]
     });
   }
 
@@ -435,7 +437,17 @@ export class LeadsImportComponent implements OnInit {
       return;
     }
 
-    const payload = { leads };
+    // Assign selected partner to all leads
+    if (this.csvPartner) {
+      leads.forEach((lead: any) => {
+        lead.partner_id = this.csvPartner;
+      });
+    }
+
+    const payload: any = { leads };
+    if (this.csvLeadSetName?.trim()) {
+      payload.lead_set = this.csvLeadSetName.trim();
+    }
     this.leadsService.importLeads(payload).pipe(
       finalize(() => this.isSubmitting = false)
     ).subscribe({
@@ -476,6 +488,8 @@ export class LeadsImportComponent implements OnInit {
     this.validRows = 0;
     this.rowsWithErrors = 0;
     this.isSubmitting = false;
+    this.csvPartner = null;
+    this.csvLeadSetName = '';
     this.mappingForm = this.fb.group({
       saveMapping: [false]
     });
