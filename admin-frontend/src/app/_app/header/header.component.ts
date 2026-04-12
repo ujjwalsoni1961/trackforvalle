@@ -1,4 +1,4 @@
-import { Component, computed, inject, Input } from '@angular/core';
+import { Component, computed, inject, Input, OnInit } from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
 // import { MatBadge } from '@angular/material/badge';
 import {  MatButton, MatIconButton } from '@angular/material/button';
@@ -15,6 +15,7 @@ import { LayoutApiService } from '@elementar-ui/components/layout';
 import { NotificationsPopoverComponent } from '../../_store/header';
 import { DrawerComponent } from '@elementar-ui/components/drawer';
 import { ChatComponent } from '../../_store/chat/chat/chat.component';
+import { AuthService } from '../../auth/auth.service';
 
 @Component({
   selector: 'app-header',
@@ -45,9 +46,17 @@ import { ChatComponent } from '../../_store/chat/chat/chat.component';
     'class': 'block w-full'
   }
 })
-export class HeaderComponent {
+export class HeaderComponent implements OnInit {
   protected _themeManager = inject(ThemeManagerService);
   private _layoutApi = inject(LayoutApiService);
+  private _authService = inject(AuthService);
+  isPartner = this._authService.isPartner();
+
+  ngOnInit(): void {
+    if (this.isPartner) {
+      this._themeManager.setColorScheme('light');
+    }
+  }
 
   sidebarShown= computed(() => {
     return this._layoutApi.isSidebarShown('root')

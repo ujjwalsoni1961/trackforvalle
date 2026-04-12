@@ -134,13 +134,13 @@ class _MyAppState extends State<MyApp> {
         title: 'Track',
         theme: AppThemes.lightTheme,
         key: navigatorKey,
-        darkTheme: AppThemes.lightTheme,
-        themeMode: ThemeMode.dark,
+        darkTheme: AppThemes.darkTheme,
+        themeMode: ThemeMode.light,
         debugShowCheckedModeBanner: false,
         routerConfig: widget.router,
         builder: (context, child) {
           return Container(
-            color: const Color(0xFFE8EAF0),
+            color: const Color(0xFFF5F5F5),
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 600),

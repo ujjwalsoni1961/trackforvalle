@@ -115,78 +115,86 @@ export class UserTeamService {
   }> {
     const dataSource = await getDataSource();
     const queryRunner = await dataSource.createQueryRunner();
-    await queryRunner.startTransaction();
     try {
-      const leadsCount = await queryRunner.manager.getRepository(Leads).count();
-      const closedVisitsCount = await queryRunner.manager
-        .getRepository(Visit)
-        .countBy({ check_out_time: Not(IsNull()) });
-      const pendingVisitsCount = await queryRunner.manager
-        .getRepository(Visit)
-        .countBy({ check_out_time: IsNull() });
-      const assignedSalesRepsCount = await queryRunner.manager
-        .getRepository(ManagerSalesRep)
-        .count();
-      const totalSignedContracts = await queryRunner.manager
-        .getRepository(Contract)
-        .count();
-      const totalContractTemplates = await queryRunner.manager
-        .getRepository(ContractTemplate)
-        .count();
-      const salesRepCount = await queryRunner.manager
-        .getRepository(User)
-        .countBy({ role: { role_name: Roles.SALES_REP } });
-      const unassignedSalesRepsCount = salesRepCount - assignedSalesRepsCount;
+      const [
+        totalLeads,
+        totalSignedContracts,
+        activeSalesReps,
+        totalTerritories,
+        totalPartners,
+        pendingVisits,
+        leadsByPartnerRaw,
+        recentContracts,
+      ] = await Promise.all([
+        queryRunner.manager.getRepository(Leads).count(),
+        queryRunner.manager.getRepository(Contract).count(),
+        queryRunner.manager
+          .getRepository(User)
+          .countBy({ role: { role_name: Roles.SALES_REP }, is_active: true }),
+        queryRunner.manager.getRepository(Territory).count(),
+        queryRunner.manager
+          .getRepository(Partner)
+          .countBy({ is_active: true }),
+        queryRunner.manager
+          .getRepository(Visit)
+          .countBy({ check_out_time: IsNull() }),
+        queryRunner.manager
+          .getRepository(Leads)
+          .createQueryBuilder("lead")
+          .leftJoin("lead.partner", "partner")
+          .select("COALESCE(partner.company_name, 'No Partner')", "partnerName")
+          .addSelect("COUNT(*)", "count")
+          .groupBy("partner.company_name")
+          .orderBy("count", "DESC")
+          .limit(10)
+          .getRawMany(),
+        queryRunner.manager
+          .getRepository(Contract)
+          .createQueryBuilder("contract")
+          .leftJoinAndSelect("contract.visit", "visit")
+          .leftJoinAndSelect("visit.lead", "lead")
+          .leftJoinAndSelect("visit.rep", "rep")
+          .leftJoinAndSelect("lead.partner", "partner")
+          .orderBy("contract.signed_at", "DESC")
+          .limit(10)
+          .getMany(),
+      ]);
 
-      const managerCount = await queryRunner.manager
-        .getRepository(User)
-        .countBy({ role: { role_name: Roles.MANAGER } });
-      const liveRoutesCount = await queryRunner.manager
-        .getRepository(Route)
-        .countBy({ is_active: true });
-      const totalTerritoryCount = await queryRunner.manager
-        .getRepository(Territory)
-        .count();
-      const totalAddressCount = await queryRunner.manager
-        .getRepository(Address)
-        .count();
-      const totalUsersCount = await queryRunner.manager
-        .getRepository(User)
-        .count();
-      const activeUsersCount = await queryRunner.manager
-        .getRepository(User)
-        .countBy({ is_active: true });
-      const assignedManagerCount = await queryRunner.query(`
-  SELECT COUNT(DISTINCT manager_id) as count 
-  FROM contract_template_managers
-`);
+      const leadsByPartner = leadsByPartnerRaw.map((row: any) => ({
+        partnerName: row.partnerName,
+        count: parseInt(row.count, 10),
+      }));
+
+      const recentActivity = recentContracts.map((c: any) => ({
+        contractId: c.id,
+        signedAt: c.signed_at,
+        leadName: c.visit?.lead?.name || "Unknown",
+        repName: c.visit?.rep
+          ? `${c.visit.rep.first_name || ""} ${c.visit.rep.last_name || ""}`.trim() || c.visit.rep.email
+          : "Unknown",
+        partnerName: c.visit?.lead?.partner?.company_name || "N/A",
+      }));
+
       return {
         data: {
-          totalUsersCount,
-          activeUsersCount,
-          pendingVisitsCount,
-          managerCount,
-          salesRepCount,
-          closedVisitsCount,
-          leadsCount,
-          totalTerritoryCount,
-          totalAddressCount,
-          liveRoutesCount,
-          unassignedSalesRepsCount,
+          totalLeads,
           totalSignedContracts,
-          totalContractTemplates,
-          assignedManagerCount: assignedManagerCount.count,
+          activeSalesReps,
+          totalTerritories,
+          totalPartners,
+          pendingVisits,
+          leadsByPartner,
+          recentActivity,
         },
         status: 200,
         message: "Analytics fetched successfully",
       };
     } catch (error) {
       console.log(error);
-      await queryRunner.rollbackTransaction();
       return {
         data: null,
         status: 500,
-        message: "Error fetcing dashboard results",
+        message: "Error fetching dashboard results",
       };
     } finally {
       await queryRunner.release();

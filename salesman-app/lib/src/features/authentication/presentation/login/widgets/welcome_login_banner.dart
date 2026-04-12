@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:track/src/core/ui/res/app_assets.dart';
+import 'package:track/src/core/ui/res/app_colors.dart';
 import 'package:track/src/core/ui/utility/paddings.dart';
 import 'package:track/src/core/ui/widgets/gap.dart';
 
@@ -12,23 +12,52 @@ class WelcomeLoginBanner extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const GapV(16),
+        const GapV(40),
         Align(
           alignment: Alignment.center,
-          child: Image.asset(AppAssets.login, height: 160, fit: BoxFit.fill),
+          child: Column(
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: AppColors.accent,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.track_changes,
+                  color: Colors.white,
+                  size: 36,
+                ),
+              ),
+              const GapV(12),
+              Text(
+                'Track',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: AppColors.accent,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                ),
+              ),
+            ],
+          ),
         ),
-        const GapV(36),
+        const GapV(40),
         Text(
-          'Hello again,',
-          style: theme.textTheme.displayMedium,
+          'Welcome back',
+          style: theme.textTheme.displayMedium?.copyWith(
+            fontSize: 28,
+          ),
         ).pSymmetric(horizontal: 16),
+        const GapV(8),
         Wrap(
           children: [
             Text(
-              'We’re glad to see you back! Please log in to continue with your Account.',
+              'Sign in to your account to continue.',
               style: theme.textTheme.bodyMedium!.copyWith(
                 color: theme.colorScheme.tertiary,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w400,
+                fontSize: 14,
               ),
               softWrap: true,
             ),

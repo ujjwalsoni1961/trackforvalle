@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, AfterViewInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, ElementRef, ViewChild } from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
 import { MatRipple } from '@angular/material/core';
 import { MatTooltip } from '@angular/material/tooltip';
@@ -28,25 +28,20 @@ import { ManagerDashboardWidgetComponent } from '../../shared/manager-dashboard-
 export class BasicComponent implements OnInit, OnDestroy, AfterViewInit {
   analytics: any = {};
   displayedAnalytics: any = {
-    totalUsersCount: 0,
-    activeUsersCount: 0,
-    pendingVisitsCount: 0,
-    closedVisitsCount: 0,
-    closedLeadsCount: 0,
-    leadsCount: 0,
-    totalTerritoryCount: 0,
-    totalAddressCount: 0,
-    liveRoutesCount: 0,
-    unassignedSalesRepsCount: 0,
+    totalLeads: 0,
     totalSignedContracts: 0,
-    totalContractTemplates: 0,
-    managerCount: 0,
-    salesRepCount: 0
+    activeSalesReps: 0,
+    totalTerritories: 0,
+    totalPartners: 0,
+    pendingVisits: 0
   };
   isLoading = false;
   private intervals: any[] = [];
+  private chartInstances: Chart[] = [];
   currentUser: any;
   isManager = false;
+
+  @ViewChild('leadsByPartnerCanvas') leadsByPartnerCanvas!: ElementRef<HTMLCanvasElement>;
 
   constructor(
     private dashboardService: DashboardService,
@@ -58,20 +53,17 @@ export class BasicComponent implements OnInit, OnDestroy, AfterViewInit {
   ngOnInit() {
     this.currentUser = this.authService.getCurrentUser();
     this.isManager = this.currentUser?.role === 'manager';
-    
+
     if (!this.isManager) {
       this.fetchAnalytics();
     }
   }
 
-  ngAfterViewInit() {
-    if (!this.isManager) {
-      this.renderCharts();
-    }
-  }
+  ngAfterViewInit() {}
 
   ngOnDestroy() {
     this.clearIntervals();
+    this.chartInstances.forEach(c => c.destroy());
   }
 
   fetchAnalytics() {
@@ -82,15 +74,9 @@ export class BasicComponent implements OnInit, OnDestroy, AfterViewInit {
       next: (response: any) => {
         this.isLoading = false;
         if (response.success) {
-          const closedLeadsCount = Math.round(response.data.leadsCount * 0.1); // Assume 10% of leads are closed
-          this.analytics = {
-            ...response.data,
-            closedLeadsCount,
-            userActivityPercentage: response.data.totalUsersCount ? (response.data.activeUsersCount / response.data.totalUsersCount * 100) : 0,
-            leadConversionRate: response.data.leadsCount ? (closedLeadsCount / response.data.leadsCount * 100) : 0
-          };
+          this.analytics = response.data;
           this.animateCounters();
-          this.renderCharts();
+          setTimeout(() => this.renderCharts(), 100);
         }
       },
       error: (error: any) => {
@@ -107,8 +93,10 @@ export class BasicComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private animateCounters() {
-    Object.keys(this.analytics).forEach(key => {
+    const keys = Object.keys(this.displayedAnalytics);
+    keys.forEach(key => {
       const target = this.analytics[key] || 0;
+      if (target === 0) return;
       const step = Math.ceil(target / 50);
       let current = 0;
       const interval = setInterval(() => {
@@ -129,74 +117,44 @@ export class BasicComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private renderCharts() {
-    // User Metrics Bar Chart
-    const userMetricsChart = new Chart('userMetricsChart', {
-      type: 'bar',
-      data: {
-        labels: ['Total Users', 'Active Users', 'Managers', 'Sales Reps', 'Unassigned Reps'],
-        datasets: [{
-          label: 'User Metrics',
-          data: [
-            this.analytics.totalUsersCount || 28,
-            this.analytics.activeUsersCount || 23,
-            this.analytics.managerCount || 5,
-            this.analytics.salesRepCount || 19,
-            this.analytics.unassignedSalesRepsCount || 12
-          ],
-          backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899'],
-          borderColor: ['#2563EB', '#059669', '#D97706', '#DC2626', '#DB2777'],
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            beginAtZero: true,
-            grid: { color: '#E5E7EB' },
-            ticks: { color: '#4B5563' }
-          },
-          x: {
-            grid: { display: false },
-            ticks: { color: '#4B5563' }
-          }
-        },
-        plugins: {
-          legend: { labels: { color: '#4B5563' } },
-          title: { display: true, text: 'User Distribution', color: '#4B5563', font: { size: 16 } }
-        }
-      }
-    });
+    this.chartInstances.forEach(c => c.destroy());
+    this.chartInstances = [];
 
-    // Visit and Lead Distribution Pie Chart
-    const visitLeadChart = new Chart('visitLeadChart', {
-      type: 'pie',
-      data: {
-        labels: ['Pending Visits', 'Closed Visits', 'Leads', 'Closed Leads'],
-        datasets: [{
-          data: [
-            this.analytics.pendingVisitsCount || 31,
-            this.analytics.closedVisitsCount || 42,
-            this.analytics.leadsCount || 424,
-            this.analytics.closedLeadsCount || 42
-          ],
-          backgroundColor: ['#F59E0B', '#8B5CF6', '#EF4444', '#14B8A6'],
-          borderColor: ['#D97706', '#7C3AED', '#DC2626', '#0D9488'],
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: { color: '#4B5563' }
+    const leadsByPartner = this.analytics.leadsByPartner || [];
+    if (leadsByPartner.length > 0 && this.leadsByPartnerCanvas) {
+      const chart = new Chart(this.leadsByPartnerCanvas.nativeElement, {
+        type: 'bar',
+        data: {
+          labels: leadsByPartner.map((p: any) => p.partnerName),
+          datasets: [{
+            label: 'Leads',
+            data: leadsByPartner.map((p: any) => p.count),
+            backgroundColor: '#4B7BF5',
+            borderRadius: 4,
+            barThickness: 28
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              beginAtZero: true,
+              grid: { color: '#F3F4F6' },
+              ticks: { color: '#6B7280', stepSize: 1 }
+            },
+            y: {
+              grid: { display: false },
+              ticks: { color: '#374151', font: { size: 12 } }
+            }
           },
-          title: { display: true, text: 'Visit & Lead Distribution', color: '#4B5563', font: { size: 16 } }
+          plugins: {
+            legend: { display: false }
+          }
         }
-      }
-    });
+      });
+      this.chartInstances.push(chart);
+    }
   }
 }

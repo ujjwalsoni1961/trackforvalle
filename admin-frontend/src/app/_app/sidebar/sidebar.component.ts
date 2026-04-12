@@ -128,14 +128,6 @@ export class SidebarComponent implements OnInit {
     },
     {
       type: 'group',
-      name: 'Routes',
-      icon: 'alt_route',
-      children: [
-        { key: uuid(), type: 'link', name: 'Live Routes', link: '/routes' },
-      ]
-    },
-    {
-      type: 'group',
       name: 'Contracts',
       icon: 'description',
       children: [
