@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, NgZone, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
@@ -13,6 +13,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { LeadsService } from '../leads.service';
 import { UsersService } from '../../users/users.service';
 import { Subject, Subscription } from 'rxjs';
@@ -111,7 +112,8 @@ interface ApiResponse {
     MatProgressBarModule,
     MatDialogModule,
     MatCheckboxModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatButtonToggleModule
   ],
   templateUrl: './all-leads.component.html',
   styleUrls: ['./all-leads.component.scss']
@@ -140,6 +142,14 @@ export class AllLeadsComponent implements OnInit, OnDestroy {
   canEditLeads = false;
   canDeleteLeads = false;
   selectedSalesman: number | null = null;
+  // Map view
+  viewMode: 'list' | 'map' = 'list';
+  map: google.maps.Map | null = null;
+  mapMarkers: google.maps.Marker[] = [];
+  mapInfoWindow: google.maps.InfoWindow | null = null;
+  mapLeads: Lead[] = [];
+  @ViewChild('mapContainer') mapContainer!: ElementRef;
+
   private searchSubject = new Subject<string>();
   private searchSubscription: Subscription | null = null;
   private statusStyles: Record<LeadStatus, { backgroundColor: string; color: string }> = {
@@ -158,7 +168,8 @@ export class AllLeadsComponent implements OnInit, OnDestroy {
     private usersService: UsersService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
-    private authService: AuthService
+    private authService: AuthService,
+    private ngZone: NgZone
   ) {}
 
   ngOnInit(): void {
@@ -351,6 +362,11 @@ export class AllLeadsComponent implements OnInit, OnDestroy {
         this.snackBar.open('Failed to load leads', 'Close', { duration: 3000 });
       }
     });
+
+    // Also refresh map if in map view
+    if (this.viewMode === 'map') {
+      this.fetchLeadsForMap();
+    }
   }
 
   getSalesmanName(salesmanId: number | null): string {
@@ -523,5 +539,153 @@ export class AllLeadsComponent implements OnInit, OnDestroy {
 
   openActionMenu(event: MouseEvent): void {
     event.stopPropagation(); // Prevent row click event from triggering
+  }
+
+  // --- Map View ---
+
+  toggleViewMode(mode: 'list' | 'map'): void {
+    this.viewMode = mode;
+    if (mode === 'map') {
+      this.fetchLeadsForMap();
+    }
+  }
+
+  fetchLeadsForMap(): void {
+    this.isLoading = true;
+    // Fetch a large batch (up to 5000) with all current filters applied
+    this.leadsService.getLeads(
+      this.searchQuery,
+      1,
+      5000,
+      this.salesmanFilter,
+      this.managerFilter,
+      this.partnerFilter,
+      this.territoryFilter,
+      this.leadSetFilter
+    ).subscribe({
+      next: (response) => {
+        let leads = response.data.leads;
+        if (this.statusFilter) {
+          leads = leads.filter(lead => lead.status === this.statusFilter);
+        }
+        this.mapLeads = leads;
+        this.isLoading = false;
+        // Wait for DOM to render map container, then initialize
+        setTimeout(() => this.initializeMap(), 100);
+      },
+      error: () => {
+        this.isLoading = false;
+        this.snackBar.open('Failed to load leads for map', 'Close', { duration: 3000 });
+      }
+    });
+  }
+
+  initializeMap(): void {
+    this.ngZone.runOutsideAngular(() => {
+      const mapEl = document.getElementById('leads-map');
+      if (!mapEl || typeof google === 'undefined' || !google.maps) {
+        console.error('Map container or Google Maps not available');
+        return;
+      }
+
+      // Clear old markers
+      this.mapMarkers.forEach(m => m.setMap(null));
+      this.mapMarkers = [];
+
+      // Default center: Helsinki
+      const center = { lat: 60.1699, lng: 24.9384 };
+
+      this.map = new google.maps.Map(mapEl, {
+        center,
+        zoom: 10,
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+        styles: [
+          { featureType: 'poi', stylers: [{ visibility: 'simplified' }] },
+          { featureType: 'transit', stylers: [{ visibility: 'simplified' }] }
+        ],
+        mapTypeControl: true,
+        streetViewControl: false,
+        fullscreenControl: true
+      });
+
+      this.mapInfoWindow = new google.maps.InfoWindow();
+      const bounds = new google.maps.LatLngBounds();
+      let hasValidCoords = false;
+
+      this.mapLeads.forEach(lead => {
+        if (!lead.address?.latitude || !lead.address?.longitude) return;
+        const lat = lead.address.latitude;
+        const lng = lead.address.longitude;
+        if (lat === 0 && lng === 0) return;
+
+        hasValidCoords = true;
+        const position = { lat, lng };
+        bounds.extend(position);
+
+        const statusColor = this.statusStyles[lead.status]?.backgroundColor || '#808080';
+
+        const marker = new google.maps.Marker({
+          position,
+          map: this.map!,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            fillColor: statusColor,
+            fillOpacity: 0.9,
+            strokeColor: '#ffffff',
+            strokeWeight: 2,
+            scale: 10
+          },
+          title: lead.name
+        });
+
+        marker.addListener('click', () => {
+          this.ngZone.run(() => {
+            const partnerName = lead.partner?.company_name || '-';
+            const content = `
+              <div style="min-width: 220px; font-family: 'Segoe UI', Arial, sans-serif; padding: 4px;">
+                <h3 style="margin: 0 0 8px 0; font-size: 15px; color: #1a1a2e;">${lead.name}</h3>
+                <p style="margin: 3px 0; font-size: 13px; color: #555;">
+                  <strong>Status:</strong>
+                  <span style="background: ${statusColor}; color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 11px;">${lead.status}</span>
+                </p>
+                <p style="margin: 3px 0; font-size: 13px; color: #555;"><strong>Address:</strong> ${lead.address?.street_address || '-'}</p>
+                <p style="margin: 3px 0; font-size: 13px; color: #555;"><strong>City:</strong> ${lead.address?.city || '-'}</p>
+                <p style="margin: 3px 0; font-size: 13px; color: #555;"><strong>Partner:</strong> ${partnerName}</p>
+                <p style="margin: 3px 0; font-size: 13px; color: #555;"><strong>Assigned:</strong> ${this.getSalesmanName(lead.assigned_rep_id)}</p>
+                <button
+                  onclick="document.dispatchEvent(new CustomEvent('openLeadDetails', { detail: ${lead.lead_id} }))"
+                  style="margin-top: 8px; padding: 5px 14px; background: #3f51b5; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                  View Details
+                </button>
+              </div>`;
+            this.mapInfoWindow!.setContent(content);
+            this.mapInfoWindow!.open(this.map!, marker);
+          });
+        });
+
+        this.mapMarkers.push(marker);
+      });
+
+      if (hasValidCoords) {
+        this.map.fitBounds(bounds);
+        // Don't zoom in too far on single marker
+        const listener = google.maps.event.addListener(this.map, 'idle', () => {
+          const z = this.map!.getZoom();
+          if (z !== undefined && z > 15) {
+            this.map!.setZoom(15);
+          }
+          google.maps.event.removeListener(listener);
+        });
+      }
+    });
+
+    // Listen for "View Details" button clicks from info windows
+    document.addEventListener('openLeadDetails', ((e: CustomEvent) => {
+      const leadId = e.detail;
+      const lead = this.mapLeads.find(l => l.lead_id === leadId);
+      if (lead) {
+        this.viewLead(lead);
+      }
+    }) as EventListener);
   }
 }

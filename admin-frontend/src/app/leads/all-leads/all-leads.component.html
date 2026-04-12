@@ -1,5 +1,18 @@
 <div class="p-10 max-w-[1260px] mx-auto">
-  <h1 class="text-lg font-bold mb-7">All Leads</h1>
+  <!-- Header with View Toggle -->
+  <div class="flex items-center justify-between mb-7">
+    <h1 class="text-lg font-bold">All Leads</h1>
+    <mat-button-toggle-group [value]="viewMode" (change)="toggleViewMode($event.value)" appearance="standard">
+      <mat-button-toggle value="list">
+        <mat-icon>view_list</mat-icon>
+        <span class="ml-1">List</span>
+      </mat-button-toggle>
+      <mat-button-toggle value="map">
+        <mat-icon>map</mat-icon>
+        <span class="ml-1">Map</span>
+      </mat-button-toggle>
+    </mat-button-toggle-group>
+  </div>
 
   <!-- Filters and Bulk Actions -->
   <div class="flex items-center gap-5 mb-7 flex-wrap">
@@ -67,129 +80,149 @@
         </mat-option>
       </mat-select>
     </mat-form-field>
-    <mat-form-field class="w-1/4">
-      <mat-label>Bulk Assign to Sales Rep</mat-label>
-      <mat-select [(ngModel)]="selectedSalesman">
-        <mat-option value="">Select Sales Rep</mat-option>
-        <mat-option *ngFor="let salesman of salesmen" [value]="salesman.user_id">
-          {{ salesman.full_name }}
-        </mat-option>
-      </mat-select>
-    </mat-form-field>
-    <button mat-raised-button color="primary" (click)="assignLeads()" [disabled]="!selectedSalesman || selection.size === 0">
-      Assign Selected
-    </button>
-    <button mat-raised-button color="warn" (click)="bulkDeleteLeads()" [disabled]="selection.size === 0">
-      Delete Selected
-    </button>
+    <ng-container *ngIf="viewMode === 'list'">
+      <mat-form-field class="w-1/4">
+        <mat-label>Bulk Assign to Sales Rep</mat-label>
+        <mat-select [(ngModel)]="selectedSalesman">
+          <mat-option value="">Select Sales Rep</mat-option>
+          <mat-option *ngFor="let salesman of salesmen" [value]="salesman.user_id">
+            {{ salesman.full_name }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+      <button mat-raised-button color="primary" (click)="assignLeads()" [disabled]="!selectedSalesman || selection.size === 0">
+        Assign Selected
+      </button>
+      <button mat-raised-button color="warn" (click)="bulkDeleteLeads()" [disabled]="selection.size === 0">
+        Delete Selected
+      </button>
+    </ng-container>
   </div>
 
-  <!-- Table -->
-  <div class="border border-default rounded-xl overflow-hidden">
+  <!-- LIST VIEW -->
+  <ng-container *ngIf="viewMode === 'list'">
+    <div class="border border-default rounded-xl overflow-hidden">
+      <mat-progress-bar mode="indeterminate" *ngIf="isLoading"></mat-progress-bar>
+      <table mat-table [dataSource]="dataSource" class="w-full">
+        <ng-container matColumnDef="select">
+          <th mat-header-cell *matHeaderCellDef>
+            <mat-checkbox
+              (change)="toggleAllSelection($event.checked)"
+              [checked]="selection.size === dataSource.data.length && dataSource.data.length > 0"
+              [indeterminate]="selection.size > 0 && selection.size < dataSource.data.length">
+            </mat-checkbox>
+          </th>
+          <td mat-cell *matCellDef="let lead">
+            <mat-checkbox
+              (click)="$event.stopPropagation()"
+              (change)="toggleSelection(lead.lead_id)"
+              [checked]="selection.has(lead.lead_id)">
+            </mat-checkbox>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="lead_id">
+          <th mat-header-cell *matHeaderCellDef>Lead ID</th>
+          <td mat-cell *matCellDef="let lead">{{ lead.lead_id }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="street_address">
+          <th mat-header-cell *matHeaderCellDef>Address</th>
+          <td mat-cell *matCellDef="let lead">{{ lead.address?.street_address || '-' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="city">
+          <th mat-header-cell *matHeaderCellDef>City</th>
+          <td mat-cell *matCellDef="let lead">{{ lead.address?.city || '-' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="postal_code">
+          <th mat-header-cell *matHeaderCellDef>Postal Code</th>
+          <td mat-cell *matCellDef="let lead">{{ lead.address?.postal_code || '-' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef class="cursor-pointer">Name</th>
+          <td mat-cell *matCellDef="let lead">{{ lead.name }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="partner_name">
+          <th mat-header-cell *matHeaderCellDef>Partner</th>
+          <td mat-cell *matCellDef="let lead">{{ lead.partner?.company_name || '-' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef class="cursor-pointer">Status</th>
+          <td mat-cell *matCellDef="let lead">
+            <span class="status-badge" [ngStyle]="getStatusStyles(lead.status)">{{ lead.status }}</span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="assigned_to">
+          <th mat-header-cell *matHeaderCellDef>Assigned To</th>
+          <td mat-cell *matCellDef="let lead">{{ getSalesmanName(lead.assigned_rep_id) }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="created_at">
+          <th mat-header-cell *matHeaderCellDef class="cursor-pointer">Created At</th>
+          <td mat-cell *matCellDef="let lead">{{ lead.created_at | date:'short' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Actions</th>
+          <td mat-cell *matCellDef="let lead">
+            <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Lead actions" (click)="openActionMenu($event)">
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #menu="matMenu">
+              <button mat-menu-item (click)="viewLead(lead)">
+                <mat-icon>visibility</mat-icon>View
+              </button>
+              <button mat-menu-item (click)="editLead(lead)">
+                <mat-icon>edit</mat-icon>Edit
+              </button>
+              <button mat-menu-item (click)="deleteLead(lead)">
+                <mat-icon>delete</mat-icon>Delete
+              </button>
+            </mat-menu>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;" (click)="viewLead(row)"></tr>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <mat-paginator
+      [length]="totalItems"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="[5, 10, 25, 50]"
+      (page)="onPageChange($event)"
+      aria-label="Select page of leads">
+    </mat-paginator>
+  </ng-container>
+
+  <!-- MAP VIEW -->
+  <ng-container *ngIf="viewMode === 'map'">
     <mat-progress-bar mode="indeterminate" *ngIf="isLoading"></mat-progress-bar>
-    <table mat-table [dataSource]="dataSource" class="w-full">
-      <ng-container matColumnDef="select">
-        <th mat-header-cell *matHeaderCellDef>
-          <mat-checkbox
-            (change)="toggleAllSelection($event.checked)"
-            [checked]="selection.size === dataSource.data.length && dataSource.data.length > 0"
-            [indeterminate]="selection.size > 0 && selection.size < dataSource.data.length">
-          </mat-checkbox>
-        </th>
-        <td mat-cell *matCellDef="let lead">
-          <mat-checkbox
-            (click)="$event.stopPropagation()"
-            (change)="toggleSelection(lead.lead_id)"
-            [checked]="selection.has(lead.lead_id)">
-          </mat-checkbox>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="lead_id">
-        <th mat-header-cell *matHeaderCellDef>Lead ID</th>
-        <td mat-cell *matCellDef="let lead">{{ lead.lead_id }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="street_address">
-        <th mat-header-cell *matHeaderCellDef>Address</th>
-        <td mat-cell *matCellDef="let lead">{{ lead.address?.street_address || '-' }}</td>
-      </ng-container>
-
-      <!-- New City Column -->
-      <ng-container matColumnDef="city">
-        <th mat-header-cell *matHeaderCellDef>City</th>
-        <td mat-cell *matCellDef="let lead">{{ lead.address?.city || '-' }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="postal_code">
-        <th mat-header-cell *matHeaderCellDef>Postal Code</th>
-        <td mat-cell *matCellDef="let lead">{{ lead.address?.postal_code || '-' }}</td>
-      </ng-container>
-
-       <ng-container matColumnDef="name">
-        <th mat-header-cell *matHeaderCellDef class="cursor-pointer">
-          Name
-        </th>
-        <td mat-cell *matCellDef="let lead">{{ lead.name }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="partner_name">
-        <th mat-header-cell *matHeaderCellDef>Partner</th>
-        <td mat-cell *matCellDef="let lead">{{ lead.partner?.company_name || '-' }}</td>
-      </ng-container>
-
-            <ng-container matColumnDef="status">
-        <th mat-header-cell *matHeaderCellDef class="cursor-pointer">
-          Status
-        </th>
-        <td mat-cell *matCellDef="let lead">
-          <span class="status-badge" [ngStyle]="getStatusStyles(lead.status)">{{ lead.status }}</span>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="assigned_to">
-        <th mat-header-cell *matHeaderCellDef>Assigned To</th>
-        <td mat-cell *matCellDef="let lead">{{ getSalesmanName(lead.assigned_rep_id) }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="created_at">
-        <th mat-header-cell *matHeaderCellDef class="cursor-pointer">
-          Created At
-        </th>
-        <td mat-cell *matCellDef="let lead">{{ lead.created_at | date:'short' }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef>Actions</th>
-        <td mat-cell *matCellDef="let lead">
-          <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Lead actions" (click)="openActionMenu($event)">
-            <mat-icon>more_vert</mat-icon>
-          </button>
-          <mat-menu #menu="matMenu">
-            <button mat-menu-item (click)="viewLead(lead)">
-              <mat-icon>visibility</mat-icon>View
-            </button>
-            <button mat-menu-item (click)="editLead(lead)">
-              <mat-icon>edit</mat-icon>Edit
-            </button>
-            <button mat-menu-item (click)="deleteLead(lead)">
-              <mat-icon>delete</mat-icon>Delete
-            </button>
-          </mat-menu>
-        </td>
-      </ng-container>
-
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;" (click)="viewLead(row)"></tr>
-    </table>
-  </div>
-
-  <!-- Pagination -->
-  <mat-paginator
-    [length]="totalItems"
-    [pageSize]="pageSize"
-    [pageSizeOptions]="[5, 10, 25, 50]"
-    (page)="onPageChange($event)"
-    aria-label="Select page of leads">
-  </mat-paginator>
+    <div class="border border-default rounded-xl overflow-hidden">
+      <!-- Map Stats Bar -->
+      <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+        <span class="text-sm text-gray-600 font-medium">
+          {{ mapLeads.length }} leads on map
+        </span>
+        <!-- Status Legend -->
+        <div class="flex items-center gap-3 flex-wrap">
+          <span *ngFor="let status of ['Hot Lead', 'Meeting', 'Get Back', 'Signed', 'Not Interested', 'Not Available', 'Start Signing', 'Not Sellable']"
+                class="flex items-center gap-1 text-xs" style="color: #666;">
+            <span class="inline-block rounded-full" style="width: 12px; height: 12px;" [ngStyle]="{ 'background-color': getStatusStyles($any(status)).backgroundColor }"></span>
+            {{ status }}
+          </span>
+        </div>
+      </div>
+      <!-- Map Container -->
+      <div id="leads-map" #mapContainer style="height: 600px; width: 100%;"></div>
+    </div>
+  </ng-container>
 </div>

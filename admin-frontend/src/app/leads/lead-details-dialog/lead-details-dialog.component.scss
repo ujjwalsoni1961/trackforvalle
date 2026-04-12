@@ -1,5 +1,6 @@
 .dialog-container {
-  @apply font-sans flex flex-col;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  @apply flex flex-col;
   max-height: 80vh;
   min-height: 600px; /* Increased from 500px to ensure consistent height */
   width: 800px;
