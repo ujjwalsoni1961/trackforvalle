@@ -1,4 +1,4 @@
-import { Component, OnInit, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormGroup, FormBuilder, Validators, FormArray } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -16,7 +16,7 @@ import { QuillModule } from 'ngx-quill';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import { UsersService } from '../../users/users.service';
 import { PartnerService } from '../../partner/partner.service';
-import { DocusealBuilderComponent } from '@docuseal/angular';
+
 
 interface SalesRep {
   id: string;
@@ -58,10 +58,8 @@ interface DropdownField {
     MatIconModule,
     MatExpansionModule,
     MatProgressBar,
-    QuillModule,
-    DocusealBuilderComponent
+    QuillModule
   ],
-  schemas: [CUSTOM_ELEMENTS_SCHEMA],
   templateUrl: './add-contract.component.html',
   styleUrl: './add-contract.component.scss'
 })
@@ -90,10 +88,10 @@ export class AddContractComponent implements OnInit {
     ]
   };
 
-  // DocuSeal builder state
-  showBuilder = false;
-  builderToken: string | null = null;
-  docusealHost = 'docuseal-585556848696.europe-west1.run.app';
+  // DocuSeal popup state
+  private docuSealPopup: Window | null = null;
+  private popupCheckInterval: any = null;
+  docusealBaseUrl = 'https://docuseal-585556848696.europe-west1.run.app';
 
   predefinedTemplates: ContractTemplate[] = [
     {
@@ -408,40 +406,59 @@ export class AddContractComponent implements OnInit {
 
   openBuilder() {
     const existingTemplateId = this.contractForm.get('docuseal_template_id')?.value;
-    const params: any = {};
+    let url: string;
     if (existingTemplateId) {
-      params.template_id = existingTemplateId;
-    }
-    const title = this.contractForm.get('title')?.value;
-    if (title) {
-      params.name = title;
+      url = `${this.docusealBaseUrl}/templates/${existingTemplateId}/edit`;
+    } else {
+      url = `${this.docusealBaseUrl}/templates/new`;
     }
 
-    this.contractsService.getDocuSealBuilderToken(params).subscribe({
-      next: (response) => {
-        this.builderToken = response.data.token;
-        this.showBuilder = true;
+    const width = 1200;
+    const height = 800;
+    const left = (screen.width - width) / 2;
+    const top = (screen.height - height) / 2;
+    this.docuSealPopup = window.open(
+      url,
+      'DocuSealBuilder',
+      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+    );
+
+    this.clearPopupCheck();
+    this.popupCheckInterval = setInterval(() => {
+      if (this.docuSealPopup && this.docuSealPopup.closed) {
+        this.clearPopupCheck();
+        this.onDocuSealPopupClosed();
+      }
+    }, 500);
+  }
+
+  private clearPopupCheck() {
+    if (this.popupCheckInterval) {
+      clearInterval(this.popupCheckInterval);
+      this.popupCheckInterval = null;
+    }
+  }
+
+  private onDocuSealPopupClosed() {
+    this.contractsService.getDocuSealTemplates().subscribe({
+      next: (response: any) => {
+        const templates = response?.data?.data || [];
+        if (templates.length > 0) {
+          const latest = templates.sort((a: any, b: any) =>
+            new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime()
+          )[0];
+          this.contractForm.patchValue({ docuseal_template_id: latest.id });
+          this.snackBar.open(`DocuSeal template #${latest.id} linked`, 'Close', { duration: 3000 });
+        }
       },
-      error: (err) => {
-        this.snackBar.open('Error getting builder token: ' + (err.error?.message || err.message), 'Close', { duration: 3000 });
+      error: () => {
+        this.snackBar.open('Could not fetch DocuSeal templates', 'Close', { duration: 3000 });
       }
     });
   }
 
-  onBuilderSave(event: any) {
-    const detail = event?.detail || event;
-    const templateId = detail?.id || detail?.template_id;
-    if (templateId) {
-      this.contractForm.patchValue({ docuseal_template_id: templateId });
-      this.snackBar.open(`DocuSeal template #${templateId} linked successfully`, 'Close', { duration: 3000 });
-    }
-    this.showBuilder = false;
-    this.builderToken = null;
-  }
-
-  closeBuilder() {
-    this.showBuilder = false;
-    this.builderToken = null;
+  ngOnDestroy() {
+    this.clearPopupCheck();
   }
 
   saveContract() {

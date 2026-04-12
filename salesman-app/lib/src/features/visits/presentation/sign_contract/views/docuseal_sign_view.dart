@@ -1,5 +1,4 @@
 import 'dart:html' as html;
-import 'dart:ui_web' as ui_web;
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -31,134 +30,195 @@ class DocuSealSignView extends StatefulWidget {
 }
 
 class _DocuSealSignViewState extends State<DocuSealSignView> {
-  late final String _viewType;
-  bool _isCompleted = false;
+  bool _signingOpened = false;
+  bool _signingComplete = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _viewType = 'docuseal-form-${widget.params.leadId}-${DateTime.now().millisecondsSinceEpoch}';
-
-    ui_web.platformViewRegistry.registerViewFactory(
-      _viewType,
-      (int viewId) {
-        final div = html.DivElement()
-          ..style.width = '100%'
-          ..style.height = '100%';
-
-        // Create the docuseal-form element
-        final formElement = html.Element.tag('docuseal-form')
-          ..setAttribute('data-src', widget.params.signingUrl)
-          ..setAttribute('data-send-copy-email', 'false')
-          ..style.width = '100%'
-          ..style.height = '100%';
-
-        if (widget.params.signerEmail != null) {
-          formElement.setAttribute('data-email', widget.params.signerEmail!);
-        }
-
-        div.append(formElement);
-
-        // Listen for completed event
-        formElement.addEventListener('completed', (event) {
-          if (mounted) {
-            setState(() => _isCompleted = true);
-          }
-        });
-
-        return div;
-      },
-    );
+  void _openSigningWindow() {
+    final url = widget.params.signingUrl;
+    html.window.open(url, 'DocuSealSigning');
+    setState(() {
+      _signingOpened = true;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return MyScaffold(
       title: 'Sign: ${widget.params.templateName}',
-      body: Column(
-        children: [
-          Expanded(
-            child: HtmlElementView(viewType: _viewType),
-          ),
-          if (_isCompleted)
-            Container(
-              padding: const EdgeInsets.all(16),
-              color: Colors.green.shade50,
-              child: Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.green.shade700),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Signing completed successfully!',
-                      style: TextStyle(
-                        color: Colors.green.shade700,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: SafeArea(
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    if (_isCompleted) {
-                      context.pop(true);
-                      return;
-                    }
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Done Signing?'),
-                        content: const Text(
-                          'If the customer has completed signing, you can go back. '
-                          'The signed contract will be processed automatically.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(ctx).pop(),
-                            child: const Text('Continue Signing'),
-                          ),
-                          FilledButton(
-                            onPressed: () {
-                              Navigator.of(ctx).pop();
-                              context.pop(true);
-                            },
-                            child: const Text('Done'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                  icon: Icon(_isCompleted ? Icons.check_circle : Icons.check_circle_outline),
-                  label: Text(_isCompleted ? 'Done' : 'Finished Signing'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: _signingComplete
+              ? _buildCompleteState(context)
+              : _signingOpened
+                  ? _buildWaitingState(context)
+                  : _buildInitialState(context),
+        ),
       ),
+    );
+  }
+
+  Widget _buildInitialState(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.description_outlined,
+          size: 80,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        const SizedBox(height: 24),
+        Text(
+          widget.params.templateName,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'A signing window will open for the customer to sign the contract.',
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Colors.grey[600],
+              ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 32),
+        SizedBox(
+          width: 280,
+          height: 52,
+          child: FilledButton.icon(
+            onPressed: _openSigningWindow,
+            icon: const Icon(Icons.open_in_new),
+            label: const Text('Open Signing Form'),
+            style: FilledButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWaitingState(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.hourglass_top_rounded,
+          size: 80,
+          color: Colors.orange[400],
+        ),
+        const SizedBox(height: 24),
+        Text(
+          'Signing in Progress',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'The customer is signing the contract in the other window.\n'
+          'Once they complete signing, click "Done" below.',
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Colors.grey[600],
+              ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 16),
+        TextButton.icon(
+          onPressed: _openSigningWindow,
+          icon: const Icon(Icons.open_in_new),
+          label: const Text('Reopen Signing Window'),
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: 280,
+          height: 52,
+          child: FilledButton.icon(
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Done Signing?'),
+                  content: const Text(
+                    'If the customer has completed signing, you can go back. '
+                    'The signed contract will be processed automatically.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: const Text('Continue Signing'),
+                    ),
+                    FilledButton(
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        setState(() {
+                          _signingComplete = true;
+                        });
+                      },
+                      child: const Text('Done'),
+                    ),
+                  ],
+                ),
+              );
+            },
+            icon: const Icon(Icons.check_circle),
+            label: const Text('Finished Signing'),
+            style: FilledButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCompleteState(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.check_circle_outline,
+          size: 80,
+          color: Colors.green[600],
+        ),
+        const SizedBox(height: 24),
+        Text(
+          'Signing Complete',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Colors.green[700],
+              ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'The signed contract will be emailed to the admin and partner automatically.',
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Colors.grey[600],
+              ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 32),
+        SizedBox(
+          width: 280,
+          height: 52,
+          child: FilledButton.icon(
+            onPressed: () => context.pop(true),
+            icon: const Icon(Icons.arrow_back),
+            label: const Text('Back to Leads'),
+            style: FilledButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
