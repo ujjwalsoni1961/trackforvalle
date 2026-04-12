@@ -20,7 +20,10 @@
               <div class="flex gap-4">
                 <mat-form-field appearance="outline" class="w-1/2">
                   <mat-label>City</mat-label>
-                  <input matInput formControlName="city" placeholder="Enter city" class="focus:ring-2 focus:ring-blue-500">
+                  <input matInput formControlName="city" placeholder="Start typing city..." [matAutocomplete]="cityAuto">
+                  <mat-autocomplete #cityAuto="matAutocomplete">
+                    <mat-option *ngFor="let city of filteredCities" [value]="city">{{ city }}</mat-option>
+                  </mat-autocomplete>
                   <mat-error *ngIf="addressForm.get('city')?.hasError('required') && addressForm.get('city')?.touched">
                     City is required
                   </mat-error>
@@ -46,7 +49,9 @@
                 </mat-form-field>
                 <mat-form-field appearance="outline" class="w-1/2">
                   <mat-label>Country</mat-label>
-                  <input matInput formControlName="country" placeholder="Enter country" class="focus:ring-2 focus:ring-blue-500">
+                  <mat-select formControlName="country">
+                    <mat-option *ngFor="let c of countries" [value]="c">{{ c }}</mat-option>
+                  </mat-select>
                   <mat-error *ngIf="addressForm.get('country')?.hasError('required') && addressForm.get('country')?.touched">
                     Country is required
                   </mat-error>
@@ -107,6 +112,7 @@
               <p><strong>Created:</strong> {{ data.lead.created_at | date:'medium' }}</p>
               <p><strong>Updated:</strong> {{ data.lead.updated_at | date:'medium' }}</p>
               <p><strong>Source:</strong> {{ data.lead.source || '-' }}</p>
+              <p><strong>Partner:</strong> {{ data.lead.partner?.company_name || '-' }}</p>
               <p><strong>Active:</strong> {{ data.lead.is_active ? 'Yes' : 'No' }}</p>
               <p><strong>Visited:</strong> {{ data.lead.is_visited ? 'Yes' : 'No' }}</p>
             </div>

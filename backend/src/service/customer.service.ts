@@ -581,6 +581,7 @@ export class CustomerService {
       const query = dataSource.manager
         .createQueryBuilder(Leads, "leads")
         .leftJoinAndSelect("leads.address", "address")
+        .leftJoinAndSelect("leads.partner", "partner")
         .where("leads.is_active = :isActive", { isActive: true });
       if (user.role.role_name === Roles.SALES_REP) {
         query

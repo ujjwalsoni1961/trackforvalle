@@ -48,6 +48,11 @@ interface Lead {
     created_at: string;
     updated_at: string;
   } | null;
+  partner: {
+    partner_id: number;
+    company_name: string;
+    contact_email: string;
+  } | null;
 }
 
 interface ApiResponse {

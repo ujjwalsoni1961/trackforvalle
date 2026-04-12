@@ -67,6 +67,11 @@ interface Lead {
     created_at: string;
     updated_at: string;
   } | null;
+  partner: {
+    partner_id: number;
+    company_name: string;
+    contact_email: string;
+  } | null;
 }
 
 interface User {
@@ -112,7 +117,7 @@ interface ApiResponse {
   styleUrls: ['./all-leads.component.scss']
 })
 export class AllLeadsComponent implements OnInit, OnDestroy {
-  displayedColumns: string[] = ['select', 'lead_id', 'street_address', 'city', 'postal_code', 'name', 'status', 'assigned_to', 'created_at', 'actions'];
+  displayedColumns: string[] = ['select', 'lead_id', 'street_address', 'city', 'postal_code', 'name', 'partner_name', 'status', 'assigned_to', 'created_at', 'actions'];
   dataSource = new MatTableDataSource<Lead>([]);
   selection = new Set<number>();
   totalItems = 0;

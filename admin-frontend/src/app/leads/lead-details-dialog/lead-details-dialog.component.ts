@@ -8,6 +8,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { LeadsService } from '../leads.service';
 import { VisitsService } from '../../visits/visits.service';
 import { CommonModule } from '@angular/common';
@@ -65,6 +66,11 @@ interface Lead {
     updated_by: string;
     created_at: string;
     updated_at: string;
+  } | null;
+  partner: {
+    partner_id: number;
+    company_name: string;
+    contact_email: string;
   } | null;
 }
 
@@ -161,7 +167,8 @@ interface Visit {
     MatIconModule,
     MatTableModule,
     MatPaginatorModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatAutocompleteModule
   ],
   templateUrl: './lead-details-dialog.component.html',
   styleUrls: ['./lead-details-dialog.component.scss']
@@ -191,6 +198,33 @@ export class LeadDetailsDialogComponent implements OnInit {
   };
   visits: Visit[] = [];
   followUps: FollowUpVisit[] = [];
+
+  // City autocomplete
+  finnishCities: string[] = [
+    'Helsinki', 'Espoo', 'Tampere', 'Vantaa', 'Oulu', 'Turku', 'Jyväskylä', 'Lahti',
+    'Kuopio', 'Pori', 'Kouvola', 'Joensuu', 'Lappeenranta', 'Hämeenlinna', 'Vaasa',
+    'Seinäjoki', 'Rovaniemi', 'Mikkeli', 'Kotka', 'Salo', 'Porvoo', 'Kokkola',
+    'Hyvinkää', 'Lohja', 'Järvenpää', 'Rauma', 'Kajaani', 'Kerava', 'Savonlinna',
+    'Nokia', 'Ylöjärvi', 'Kangasala', 'Riihimäki', 'Raseborg', 'Imatra', 'Sastamala',
+    'Raisio', 'Hollola', 'Iisalmi', 'Siilinjärvi', 'Valkeakoski', 'Tornio',
+    'Kirkkonummi', 'Sipoo', 'Kemi', 'Naantali', 'Heinola', 'Forssa', 'Pieksämäki',
+    'Lempäälä', 'Akaa', 'Kuusamo', 'Hamina', 'Äänekoski', 'Uusikaupunki',
+    'Laukaa', 'Lieto', 'Pirkkala', 'Jämsä', 'Kaarina', 'Nurmo', 'Vammala',
+    'Loviisa', 'Parainen', 'Ylivieska', 'Nivala', 'Lieksa', 'Outokumpu',
+    'Kankaanpää', 'Kemijärvi', 'Sotkamo', 'Mäntsälä', 'Nurmijärvi', 'Tuusula',
+    'Kauniainen', 'Pietarsaari', 'Raahe', 'Orimattila', 'Janakkala'
+  ].sort();
+
+  filteredCities: string[] = [];
+
+  // Country dropdown
+  countries: string[] = [
+    'Finland', 'Sweden', 'Norway', 'Denmark', 'Estonia', 'Germany', 'United Kingdom',
+    'France', 'Spain', 'Italy', 'Netherlands', 'Belgium', 'Austria', 'Switzerland',
+    'Poland', 'Czech Republic', 'Portugal', 'Ireland', 'Latvia', 'Lithuania',
+    'Iceland', 'Luxembourg', 'United States', 'Canada', 'India', 'Other'
+  ];
+
   displayedColumns: string[] = ['visit_id', 'check_in_time', 'status', 'notes', 'location', 'next_visit_date', 'contract', 'created_at']; // Added location and next_visit_date
   followUpColumns: string[] = ['follow_up_id', 'subject', 'notes', 'scheduled_date', 'is_completed', 'visit_id', 'created_at'];
   totalItems: number = 0;
@@ -218,7 +252,7 @@ export class LeadDetailsDialogComponent implements OnInit {
       street_address: [this.data.lead.address?.street_address || '', Validators.required],
       city: [this.data.lead.address?.city || '', Validators.required],
       state: [this.data.lead.address?.state || '', Validators.required],
-      postal_code: [this.data.lead.address?.postal_code || '', [Validators.required, Validators.pattern(/^\d{5}(-\d{4})?$/)]],
+      postal_code: [this.data.lead.address?.postal_code || '', [Validators.required, Validators.pattern(/^[A-Za-z0-9\s\-]{3,10}$/)]],
       country: [this.data.lead.address?.country || '', Validators.required],
       latitude: [this.data.lead.address?.latitude || null, [Validators.required, Validators.min(-90), Validators.max(90)]],
       longitude: [this.data.lead.address?.longitude || null, [Validators.required, Validators.min(-180), Validators.max(180)]],
@@ -245,6 +279,17 @@ export class LeadDetailsDialogComponent implements OnInit {
       this.initializeMap();
     }
     this.fetchVisits();
+    this.filteredCities = this.finnishCities;
+    this.addressForm.get('city')?.valueChanges.subscribe(value => {
+      this.filterCities(value || '');
+    });
+  }
+
+  filterCities(value: string): void {
+    const filterValue = value.toLowerCase();
+    this.filteredCities = this.finnishCities.filter(city =>
+      city.toLowerCase().includes(filterValue)
+    );
   }
 
   fetchLeadStatusColors(): void {
@@ -372,10 +417,8 @@ export class LeadDetailsDialogComponent implements OnInit {
       }
     });
 
-    const payload = { ...leadPayload };
-    if (Object.keys(addressPayload).length > 0) {
-      payload.address = addressPayload;
-    }
+    // Merge address fields flat into payload (backend expects flat keys like city, street_address, etc.)
+    const payload = { ...leadPayload, ...addressPayload };
 
     if (Object.keys(payload).length === 0) {
       this.isLoading = false;
