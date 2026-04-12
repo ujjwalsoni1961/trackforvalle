@@ -1,5 +1,4 @@
 import express from "express";
-import { AuthController } from "../controllers/auth.controller";
 import { verifyToken } from "../middleware/auth.middleware";
 import { ContractTemplateController } from "../controllers/contract.controller";
 import { VisitController } from "../controllers/visits.controller";
@@ -41,7 +40,7 @@ router.get("/:contractId/pdf", (req, res) =>
   authController.getContractHTML(req, res)
 );
 
-// Reassign contract template to other managers
+// Reassign contract template to sales reps
 router.put(
   "/templates/:templateId",
   verifyToken,
@@ -62,7 +61,11 @@ router.get(
   authController.getTemplateById
 );
 
-// Delete contract
-router.delete("/:contractId", verifyToken, authController.deleteContract);
+// Delete contract template
+router.delete(
+  "/templates/:templateId",
+  verifyToken,
+  (req, res) => authController.deleteContractTemplate(req, res)
+);
 
 export default router;

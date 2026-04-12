@@ -11,6 +11,13 @@
     border-radius: 12px;
     font-size: 12px;
   }
+  &.published {
+    background-color: #e3f2fd;
+    color: #1565c0;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+  }
   &.active {
     background-color: #e6f4ea;
     color: #2e7d32;

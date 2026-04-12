@@ -20,8 +20,8 @@ interface Contract {
   id: number;
   title: string;
   content: string;
-  assigned_manager_ids: string[];
-  assigned_managers: Array<{
+  assigned_sales_rep_ids: string[];
+  assigned_sales_reps: Array<{
     user_id: number;
     full_name: string;
     first_name: string;
@@ -29,7 +29,7 @@ interface Contract {
     email: string;
   }>;
   signed_count: number;
-  status: 'draft' | 'active' | 'archived';
+  status: 'draft' | 'active' | 'published' | 'archived';
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -123,17 +123,17 @@ export class ContractsService {
           id: item.id,
           title: item.title,
           content: item.content,
-          assigned_manager_ids: item.assigned_managers?.map((manager: any) => String(manager.user_id)) || [],
-          assigned_managers: item.assigned_managers?.map((manager: any) => ({
-            user_id: manager.user_id,
-            full_name: manager.full_name,
-            first_name: manager.first_name,
-            last_name: manager.last_name,
-            email: manager.email
+          assigned_sales_rep_ids: (item.assigned_sales_reps || item.assigned_managers)?.map((rep: any) => String(rep.user_id)) || [],
+          assigned_sales_reps: (item.assigned_sales_reps || item.assigned_managers)?.map((rep: any) => ({
+            user_id: rep.user_id,
+            full_name: rep.full_name,
+            first_name: rep.first_name,
+            last_name: rep.last_name,
+            email: rep.email
           })) || [],
           signed_count: item.signed_count || 0,
-          status: item.status as 'draft' | 'active' | 'archived',
-          created_by: item.assigned_managers?.[0]?.full_name || 'Unknown',
+          status: item.status as 'draft' | 'active' | 'published' | 'archived',
+          created_by: (item.assigned_sales_reps || item.assigned_managers)?.[0]?.full_name || 'Unknown',
           created_at: item.created_at,
           updated_at: item.updated_at
         }))
@@ -224,17 +224,17 @@ export class ContractsService {
             id: item.id,
             title: item.title,
             content: item.content,
-            assigned_manager_ids: item.assigned_managers?.map((manager: any) => String(manager.user_id)) || [],
-            assigned_managers: item.assigned_managers?.map((manager: any) => ({
-              user_id: manager.user_id,
-              full_name: manager.full_name,
-              first_name: manager.first_name,
-              last_name: manager.last_name,
-              email: manager.email
+            assigned_sales_rep_ids: (item.assigned_sales_reps || item.assigned_managers)?.map((rep: any) => String(rep.user_id)) || [],
+            assigned_sales_reps: (item.assigned_sales_reps || item.assigned_managers)?.map((rep: any) => ({
+              user_id: rep.user_id,
+              full_name: rep.full_name,
+              first_name: rep.first_name,
+              last_name: rep.last_name,
+              email: rep.email
             })) || [],
             signed_count: 0,
-            status: item.status as 'draft' | 'active' | 'archived',
-            created_by: item.assigned_managers?.[0]?.full_name || 'Unknown',
+            status: item.status as 'draft' | 'active' | 'published' | 'archived',
+            created_by: (item.assigned_sales_reps || item.assigned_managers)?.[0]?.full_name || 'Unknown',
             created_at: item.created_at,
             updated_at: item.updated_at,
             partner_id: item.partner_id || null,
@@ -249,20 +249,20 @@ export class ContractsService {
   createContract(data: Partial<Contract>): Observable<{ success: boolean; data: Contract }> {
     return this.http.post<{ success: boolean; data: Contract }>(`${this.baseUrl}/contract/templates`, {
       ...data,
-      assigned_manager_ids: data.assigned_manager_ids?.map(id => Number(id)) || []
+      assigned_sales_rep_ids: data.assigned_sales_rep_ids?.map(id => Number(id)) || []
     });
   }
 
   updateContract(id: number, data: Partial<Contract>): Observable<{ success: boolean; data: Contract }> {
     return this.http.patch<{ success: boolean; data: Contract }>(`${this.baseUrl}/contract/templates/${id}`, {
       ...data,
-      assigned_manager_ids: data.assigned_manager_ids?.map(id => Number(id)) || []
+      assigned_sales_rep_ids: data.assigned_sales_rep_ids?.map(id => Number(id)) || []
     });
   }
 
-  reassignContract(id: number, data: { assigned_manager_ids: string[] }): Observable<{ success: boolean; message: string }> {
+  reassignContract(id: number, data: { assigned_sales_rep_ids: string[] }): Observable<{ success: boolean; message: string }> {
     return this.http.put<{ success: boolean; message: string }>(`${this.baseUrl}/contract/templates/${id}`, {
-      assigned_manager_ids: data.assigned_manager_ids.map(id => Number(id))
+      assigned_sales_rep_ids: data.assigned_sales_rep_ids.map(id => Number(id))
     });
   }
 
@@ -274,17 +274,17 @@ export class ContractsService {
           id: response.data.id,
           title: response.data.title,
           content: response.data.content,
-          assigned_manager_ids: response.data.assigned_managers?.map((manager: any) => String(manager.user_id)) || [],
-          assigned_managers: response.data.assigned_managers?.map((manager: any) => ({
-            user_id: manager.user_id,
-            full_name: manager.full_name,
-            first_name: manager.first_name,
-            last_name: manager.last_name,
-            email: manager.email
+          assigned_sales_rep_ids: (response.data.assigned_sales_reps || response.data.assigned_managers)?.map((rep: any) => String(rep.user_id)) || [],
+          assigned_sales_reps: (response.data.assigned_sales_reps || response.data.assigned_managers)?.map((rep: any) => ({
+            user_id: rep.user_id,
+            full_name: rep.full_name,
+            first_name: rep.first_name,
+            last_name: rep.last_name,
+            email: rep.email
           })) || [],
           signed_count: response.data.signed_count || 0,
-          status: response.data.status as 'draft' | 'active' | 'archived',
-          created_by: response.data.assigned_managers?.[0]?.full_name || 'Unknown',
+          status: response.data.status as 'draft' | 'active' | 'published' | 'archived',
+          created_by: (response.data.assigned_sales_reps || response.data.assigned_managers)?.[0]?.full_name || 'Unknown',
           created_at: response.data.created_at,
           updated_at: response.data.updated_at,
           dropdown_fields: response.data.dropdown_fields || {},
@@ -295,8 +295,8 @@ export class ContractsService {
     );
   }
 
-  deleteContract(id: number): Observable<{ success: boolean; message: string; data: { contractId: number } }> {
-    return this.http.delete<{ success: boolean; message: string; data: { contractId: number } }>(`${this.baseUrl}/contract/${id}`);
+  deleteContract(id: number): Observable<{ success: boolean; message: string; data: { templateId: number } }> {
+    return this.http.delete<{ success: boolean; message: string; data: { templateId: number } }>(`${this.baseUrl}/contract/templates/${id}`);
   }
 
   submitContract(data: {
@@ -310,15 +310,15 @@ export class ContractsService {
     formData.append('lead_id', data.lead_id.toString());
     formData.append('contract_template_id', data.contract_template_id.toString());
     formData.append('metadata', JSON.stringify(data.metadata));
-    
+
     if (data.dropdownValues) {
       formData.append('dropdownValues', JSON.stringify(data.dropdownValues));
     }
-    
+
     if (data.signature) {
       formData.append('signature', data.signature);
     }
-    
+
     return this.http.post<{ success: boolean; data: any }>(`${this.baseUrl}/contract/submit`, formData);
   }
 

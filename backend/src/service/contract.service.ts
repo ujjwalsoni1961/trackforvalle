@@ -4,7 +4,6 @@ import { In } from "typeorm";
 import { getDataSource } from "../config/data-source";
 import { User } from "../models/User.entity";
 import { ContractTemplate } from "../models/ContractTemplate.entity";
-import { ManagerSalesRep } from "../models/ManagerSalesRep.entity";
 import { Contract } from "../models/Contracts.entity";
 
 export const ContractTemplateService = {
@@ -12,7 +11,7 @@ export const ContractTemplateService = {
     title: string;
     content: string;
     status: string;
-    assigned_manager_ids: number[];
+    assigned_sales_rep_ids: number[];
     partner_id?: number;
     dropdown_fields?: {
       [fieldName: string]: {
@@ -34,15 +33,15 @@ export const ContractTemplateService = {
       const userRepo = queryRunner.manager.getRepository(User);
       const contractRepo = queryRunner.manager.getRepository(ContractTemplate);
 
-      const managers = await userRepo.find({
-        where: { user_id: In(payload.assigned_manager_ids) },
+      const salesReps = await userRepo.find({
+        where: { user_id: In(payload.assigned_sales_rep_ids) },
       });
 
       const newTemplate = contractRepo.create({
         title: payload.title,
         content: payload.content,
         status: payload.status,
-        assigned_managers: managers,
+        assigned_sales_reps: salesReps,
         dropdown_fields: payload.dropdown_fields || undefined,
         ...(payload.partner_id && { partner_id: payload.partner_id }),
       });
@@ -67,7 +66,7 @@ export const ContractTemplateService = {
   },
 
   async getAllContracts(filters: {
-    managerId?: number;
+    salesRepId?: number;
     status?: string;
     search?: string;
     sortBy?: "signedCount" | "title" | "date";
@@ -94,11 +93,11 @@ export const ContractTemplateService = {
         .leftJoinAndSelect("visit.rep", "rep")
         .leftJoinAndSelect("visit.lead", "lead");
 
-      if (filters.managerId) {
+      if (filters.salesRepId) {
         query = query
-          .leftJoin("template.assigned_managers", "manager")
-          .andWhere("manager.user_id = :managerId", {
-            managerId: filters.managerId,
+          .leftJoin("template.assigned_sales_reps", "salesRep")
+          .andWhere("salesRep.user_id = :salesRepId", {
+            salesRepId: filters.salesRepId,
           });
       }
 
@@ -156,7 +155,7 @@ export const ContractTemplateService = {
     await queryRunner.startTransaction();
     try {
       const contracts = await queryRunner.manager.find(ContractTemplate, {
-        relations: { assigned_managers: true, partner: true },
+        relations: { assigned_sales_reps: true, partner: true },
         order: { updated_at: "DESC" },
       });
       await queryRunner.commitTransaction();
@@ -184,23 +183,13 @@ export const ContractTemplateService = {
     const queryRunner = await dataSource.createQueryRunner();
     await queryRunner.startTransaction();
     try {
-      const dataSource = await getDataSource();
       const templateRepo = dataSource.getRepository(ContractTemplate);
-      const managerMappings = await dataSource
-        .getRepository(ManagerSalesRep)
-        .find({
-          where: { sales_rep: { user_id: repId } },
-          relations: { manager: true },
-        });
-      const managerIds = managerMappings.map((m) => m.manager.user_id);
-      if (managerIds.length === 0) {
-        await queryRunner.rollbackTransaction();
-        return { data: [], status: 404, message: "No managers found" };
-      }
+      // Directly query templates assigned to this sales rep, excluding drafts
       const templates = await templateRepo
         .createQueryBuilder("template")
-        .leftJoin("template.assigned_managers", "manager")
-        .where("manager.user_id IN (:...managerIds)", { managerIds })
+        .leftJoin("template.assigned_sales_reps", "salesRep")
+        .where("salesRep.user_id = :repId", { repId })
+        .andWhere("template.status != :draftStatus", { draftStatus: "draft" })
         .getMany();
       await queryRunner.commitTransaction();
 
@@ -223,7 +212,7 @@ export const ContractTemplateService = {
 
   async reassignContractTemplate(
     templateId: number,
-    assigned_manager_ids: number[]
+    assigned_sales_rep_ids: number[]
   ): Promise<{ status: number; data?: any; message: string }> {
     const dataSource = await getDataSource();
     const queryRunner = dataSource.createQueryRunner();
@@ -236,7 +225,7 @@ export const ContractTemplateService = {
       // Find the existing template
       const existingTemplate = await contractRepo.findOne({
         where: { id: templateId },
-        relations: { assigned_managers: true },
+        relations: { assigned_sales_reps: true },
       });
 
       if (!existingTemplate) {
@@ -247,21 +236,21 @@ export const ContractTemplateService = {
         };
       }
 
-      // Find the new managers to assign
-      const managers = await userRepo.find({
-        where: { user_id: In(assigned_manager_ids) },
+      // Find the new sales reps to assign
+      const salesReps = await userRepo.find({
+        where: { user_id: In(assigned_sales_rep_ids) },
       });
 
-      if (managers.length !== assigned_manager_ids.length) {
+      if (salesReps.length !== assigned_sales_rep_ids.length) {
         await queryRunner.rollbackTransaction();
         return {
           status: 400,
-          message: "One or more manager IDs are invalid",
+          message: "One or more sales rep IDs are invalid",
         };
       }
 
-      // Update the assigned managers
-      existingTemplate.assigned_managers = managers;
+      // Update the assigned sales reps
+      existingTemplate.assigned_sales_reps = salesReps;
       existingTemplate.updated_at = new Date();
 
       const updatedTemplate = await contractRepo.save(existingTemplate);
@@ -290,7 +279,7 @@ export const ContractTemplateService = {
       title?: string;
       content?: string;
       status?: string;
-      assigned_manager_ids?: number[];
+      assigned_sales_rep_ids?: number[];
       dropdown_fields?: {
         [fieldName: string]: {
           label: string;
@@ -315,7 +304,7 @@ export const ContractTemplateService = {
       // Find the existing template
       const existingTemplate = await contractRepo.findOne({
         where: { id: templateId },
-        relations: { assigned_managers: true },
+        relations: { assigned_sales_reps: true },
       });
 
       if (!existingTemplate) {
@@ -340,21 +329,21 @@ export const ContractTemplateService = {
         existingTemplate.dropdown_fields = updates.dropdown_fields;
       }
 
-      // Update assigned managers if provided
-      if (updates.assigned_manager_ids) {
-        const managers = await userRepo.find({
-          where: { user_id: In(updates.assigned_manager_ids) },
+      // Update assigned sales reps if provided
+      if (updates.assigned_sales_rep_ids) {
+        const salesReps = await userRepo.find({
+          where: { user_id: In(updates.assigned_sales_rep_ids) },
         });
 
-        if (managers.length !== updates.assigned_manager_ids.length) {
+        if (salesReps.length !== updates.assigned_sales_rep_ids.length) {
           await queryRunner.rollbackTransaction();
           return {
             status: 400,
-            message: "One or more manager IDs are invalid",
+            message: "One or more sales rep IDs are invalid",
           };
         }
 
-        existingTemplate.assigned_managers = managers;
+        existingTemplate.assigned_sales_reps = salesReps;
       }
 
       existingTemplate.updated_at = new Date();
@@ -390,7 +379,7 @@ export const ContractTemplateService = {
 
       const template = await contractRepo.findOne({
         where: { id: templateId },
-        relations: { assigned_managers: true, partner: true },
+        relations: { assigned_sales_reps: true, partner: true },
       });
 
       if (!template) {
@@ -416,6 +405,63 @@ export const ContractTemplateService = {
     }
   },
 
+  async deleteContractTemplate(templateId: number): Promise<{
+    status: number;
+    message: string;
+    data?: any;
+  }> {
+    const dataSource = await getDataSource();
+    const queryRunner = dataSource.createQueryRunner();
+    await queryRunner.startTransaction();
+
+    try {
+      const templateRepo = queryRunner.manager.getRepository(ContractTemplate);
+
+      const template = await templateRepo.findOne({
+        where: { id: templateId },
+      });
+
+      if (!template) {
+        await queryRunner.rollbackTransaction();
+        return {
+          status: 404,
+          message: "Contract template not found",
+        };
+      }
+
+      // Clear the many-to-many relation first
+      await queryRunner.query(
+        `DELETE FROM contract_template_sales_reps WHERE contract_template_id = $1`,
+        [templateId]
+      );
+      // Also clear legacy table if exists
+      await queryRunner.query(
+        `DELETE FROM contract_template_managers WHERE contract_template_id = $1`,
+        [templateId]
+      );
+
+      // Delete the template (signed contracts will cascade due to FK)
+      await templateRepo.delete(templateId);
+
+      await queryRunner.commitTransaction();
+
+      return {
+        status: 200,
+        message: "Contract template deleted successfully",
+        data: { templateId },
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      console.error("Error deleting contract template:", error);
+      return {
+        status: 500,
+        message: "Failed to delete contract template",
+      };
+    } finally {
+      await queryRunner.release();
+    }
+  },
+
   async deleteContract(contractId: number): Promise<{
     status: number;
     message: string;
@@ -427,7 +473,7 @@ export const ContractTemplateService = {
 
     try {
       const contractRepo = queryRunner.manager.getRepository(Contract);
-      
+
       // Find the contract with all related data
       const contract = await contractRepo.findOne({
         where: { id: contractId },
@@ -449,19 +495,11 @@ export const ContractTemplateService = {
         });
       }
 
-      // Delete related contract PDF (cascade should handle this, but explicit for safety)
+      // Delete related contract PDF
       if (contract.pdf) {
         await queryRunner.manager.delete("contract_pdfs", {
           contract_id: contractId,
         });
-      }
-
-      // Update the visit to remove contract association
-      if (contract.visit) {
-        await queryRunner.manager.update("visits", 
-          { visit_id: contract.visit_id }, 
-          { contract_id: null }
-        );
       }
 
       // Finally, delete the contract itself

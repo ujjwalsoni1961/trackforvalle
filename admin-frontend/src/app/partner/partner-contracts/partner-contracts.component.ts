@@ -1,18 +1,21 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, TemplateRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIcon } from '@angular/material/icon';
 import { MatProgressBar } from '@angular/material/progress-bar';
-import { MatButton } from '@angular/material/button';
+import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { PartnerService } from '../partner.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-partner-contracts',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIcon, MatProgressBar, MatButton, MatFormFieldModule, MatInputModule, MatSnackBarModule],
+  imports: [CommonModule, FormsModule, MatIcon, MatProgressBar, MatButton, MatIconButton, MatFormFieldModule, MatInputModule, MatSnackBarModule, MatDialogModule, MatTooltipModule],
   templateUrl: './partner-contracts.component.html',
   styleUrl: './partner-contracts.component.scss'
 })
@@ -36,9 +39,18 @@ export class PartnerContractsComponent implements OnInit {
   creating = false;
   newTemplate = { title: '', content: '' };
 
+  // View dialog
+  @ViewChild('viewContractDialog') viewContractDialog!: TemplateRef<any>;
+  selectedContract: any = null;
+  contractHtml: string = '';
+  loadingHtml = false;
+
+  private baseUrl = environment.baseUri;
+
   constructor(
     private partnerService: PartnerService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -141,5 +153,41 @@ export class PartnerContractsComponent implements OnInit {
         this.creating = false;
       }
     });
+  }
+
+  viewSignedContract(contract: any): void {
+    this.selectedContract = contract;
+    this.contractHtml = '';
+    this.loadingHtml = true;
+    this.dialog.open(this.viewContractDialog, { width: '900px', maxHeight: '80vh' });
+
+    // Fetch the styled HTML from the backend
+    this.partnerService.getContractHtml(contract.id).subscribe({
+      next: (html: string) => {
+        this.contractHtml = html;
+        this.loadingHtml = false;
+      },
+      error: () => {
+        // Fall back to rendered_html if available
+        this.contractHtml = contract.rendered_html || '<p>Unable to load contract content.</p>';
+        this.loadingHtml = false;
+      }
+    });
+  }
+
+  downloadSignedContract(contract: any): void {
+    const downloadUrl = `${this.baseUrl}/contract/${contract.id}/pdf?download=true`;
+    window.open(downloadUrl, '_blank');
+  }
+
+  getLeadName(contract: any): string {
+    return contract.visit?.lead?.name || contract.visit?.lead?.contact_name || 'N/A';
+  }
+
+  getSalesRepName(contract: any): string {
+    if (contract.visit?.rep) {
+      return contract.visit.rep.full_name || `${contract.visit.rep.first_name || ''} ${contract.visit.rep.last_name || ''}`.trim() || 'N/A';
+    }
+    return 'N/A';
   }
 }

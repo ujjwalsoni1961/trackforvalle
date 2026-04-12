@@ -174,34 +174,53 @@ export class PartnerService {
     const dataSource = await getDataSource();
 
     try {
-      const [
-        totalContracts,
-        totalLeads,
-        signedLeads,
-        activeReps,
-      ] = await Promise.all([
-        dataSource.getRepository(ContractTemplate).count({
-          where: { partner_id },
-        }),
-        dataSource.getRepository(Leads).count({
-          where: { partner_id },
-        }),
-        dataSource.getRepository(Leads).count({
-          where: { partner_id, status: LeadStatus.Signed },
-        }),
-        dataSource.getRepository(User).count({
-          where: { partner_id, is_active: true },
-        }),
-      ]);
+      // Get partner's contract templates
+      const contractTemplates = await dataSource.getRepository(ContractTemplate).find({
+        where: { partner_id },
+      });
+      const totalContracts = contractTemplates.length;
+      const templateIds = contractTemplates.map((ct) => ct.id);
+
+      // Count signed contracts through partner's templates
+      let signedContracts = 0;
+      let signedContractsList: Contract[] = [];
+      if (templateIds.length > 0) {
+        signedContractsList = await dataSource
+          .getRepository(Contract)
+          .createQueryBuilder("c")
+          .leftJoinAndSelect("c.visit", "visit")
+          .leftJoinAndSelect("visit.lead", "lead")
+          .where("c.contract_template_id IN (:...templateIds)", { templateIds })
+          .getMany();
+        signedContracts = signedContractsList.length;
+      }
+
+      // Count unique leads from signed contracts
+      const leadIds = new Set(
+        signedContractsList
+          .filter((c) => c.visit?.lead_id)
+          .map((c) => c.visit.lead_id)
+      );
+      const totalLeads = leadIds.size;
+
+      // Also include partner's directly assigned leads
+      const directLeads = await dataSource.getRepository(Leads).count({
+        where: { partner_id },
+      });
+
+      const totalLeadsCount = Math.max(totalLeads, directLeads);
+      const conversionRate = totalLeadsCount > 0
+        ? ((signedContracts / totalLeadsCount) * 100).toFixed(1)
+        : "0.0";
 
       return {
         status: httpStatusCodes.OK,
         data: {
           totalContracts,
-          totalLeads,
-          signedLeads,
-          activeReps,
-          conversionRate: totalLeads > 0 ? ((signedLeads / totalLeads) * 100).toFixed(1) : "0.0",
+          totalLeads: totalLeadsCount,
+          signedLeads: signedContracts,
+          signedContracts,
+          conversionRate,
         },
         message: "Dashboard stats fetched successfully",
       };

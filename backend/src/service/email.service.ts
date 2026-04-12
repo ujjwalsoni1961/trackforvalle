@@ -33,13 +33,22 @@ export async function sendEmail(param: IMail) {
     throw new Error(`Email configuration invalid: ${verifyError}`);
   }
 
-  const mailOptions = {
+  const mailOptions: any = {
     from: emailFrom,
     to: param.to,
     subject: param.subject,
     text: param.body,
     html: param.body,
   };
+
+  // Add attachments if provided
+  if (param.attachments && param.attachments.length > 0) {
+    mailOptions.attachments = param.attachments.map(att => ({
+      filename: att.filename,
+      content: att.content,
+      contentType: att.contentType || 'application/pdf',
+    }));
+  }
 
   try {
     const result = await transporter.sendMail(mailOptions);

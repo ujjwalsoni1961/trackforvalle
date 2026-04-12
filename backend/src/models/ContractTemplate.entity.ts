@@ -41,11 +41,11 @@ export class ContractTemplate {
 
   @ManyToMany(() => User)
   @JoinTable({
-    name: "contract_template_managers",
+    name: "contract_template_sales_reps",
     joinColumn: { name: "contract_template_id", referencedColumnName: "id" },
-    inverseJoinColumn: { name: "manager_id", referencedColumnName: "user_id" },
+    inverseJoinColumn: { name: "sales_rep_id", referencedColumnName: "user_id" },
   })
-  assigned_managers: User[];
+  assigned_sales_reps: User[];
 
   @Column({ type: "int", nullable: true })
   partner_id: number;

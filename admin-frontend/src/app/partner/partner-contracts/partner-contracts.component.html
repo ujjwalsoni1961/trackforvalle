@@ -47,7 +47,7 @@
         <div>
           <h3 class="font-semibold text-gray-900">{{ contract.title }}</h3>
           <p class="text-sm text-gray-500 mt-1">
-            Status: <span [class]="contract.status === 'active' ? 'text-green-600' : contract.status === 'draft' ? 'text-yellow-600' : 'text-gray-400'">{{ contract.status }}</span>
+            Status: <span [class]="contract.status === 'active' || contract.status === 'published' ? 'text-green-600' : contract.status === 'draft' ? 'text-yellow-600' : 'text-gray-400'">{{ contract.status }}</span>
           </p>
         </div>
         <div class="text-sm text-gray-400">
@@ -80,16 +80,22 @@
     <div *ngFor="let contract of signedContracts"
          class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
       <div class="flex items-center justify-between">
-        <div>
+        <div class="flex-1">
           <h3 class="font-semibold text-gray-900">{{ contract.template?.title || 'Untitled' }}</h3>
           <div class="text-sm text-gray-500 mt-1 space-y-1">
+            <p>Lead: {{ getLeadName(contract) }}</p>
             <p>Signed: {{ contract.signed_at | date:'mediumDate' }}</p>
-            <p *ngIf="contract.visit?.rep">Sales Rep: {{ contract.visit.rep.full_name || (contract.visit.rep.first_name + ' ' + contract.visit.rep.last_name) }}</p>
-            <p *ngIf="contract.visit?.lead">Customer: {{ contract.visit.lead.name || contract.visit.lead.contact_name }}</p>
+            <p>Sales Rep: {{ getSalesRepName(contract) }}</p>
           </div>
         </div>
-        <div class="text-right">
-          <span class="inline-block px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Signed</span>
+        <div class="flex items-center gap-2">
+          <button mat-icon-button matTooltip="View Contract" color="primary" (click)="viewSignedContract(contract)">
+            <mat-icon>visibility</mat-icon>
+          </button>
+          <button mat-icon-button matTooltip="Download PDF" color="accent" (click)="downloadSignedContract(contract)">
+            <mat-icon>download</mat-icon>
+          </button>
+          <span class="inline-block px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 ml-2">Signed</span>
         </div>
       </div>
     </div>
@@ -104,3 +110,21 @@
     </div>
   </div>
 </div>
+
+<!-- View Signed Contract Dialog -->
+<ng-template #viewContractDialog>
+  <h2 mat-dialog-title>{{ selectedContract?.template?.title || 'Signed Contract' }}</h2>
+  <mat-dialog-content class="max-h-[60vh]">
+    <mat-progress-bar mode="indeterminate" *ngIf="loadingHtml"></mat-progress-bar>
+    <div *ngIf="!loadingHtml && contractHtml" class="contract-html-preview" [innerHTML]="contractHtml"></div>
+    <div *ngIf="!loadingHtml && !contractHtml" class="text-center py-8 text-gray-500">
+      <p>Unable to load contract content.</p>
+    </div>
+  </mat-dialog-content>
+  <mat-dialog-actions>
+    <button mat-button mat-dialog-close>Close</button>
+    <button mat-flat-button color="primary" (click)="downloadSignedContract(selectedContract)">
+      <mat-icon>download</mat-icon> Download PDF
+    </button>
+  </mat-dialog-actions>
+</ng-template>

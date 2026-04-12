@@ -17,7 +17,7 @@ import { MatProgressBar } from '@angular/material/progress-bar';
 import { UsersService } from '../../users/users.service';
 import { PartnerService } from '../../partner/partner.service';
 
-interface Manager {
+interface SalesRep {
   id: string;
   first_name: string;
   last_name: string;
@@ -64,7 +64,7 @@ interface DropdownField {
 })
 export class AddContractComponent implements OnInit {
   contractForm: FormGroup;
-  managers: Manager[] = [];
+  salesReps: SalesRep[] = [];
   partners: Array<{ partner_id: number; company_name: string }> = [];
   isLoading = false;
   dropdownFields: { [key: string]: DropdownField } = {};
@@ -266,7 +266,7 @@ export class AddContractComponent implements OnInit {
     this.contractForm = this.fb.group({
       title: ['', Validators.required],
       content: ['', Validators.required],
-      assigned_manager_ids: [[], Validators.required],
+      assigned_sales_rep_ids: [[], Validators.required],
       status: ['draft', Validators.required],
       partner_id: [null],
       templateId: [''], // For template selection
@@ -285,7 +285,7 @@ export class AddContractComponent implements OnInit {
       }
     });
 
-    this.loadManagers();
+    this.loadSalesReps();
     this.loadPartners();
 
     // Only set up template selection for create mode
@@ -321,7 +321,7 @@ export class AddContractComponent implements OnInit {
         this.contractForm.patchValue({
           title: this.currentTemplate.title,
           content: this.currentTemplate.content,
-          assigned_manager_ids: this.currentTemplate.assigned_manager_ids,
+          assigned_sales_rep_ids: this.currentTemplate.assigned_sales_rep_ids,
           status: this.currentTemplate.status,
           partner_id: this.currentTemplate.partner_id || null
         });
@@ -377,21 +377,21 @@ export class AddContractComponent implements OnInit {
     });
   }
 
-  loadManagers() {
+  loadSalesReps() {
     this.isLoading = true;
-    this.usersService.getManagers().pipe(
+    this.usersService.getSalesReps({ page: 1, limit: 500 }).pipe(
       finalize(() => this.isLoading = false)
     ).subscribe({
       next: (response: any) => {
         const teamMembers = response?.data ?? [];
-        this.managers = teamMembers.map((member: any) => ({
+        this.salesReps = teamMembers.map((member: any) => ({
           id: String(member.user_id),
           first_name: member.full_name ? member.full_name.split(' ')[0] : 'N/A',
           last_name: member.full_name ? member.full_name.split(' ')[1] || '' : ''
         }));
       },
       error: (err: any) => {
-        this.snackBar.open('Error loading managers: ' + err.message, 'Close', { duration: 3000 });
+        this.snackBar.open('Error loading sales reps: ' + err.message, 'Close', { duration: 3000 });
       }
     });
   }
@@ -403,13 +403,13 @@ export class AddContractComponent implements OnInit {
     }
 
     this.isLoading = true;
-    const { title, content, assigned_manager_ids, status, partner_id } = this.contractForm.value;
+    const { title, content, assigned_sales_rep_ids, status, partner_id } = this.contractForm.value;
     const dropdownFields = this.buildDropdownFieldsPayload();
 
     const contractData: any = {
       title,
       content,
-      assigned_manager_ids,
+      assigned_sales_rep_ids,
       status,
       ...(Object.keys(dropdownFields).length > 0 && { dropdown_fields: dropdownFields }),
       ...(partner_id && { partner_id })

@@ -45,6 +45,10 @@ export class PartnerService {
     return this.http.post(`${this.baseUrl}/partner/contracts`, data);
   }
 
+  getContractHtml(contractId: number): Observable<string> {
+    return this.http.get(`${this.baseUrl}/contract/${contractId}/pdf`, { responseType: 'text' });
+  }
+
   // Admin methods
   getAllPartners(params: { page?: number; limit?: number; search?: string } = {}): Observable<any> {
     let httpParams = new HttpParams();

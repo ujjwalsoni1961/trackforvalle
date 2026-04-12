@@ -13,14 +13,17 @@ export class ContractTemplateController {
     this.getContractByLead = this.getContractByLead.bind(this);
   }
   async create(req: any, res: Response): Promise<void> {
-    const { title, content, assigned_manager_ids, status, dropdown_fields, partner_id } =
+    const { title, content, assigned_manager_ids, assigned_sales_rep_ids, status, dropdown_fields, partner_id } =
       req.body;
+
+    // Support both old field name (assigned_manager_ids) and new (assigned_sales_rep_ids) for backwards compatibility
+    const repIds = assigned_sales_rep_ids || assigned_manager_ids || [];
 
     const newTemplate = await ContractTemplateService.createContractTemplate({
       title,
       content,
       status,
-      assigned_manager_ids,
+      assigned_sales_rep_ids: repIds,
       dropdown_fields,
       ...(partner_id && { partner_id }),
     });
@@ -49,9 +52,11 @@ export class ContractTemplateController {
     );
   }
   async getAllContracts(req: any, res: Response): Promise<void> {
-    const managerId = req.query.managerId
-      ? Number(req.query.managerId)
-      : undefined;
+    const salesRepId = req.query.salesRepId
+      ? Number(req.query.salesRepId)
+      : req.query.managerId
+        ? Number(req.query.managerId)
+        : undefined;
     const status = req.query.status as string;
     const search = req.query.search as string;
     const sortBy = req.query.sortBy as "signedCount" | "title" | "date";
@@ -61,7 +66,7 @@ export class ContractTemplateController {
     const skip = (page - 1) * limit;
 
     const result = await ContractTemplateService.getAllContracts({
-      managerId,
+      salesRepId,
       status,
       search,
       sortBy,
@@ -622,31 +627,34 @@ export class ContractTemplateController {
   async reassignContractTemplate(req: any, res: Response): Promise<void> {
     try {
       const { templateId } = req.params;
-      const { assigned_manager_ids } = req.body;
+      const { assigned_sales_rep_ids, assigned_manager_ids } = req.body;
+
+      // Support both old and new field names
+      const repIds = assigned_sales_rep_ids || assigned_manager_ids;
 
       if (
         !templateId ||
-        !assigned_manager_ids ||
-        !Array.isArray(assigned_manager_ids)
+        !repIds ||
+        !Array.isArray(repIds)
       ) {
         return ApiResponse.error(
           res,
           400,
-          "Template ID and assigned_manager_ids array are required"
+          "Template ID and assigned_sales_rep_ids array are required"
         );
       }
 
-      if (assigned_manager_ids.length === 0) {
+      if (repIds.length === 0) {
         return ApiResponse.error(
           res,
           400,
-          "At least one manager ID must be provided"
+          "At least one sales rep ID must be provided"
         );
       }
 
       const result = await ContractTemplateService.reassignContractTemplate(
         parseInt(templateId),
-        assigned_manager_ids
+        repIds
       );
 
       if (result.status >= 400) {
@@ -673,6 +681,12 @@ export class ContractTemplateController {
 
       if (!templateId) {
         return ApiResponse.error(res, 400, "Template ID is required");
+      }
+
+      // Map old field name to new
+      if (updates.assigned_manager_ids && !updates.assigned_sales_rep_ids) {
+        updates.assigned_sales_rep_ids = updates.assigned_manager_ids;
+        delete updates.assigned_manager_ids;
       }
 
       const result = await ContractTemplateService.updateContractTemplate(
@@ -726,21 +740,21 @@ export class ContractTemplateController {
     }
   }
 
-  async deleteContract(req: any, res: Response): Promise<void> {
+  async deleteContractTemplate(req: any, res: Response): Promise<void> {
     try {
-      const { contractId } = req.params;
+      const { templateId } = req.params;
 
-      if (!contractId) {
-        return ApiResponse.error(res, 400, "Contract ID is required");
+      if (!templateId) {
+        return ApiResponse.error(res, 400, "Template ID is required");
       }
 
-      const contractIdNum = parseInt(contractId);
-      if (isNaN(contractIdNum)) {
-        return ApiResponse.error(res, 400, "Invalid contract ID format");
+      const templateIdNum = parseInt(templateId);
+      if (isNaN(templateIdNum)) {
+        return ApiResponse.error(res, 400, "Invalid template ID format");
       }
 
-      const result = await ContractTemplateService.deleteContract(
-        contractIdNum
+      const result = await ContractTemplateService.deleteContractTemplate(
+        templateIdNum
       );
 
       if (result.status >= 400) {

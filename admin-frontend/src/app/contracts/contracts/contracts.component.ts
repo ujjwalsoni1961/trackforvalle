@@ -35,8 +35,8 @@ interface Contract {
   id: number;
   title: string;
   content: string;
-  assigned_manager_ids: string[];
-  assigned_managers: Array<{
+  assigned_sales_rep_ids: string[];
+  assigned_sales_reps: Array<{
     user_id: number;
     full_name: string;
     first_name: string;
@@ -44,7 +44,7 @@ interface Contract {
     email: string;
   }>;
   signed_count: number;
-  status: 'draft' | 'active' | 'archived';
+  status: 'draft' | 'active' | 'published' | 'archived';
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -53,7 +53,7 @@ interface Contract {
   partner?: { partner_id: number; company_name: string } | null;
 }
 
-interface Manager {
+interface SalesRep {
   id: string;
   first_name: string;
   last_name: string;
@@ -86,8 +86,8 @@ export class ContractsComponent implements OnInit {
   @ViewChild('reassignContractDialog') reassignContractDialog!: TemplateRef<any>;
   contracts: Contract[] = [];
   filteredContracts: Contract[] = [];
-  managers: Manager[] = [];
-  displayedColumns: string[] = ['title', 'partnerCompany', 'managerNames', 'status', 'createdAt', 'actions'];
+  salesReps: SalesRep[] = [];
+  displayedColumns: string[] = ['title', 'partnerCompany', 'salesRepNames', 'status', 'createdAt', 'actions'];
   filterForm: FormGroup;
   contractForm: FormGroup;
   isLoading = false;
@@ -110,13 +110,13 @@ export class ContractsComponent implements OnInit {
     private authService: AuthService
   ) {
     this.filterForm = this.fb.group({
-      managerId: ['all'],
+      salesRepId: ['all'],
       status: ['all'],
       search: [''],
       sortBy: ['signed_count']
     });
     this.contractForm = this.fb.group({
-      assigned_manager_ids: [[], Validators.required]
+      assigned_sales_rep_ids: [[], Validators.required]
     });
   }
 
@@ -124,40 +124,40 @@ export class ContractsComponent implements OnInit {
     // Set up role-based permissions
     const currentUser = this.authService.getCurrentUser();
     this.currentUserRole = currentUser?.role || '';
-    
+
     // Managers and above can create and edit contracts
     this.canCreateContracts = this.authService.hasAnyRole(['manager', 'admin']);
     this.canEditAllContracts = this.authService.hasAnyRole(['admin']);
-    
-    this.loadManagers();
+
+    this.loadSalesReps();
     this.loadContracts();
     this.filterForm.valueChanges.subscribe(() => this.applyFilters());
   }
 
-  loadManagers() {
+  loadSalesReps() {
     this.isLoading = true;
-    this.usersService.getManagers().pipe(
+    this.usersService.getSalesReps({ page: 1, limit: 500 }).pipe(
       finalize(() => this.isLoading = false)
     ).subscribe({
       next: (response: any) => {
-        const managers = response?.data ?? []; // Directly use response.data
-        this.managers = managers.map((member: any) => ({
-          id: String(member.user_id), // Convert number to string
+        const reps = response?.data ?? [];
+        this.salesReps = reps.map((member: any) => ({
+          id: String(member.user_id),
           first_name: member.full_name ? member.full_name.split(' ')[0] : 'N/A',
           last_name: member.full_name ? member.full_name.split(' ').slice(1).join(' ') || '' : ''
         }));
       },
       error: () => {
-        this.snackBar.open('Error loading managers', 'Close', { duration: 3000 });
+        this.snackBar.open('Error loading sales reps', 'Close', { duration: 3000 });
       }
     });
   }
 
   loadContracts(page: number = 0, size: number = 10, sortBy: string = 'signed_count') {
     this.isLoading = true;
-    const { managerId, status, search } = this.filterForm.value;
+    const { salesRepId, status, search } = this.filterForm.value;
     const params: any = { page: page + 1, limit: size, sortBy };
-    if (managerId !== 'all') params.managerId = managerId;
+    if (salesRepId !== 'all') params.salesRepId = salesRepId;
     if (status !== 'all') params.status = status;
     if (search) params.search = search;
 
@@ -167,8 +167,8 @@ export class ContractsComponent implements OnInit {
       next: (response: any) => {
         this.contracts = (response?.data?.contracts ?? []).map((contract: any) => ({
           ...contract,
-          assigned_manager_ids: contract.assigned_manager_ids.map((id: any) => String(id)), // Ensure IDs are strings
-          assigned_managers: contract.assigned_managers || [] // Ensure assigned_managers array is available
+          assigned_sales_rep_ids: (contract.assigned_sales_rep_ids || []).map((id: any) => String(id)),
+          assigned_sales_reps: contract.assigned_sales_reps || []
         }));
         this.totalContracts = response?.data?.pagination?.total || this.contracts.length;
         this.applyFilters();
@@ -182,10 +182,10 @@ export class ContractsComponent implements OnInit {
 
   applyFilters() {
     let filtered = [...this.contracts];
-    const { managerId, status, search, sortBy } = this.filterForm.value;
+    const { salesRepId, status, search, sortBy } = this.filterForm.value;
 
-    if (managerId !== 'all') {
-      filtered = filtered.filter(contract => contract.assigned_manager_ids.includes(managerId));
+    if (salesRepId !== 'all') {
+      filtered = filtered.filter(contract => contract.assigned_sales_rep_ids.includes(salesRepId));
     }
     if (status !== 'all') {
       filtered = filtered.filter(contract => contract.status === status);
@@ -208,13 +208,13 @@ export class ContractsComponent implements OnInit {
     return this.sanitizer.bypassSecurityTrustHtml(content);
   }
 
-  getManagerNames(contract: Contract): string {
-    if (contract.assigned_managers && contract.assigned_managers.length > 0) {
-      return contract.assigned_managers
-        .map(manager => manager.full_name)
+  getSalesRepNames(contract: Contract): string {
+    if (contract.assigned_sales_reps && contract.assigned_sales_reps.length > 0) {
+      return contract.assigned_sales_reps
+        .map(rep => rep.full_name || `${rep.first_name} ${rep.last_name}`.trim())
         .join(', ');
     }
-    return 'No managers assigned';
+    return 'No sales reps assigned';
   }
 
   getPartnerName(contract: Contract): string {
@@ -228,6 +228,20 @@ export class ContractsComponent implements OnInit {
     this.router.navigate(['contracts/add']);
   }
 
+  publishContract(contract: Contract) {
+    this.isLoading = true;
+    this.contractsService.updateContract(contract.id, { status: 'published' } as any).pipe(
+      finalize(() => this.isLoading = false)
+    ).subscribe({
+      next: () => {
+        this.snackBar.open('Contract published successfully', 'Close', { duration: 3000 });
+        this.loadContracts();
+      },
+      error: () => {
+        this.snackBar.open('Error publishing contract', 'Close', { duration: 3000 });
+      }
+    });
+  }
 
   viewContract(contract: Contract) {
     this.selectedContract = contract;
@@ -255,19 +269,19 @@ export class ContractsComponent implements OnInit {
 
   openReassignContractDialog(contract: Contract) {
     this.selectedContract = contract;
-    this.contractForm.patchValue({ assigned_manager_ids: contract.assigned_manager_ids });
+    this.contractForm.patchValue({ assigned_sales_rep_ids: contract.assigned_sales_rep_ids });
     this.dialog.open(this.reassignContractDialog, { width: '400px' });
   }
 
   reassignContract() {
-    if (!this.selectedContract || !this.contractForm.get('assigned_manager_ids')?.valid) {
-      this.snackBar.open('Please select at least one manager', 'Close', { duration: 3000 });
+    if (!this.selectedContract || !this.contractForm.get('assigned_sales_rep_ids')?.valid) {
+      this.snackBar.open('Please select at least one sales rep', 'Close', { duration: 3000 });
       return;
     }
 
     this.isLoading = true;
     const updatedContract = {
-      assigned_manager_ids: this.contractForm.get('assigned_manager_ids')?.value
+      assigned_sales_rep_ids: this.contractForm.get('assigned_sales_rep_ids')?.value
     };
     this.contractsService.reassignContract(this.selectedContract.id, updatedContract).pipe(
       finalize(() => this.isLoading = false)
@@ -309,24 +323,19 @@ export class ContractsComponent implements OnInit {
   }
 
   canEditContract(contract: Contract): boolean {
-    // Admins and Super Admins can edit any contract
     if (this.canEditAllContracts) {
       return true;
     }
-    
-    // Managers can edit contracts they are assigned to
     if (this.currentUserRole === 'manager') {
       const currentUser = this.authService.getCurrentUser();
       if (currentUser?.user_id) {
-        return contract.assigned_manager_ids?.includes(String(currentUser.user_id));
+        return contract.assigned_sales_rep_ids?.includes(String(currentUser.user_id));
       }
     }
-    
     return false;
   }
 
   canDeleteContract(contract: Contract): boolean {
-    // Only Admins can delete contracts
     return this.canEditAllContracts;
   }
 }

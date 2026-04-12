@@ -30,7 +30,9 @@ import { FollowUpVisit } from "../models/FollowUpVisit.entity";
 import { ContractImage } from "../models/ContractImage.entity";
 import { LeadStatus } from "../enum/leadStatus";
 import { ContractPDF } from "../models/ContractPdf.entity";
+import { Partner } from "../models/Partner.entity";
 import { getFinnishTime } from "../utils/timezone";
+import { sendEmail } from "./email.service";
 
 require("dotenv").config();
 
@@ -164,6 +166,82 @@ export class VisitService {
       success: true,
     };
   }
+  async sendContractSignedEmails(
+    contractId: number,
+    templateId: number,
+    renderedHtml: string,
+    customerName: string
+  ): Promise<void> {
+    try {
+      const dataSource = await getDataSource();
+
+      // Generate a simple PDF-like content from the HTML
+      // We use the rendered HTML as the email body and attach it as an HTML file
+      // since full PDF generation may not be available in serverless
+      const htmlBuffer = Buffer.from(renderedHtml, "utf-8");
+
+      const adminEmail = process.env.ADMIN_EMAIL || "ujjwalsoni1961@gmail.com";
+
+      // Send to admin
+      try {
+        await sendEmail({
+          to: adminEmail,
+          subject: `Contract Signed - ${customerName}`,
+          body: `<p>A new contract has been signed by <strong>${customerName}</strong>.</p>
+                 <p>Contract ID: ${contractId}</p>
+                 <p>Please find the signed contract attached.</p>`,
+          attachments: [
+            {
+              filename: `contract_${contractId}.html`,
+              content: htmlBuffer,
+              contentType: "text/html",
+            },
+          ],
+        });
+        console.log(`Contract signed email sent to admin: ${adminEmail}`);
+      } catch (emailError) {
+        console.error("Failed to send contract email to admin:", emailError);
+      }
+
+      // Look up the partner from the contract template
+      const template = await dataSource.getRepository(ContractTemplate).findOne({
+        where: { id: templateId },
+        relations: { partner: true },
+      });
+
+      if (template?.partner_id) {
+        const partner = await dataSource.getRepository(Partner).findOne({
+          where: { partner_id: template.partner_id },
+        });
+
+        if (partner?.contact_email) {
+          try {
+            await sendEmail({
+              to: partner.contact_email,
+              subject: `Contract Signed - ${customerName}`,
+              body: `<p>A new contract has been signed by <strong>${customerName}</strong> using your template "<strong>${template.title}</strong>".</p>
+                     <p>Contract ID: ${contractId}</p>
+                     <p>Please find the signed contract attached.</p>`,
+              attachments: [
+                {
+                  filename: `contract_${contractId}.html`,
+                  content: htmlBuffer,
+                  contentType: "text/html",
+                },
+              ],
+            });
+            console.log(`Contract signed email sent to partner: ${partner.contact_email}`);
+          } catch (emailError) {
+            console.error("Failed to send contract email to partner:", emailError);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error in sendContractSignedEmails:", error);
+      // Non-blocking - don't throw, just log
+    }
+  }
+
   async submitVisitWithContract(payload: {
     lead_id: number;
     signatureFile: any;
@@ -304,6 +382,15 @@ export class VisitService {
       });
 
       await queryRunner.commitTransaction();
+
+      // Send email notifications (non-blocking, after commit)
+      const customerName = payload.parsedMetaData?.customer_name || "Customer";
+      this.sendContractSignedEmails(
+        savedContract.id,
+        payload.contract_template_id,
+        renderedHtml,
+        customerName
+      ).catch((err) => console.error("Email notification error:", err));
 
       return {
         data: newContract,
@@ -461,13 +548,22 @@ export class VisitService {
 
       await queryRunner.commitTransaction();
 
+      // Send email notifications (non-blocking, after commit)
+      const customerName = payload.parsedMetaData?.customer_name || "Customer";
+      this.sendContractSignedEmails(
+        savedContract.id,
+        payload.contract_template_id,
+        renderedHtml,
+        customerName
+      ).catch((err) => console.error("Email notification error:", err));
+
       return {
         data: newContract,
         message: "Contract PDF submitted successfully",
         status: 200,
       };
     } catch (error) {
-      console.error("❌ Error submitting contract PDF:", error);
+      console.error("Error submitting contract PDF:", error);
       await queryRunner.rollbackTransaction();
       return {
         data: null,
