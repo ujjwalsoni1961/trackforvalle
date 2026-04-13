@@ -355,7 +355,7 @@ export class ContractsService {
 
   uploadTemplatePdf(file: File): Observable<{ success: boolean; data: { url: string } }> {
     const formData = new FormData();
-    formData.append('contract_pdf', file);
+    formData.append('pdf', file);
     return this.http.post<{ success: boolean; data: { url: string } }>(`${this.baseUrl}/contract/templates/upload-pdf`, formData);
   }
 }
