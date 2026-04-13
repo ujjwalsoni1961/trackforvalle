@@ -44,22 +44,10 @@ interface Contract {
 interface SignedContract {
   id: number;
   contract_template_id: number;
-  visit_id: number;
+  visit_id: number | null;
+  lead_id: number | null;
   rendered_html: string;
-  metadata: {
-    signature: string;
-    date_signed: string;
-    deal_amount: string;
-    company_name: string;
-    product_name: string;
-    customer_name: string;
-    customer_email: string;
-    payment_method: string;
-    customer_address: string;
-    cancellation_notice: string;
-    signature_image_url: string;
-    subscription_frequency: string;
-  };
+  metadata: any;
   signed_at: string;
   template: {
     id: number;
@@ -100,7 +88,7 @@ interface SignedContract {
       contact_phone: string;
       status: string;
     };
-  };
+  } | null;
 }
 
 @Injectable({
@@ -158,21 +146,22 @@ export class ContractsService {
             id: item.id,
             contract_template_id: item.contract_template_id,
             visit_id: item.visit_id,
+            lead_id: item.lead_id,
             rendered_html: item.rendered_html,
-            metadata: item.metadata,
+            metadata: item.metadata || {},
             signed_at: item.signed_at,
-            template: {
+            template: item.template ? {
               id: item.template.id,
               title: item.template.title,
               content: item.template.content,
               status: item.template.status,
               created_at: item.template.created_at,
               updated_at: item.template.updated_at
-            },
-            visit: {
+            } : { id: 0, title: 'Unknown', content: '', status: 'signed', created_at: '', updated_at: '' },
+            visit: item.visit ? {
               visit_id: item.visit.visit_id,
               lead_id: item.visit.lead_id,
-              rep_id: String(item.visit.rep_id),
+              rep_id: String(item.visit.rep_id || ''),
               check_in_time: item.visit.check_in_time,
               check_out_time: item.visit.check_out_time,
               latitude: item.visit.latitude,
@@ -186,21 +175,21 @@ export class ContractsService {
               updated_by: item.visit.updated_by,
               created_at: item.visit.created_at,
               updated_at: item.visit.updated_at,
-              rep: {
+              rep: item.visit.rep ? {
                 user_id: String(item.visit.rep.user_id),
                 full_name: item.visit.rep.full_name,
                 first_name: item.visit.rep.first_name || (item.visit.rep.full_name ? item.visit.rep.full_name.split(' ')[0] : 'N/A'),
                 last_name: item.visit.rep.last_name || (item.visit.rep.full_name ? item.visit.rep.full_name.split(' ').slice(1).join(' ') || '' : '')
-              },
-              lead: {
+              } : { user_id: '', full_name: 'N/A', first_name: 'N/A', last_name: '' },
+              lead: item.visit.lead ? {
                 lead_id: item.visit.lead.lead_id,
                 name: item.visit.lead.name,
                 contact_name: item.visit.lead.contact_name,
                 contact_email: item.visit.lead.contact_email,
                 contact_phone: item.visit.lead.contact_phone,
                 status: item.visit.lead.status
-              }
-            }
+              } : { lead_id: 0, name: 'N/A', contact_name: '', contact_email: '', contact_phone: '', status: '' }
+            } : null
           })),
           pagination: {
             total: response.data.pagination.total,

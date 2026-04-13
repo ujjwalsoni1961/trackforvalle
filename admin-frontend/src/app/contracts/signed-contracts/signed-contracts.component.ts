@@ -21,22 +21,10 @@ import { downloadPdfFromHtml } from '../../shared/pdf-generator';
 interface SignedContract {
   id: number;
   contract_template_id: number;
-  visit_id: number;
+  visit_id: number | null;
+  lead_id: number | null;
   rendered_html: string;
-  metadata: {
-    signature: string;
-    date_signed: string;
-    deal_amount: string;
-    company_name: string;
-    product_name: string;
-    customer_name: string;
-    customer_email: string;
-    payment_method: string;
-    customer_address: string;
-    cancellation_notice: string;
-    signature_image_url: string;
-    subscription_frequency: string;
-  };
+  metadata: any;
   signed_at: string;
   template: {
     id: number;
@@ -49,7 +37,7 @@ interface SignedContract {
   visit: {
     visit_id: number;
     lead_id: number;
-    rep_id: number;
+    rep_id: string;
     check_in_time: string;
     check_out_time: string;
     latitude: number;
@@ -64,7 +52,7 @@ interface SignedContract {
     created_at: string;
     updated_at: string;
     rep: {
-      user_id: number;
+      user_id: string;
       full_name: string;
       first_name: string;
       last_name: string;
@@ -77,7 +65,7 @@ interface SignedContract {
       contact_phone: string;
       status: string;
     };
-  };
+  } | null;
 }
 
 interface Manager {
@@ -202,22 +190,28 @@ export class SignedContractsComponent implements OnInit {
 
     this.contractsService.getSignedContracts(params).subscribe({
       next: (response: any) => {
-        this.isLoading = false
-        this.signedContracts = (response?.data?.contracts ?? []).map((contract: any) => ({
-          ...contract,
-          visit: {
-            ...contract.visit,
-            rep_id: String(contract.visit.rep_id),
-            rep: {
-              ...contract.visit.rep,
-              user_id: String(contract.visit.rep.user_id)
-            }
-          }
-        }));
+        this.isLoading = false;
+        this.signedContracts = (response?.data?.contracts ?? []).map((contract: any) => {
+          // Safely handle contracts without a visit (e.g. signed via custom signing flow)
+          const visit = contract.visit;
+          return {
+            ...contract,
+            visit: visit ? {
+              ...visit,
+              rep_id: String(visit.rep_id || ''),
+              rep: visit.rep ? {
+                ...visit.rep,
+                user_id: String(visit.rep.user_id || '')
+              } : { user_id: '', full_name: 'N/A', first_name: 'N/A', last_name: '' },
+              lead: visit.lead || { lead_id: 0, name: 'N/A', contact_name: '', contact_email: '', contact_phone: '', status: '' }
+            } : null
+          };
+        });
         this.totalContracts = response?.data?.pagination?.total || this.signedContracts.length;
         this.applyFilters();
       },
       error: () => {
+        this.isLoading = false;
         this.snackBar.open('Error loading signed contracts', 'Close', { duration: 3000 });
         this.applyFilters();
       }
@@ -229,16 +223,16 @@ export class SignedContractsComponent implements OnInit {
     const { managerId, salesmanId, status, search, sortBy } = this.filterForm.value;
 
     if (managerId !== 'all') {
-      filtered = filtered.filter(contract => contract.visit.created_by.trim() === managerId);
+      filtered = filtered.filter(contract => contract.visit?.created_by?.trim() === managerId);
     }
     if (salesmanId !== 'all') {
-      filtered = filtered.filter(contract => contract.visit.rep_id === salesmanId);
+      filtered = filtered.filter(contract => contract.visit?.rep_id === salesmanId);
     }
     if (status !== 'all') {
-      filtered = filtered.filter(contract => contract.template.status === status);
+      filtered = filtered.filter(contract => contract.template?.status === status);
     }
     if (search) {
-      filtered = filtered.filter(contract => contract.template.title.toLowerCase().includes(search.toLowerCase()));
+      filtered = filtered.filter(contract => contract.template?.title?.toLowerCase().includes(search.toLowerCase()));
     }
 
     filtered.sort((a, b) => {
@@ -246,11 +240,11 @@ export class SignedContractsComponent implements OnInit {
         return new Date(b.signed_at).getTime() - new Date(a.signed_at).getTime();
       }
       if (sortBy === 'title') {
-        return a.template.title.localeCompare(b.template.title);
+        return (a.template?.title || '').localeCompare(b.template?.title || '');
       }
       if (sortBy === 'deal_amount') {
-        const aAmount = parseFloat(a.metadata.deal_amount.replace(/[^0-9.-]+/g, '')) || 0;
-        const bAmount = parseFloat(b.metadata.deal_amount.replace(/[^0-9.-]+/g, '')) || 0;
+        const aAmount = parseFloat(String(a.metadata?.deal_amount || '0').replace(/[^0-9.-]+/g, '')) || 0;
+        const bAmount = parseFloat(String(b.metadata?.deal_amount || '0').replace(/[^0-9.-]+/g, '')) || 0;
         return bAmount - aAmount;
       }
       return 0;
@@ -263,15 +257,26 @@ export class SignedContractsComponent implements OnInit {
     return this.sanitizer.bypassSecurityTrustHtml(content);
   }
 
-  getSalesmanName(repId: string): string {
-    if (!this.salesmen.length) return 'Loading salesmen...';
+  getSalesmanName(contract: SignedContract): string {
+    if (!contract.visit?.rep) return 'N/A';
+    const repId = contract.visit.rep.user_id;
+    if (!this.salesmen.length) return 'Loading...';
     const salesman = this.salesmen.find(s => s.id === repId);
-    return salesman ? `${salesman.first_name} ${salesman.last_name}`.trim() : 'Unknown';
+    return salesman ? `${salesman.first_name} ${salesman.last_name}`.trim() : (contract.visit.rep.full_name || 'Unknown');
+  }
+
+  getCustomerName(contract: SignedContract): string {
+    // Try metadata first
+    if (contract.metadata?.customer_name) return contract.metadata.customer_name;
+    // Then visit.lead
+    if (contract.visit?.lead?.contact_name) return contract.visit.lead.contact_name;
+    if (contract.visit?.lead?.name) return contract.visit.lead.name;
+    return 'N/A';
   }
 
   getManagerName(createdBy: string): string {
     if (!this.managers.length) return 'Loading managers...';
-    const manager = this.managers.find(m => m.id === createdBy.trim());
+    const manager = this.managers.find(m => m.id === createdBy?.trim());
     return manager ? `${manager.first_name} ${manager.last_name}`.trim() : 'Unknown';
   }
 

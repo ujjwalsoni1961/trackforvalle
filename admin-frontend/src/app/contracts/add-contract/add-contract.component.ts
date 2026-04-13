@@ -508,10 +508,13 @@ export class AddContractComponent implements OnInit {
   // ─── Field Placement ───
 
   addField(type: string) {
+    const timestamp = Date.now();
+    const defaultLabel = type === 'signature' ? 'Signature' : type === 'text' ? 'Text Field' : type === 'date' ? 'Date' : 'Dropdown';
     const newField = {
-      id: `${type}_${Date.now()}`,
+      id: `${type}_${timestamp}`,
       type,
-      label: type === 'signature' ? 'Signature' : type === 'text' ? 'Text Field' : type === 'date' ? 'Date' : 'Dropdown',
+      name: `${type}_${timestamp}`,
+      label: defaultLabel,
       page: this.currentPdfPage,
       x: 50, y: 50,
       width: type === 'signature' ? 200 : 150,

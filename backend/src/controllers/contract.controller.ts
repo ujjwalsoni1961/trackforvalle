@@ -523,8 +523,9 @@ export class ContractTemplateController {
               height: field.height,
             });
           } else {
-            // Draw text field value
-            const value = field_values?.[field.name] || "";
+            // Draw text field value — match by label (lowercased) since Flutter sends keys that way
+            const fieldKey = (field.label || field.name || field.id || '').toLowerCase();
+            const value = field_values?.[fieldKey] || field_values?.[field.name] || field_values?.[field.label] || field_values?.[field.id] || "";
             if (value) {
               const fontSize = Math.min(field.height * 0.7, 14);
               page.drawText(String(value), {
