@@ -12,6 +12,8 @@ import { generateStyledContractHTML } from "../utils/styled-html-generator";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { getSupabaseServiceClient } from "../config/supabase";
 import { sendEmail } from "../service/email.service";
+import { Leads } from "../models/Leads.entity";
+import { LeadStatus } from "../enum/leadStatus";
 
 export class ContractTemplateController {
   constructor() {
@@ -650,16 +652,28 @@ export class ContractTemplateController {
         pdfBytes = await pdfDoc.save();
       }
 
-      // Find the most recent open visit for this lead to link the contract
+      // Find the most recent visit for this lead to link the contract
       let visitId: number | null = null;
       if (lead_id) {
-        const visitRepo = dataSource.getRepository(Visit);
-        const openVisit = await visitRepo.findOne({
-          where: { lead_id: lead_id },
-          order: { created_at: "DESC" },
-        });
-        if (openVisit) {
-          visitId = openVisit.visit_id;
+        try {
+          const visitRepo = dataSource.getRepository(Visit);
+          const openVisit = await visitRepo.findOne({
+            where: { lead_id: lead_id },
+            order: { created_at: "DESC" },
+          });
+          if (openVisit) {
+            visitId = openVisit.visit_id;
+          }
+        } catch (visitErr) {
+          console.error("Could not find visit for lead:", visitErr);
+        }
+
+        // Update lead status to Signed
+        try {
+          const leadsRepo = dataSource.getRepository(Leads);
+          await leadsRepo.update({ lead_id: lead_id }, { status: LeadStatus.Signed });
+        } catch (statusErr) {
+          console.error("Failed to update lead status:", statusErr);
         }
       }
 

@@ -370,6 +370,11 @@ export class AddContractComponent implements OnInit {
         if (this.currentTemplate.dropdown_fields) {
           this.loadExistingDropdownFields(this.currentTemplate.dropdown_fields);
         }
+
+        // Load existing PDF preview for pdf_upload templates
+        if (this.templateType === 'pdf_upload' && this.pdfUrl) {
+          this.loadPdfPreviewFromUrl(this.pdfUrl);
+        }
       },
       error: (err: any) => {
         this.snackBar.open('Error loading template: ' + err.message, 'Close', { duration: 3000 });
@@ -464,6 +469,21 @@ export class AddContractComponent implements OnInit {
     this.totalPdfPages = pdf.numPages;
     this.currentPdfPage = 1;
     await this.renderPdfPage(pdf, 1);
+  }
+
+  async loadPdfPreviewFromUrl(url: string) {
+    try {
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.min.mjs';
+      const pdf = await pdfjsLib.getDocument(url).promise;
+      this.totalPdfPages = pdf.numPages;
+      this.currentPdfPage = 1;
+      // Use setTimeout to ensure canvas element is rendered in the DOM
+      setTimeout(() => this.renderPdfPage(pdf, 1), 100);
+    } catch (err) {
+      console.error('Failed to load PDF from URL:', err);
+      this.snackBar.open('Failed to load PDF preview', 'Close', { duration: 3000 });
+    }
   }
 
   async renderPdfPage(pdf: any, pageNum: number) {
