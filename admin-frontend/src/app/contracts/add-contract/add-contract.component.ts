@@ -454,7 +454,7 @@ export class AddContractComponent implements OnInit {
 
   async loadPdfPreview(file: File) {
     const pdfjsLib = await import('pdfjs-dist');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.min.mjs';
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     this.totalPdfPages = pdf.numPages;
