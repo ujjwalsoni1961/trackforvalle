@@ -32,7 +32,7 @@ export class GeminiService {
     const sampleForAnalysis = rawRows.slice(0, Math.min(rawRows.length, 8));
     const allRows = rawRows;
 
-    const prompt = `You are an expert data parser. I have spreadsheet data that contains address/lead information.
+    const prompt = `You are an expert data parser specializing in Finnish address data. I have spreadsheet data that contains address/lead information.
 The data comes from Finnish sales teams and may have Finnish column names.
 
 Here are the first rows of the spreadsheet (each row is a JSON array):
@@ -47,9 +47,9 @@ Map each column header to one of these system fields:
 - email
 - phone 
 - streetAddress (street name + number)
-- city
-- state (province/region)
-- postalCode (zip code)
+- city (CRITICAL: the city/town name, e.g., "Helsinki", "Orimattila", "Lahti")
+- state (province/region, e.g., "Päijät-Häme", "Uusimaa")
+- postalCode (zip code, always 5 digits in Finland)
 - country
 - comments (notes, remarks)
 - skip (columns not useful for lead import, like contact dates)
@@ -58,18 +58,30 @@ TASK 3 - PARSE ALL DATA:
 Now parse ALL the following data rows into clean lead records.
 ${allRows.map((row, i) => `Row ${i + 1}: ${JSON.stringify(row)}`).join("\n")}
 
-CRITICAL RULES:
+CRITICAL RULES FOR FINNISH ADDRESSES:
+- In Finland, addresses follow the pattern: "Street Name Number, PostalCode City" (e.g., "Hiirihaukankuja 2, 16320 Orimattila")
+- The city name ALWAYS appears after the postal code. You MUST extract the city. Never leave city empty when a postal code is present.
+- Common Finnish address patterns:
+  * "Kauppakatu 5, 15100 Lahti" → streetAddress: "Kauppakatu 5", postalCode: "15100", city: "Lahti"
+  * "Mannerheimintie 10 A 4, 00100 Helsinki" → streetAddress: "Mannerheimintie 10 A 4", postalCode: "00100", city: "Helsinki"
+  * Sometimes the postal code + city are in a separate column from the street. Look for patterns like "15100 Lahti" and split into postalCode + city.
+- If a cell has just a number like "15100" with no city, and another cell has the city separately, map both correctly.
+- If postal code and city are in the same cell (e.g., "15100 Lahti"), split them: postalCode="15100", city="Lahti".
+- Finnish postal codes are always exactly 5 digits (e.g., "00100", "15100", "16320").
+- Postal codes must be strings (e.g., "16320" not 16320 or 16320.0). Preserve leading zeros ("00100" not "100").
+
+OTHER RULES:
 - Skip completely empty rows
 - Skip the title row(s) and header row
 - If a cell contains a full address (e.g., "Hiirihaukankuja 2, 16320 Orimattila"), split it into streetAddress, postalCode, and city
 - If a comments/notes cell contains an email address, extract it into the email field
 - If a comments/notes cell contains a phone number (Finnish format: 04xx, 050x, +358), extract it into the phone field  
 - If a comments/notes cell contains a person's name (e.g., "Tuomo", "Tanja Hämäläinen"), extract it into customerName
-- Postal codes must be strings (e.g., "16320" not 16320 or 16320.0)
 - If a value looks like a date or "ev" (Finnish: ei vastannut = no answer), it's not useful data for the lead - skip or put in comments
 - Keep the remaining text in comments after extracting email/phone/name
 - For country, default to "Finland" if not specified
 - Return ONLY valid data rows as lead objects
+- EVERY lead MUST have a non-empty city field. If you cannot determine the city, use the postal code to infer it.
 
 Respond with ONLY valid JSON (no markdown, no backticks, no explanation) in this exact format:
 {

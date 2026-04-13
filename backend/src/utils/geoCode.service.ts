@@ -140,6 +140,53 @@ export class GeocodingService {
     }
   }
 
+  /**
+   * Build component restrictions for Google Geocoding API.
+   * Uses postal_code + country to force results into the correct area.
+   */
+  private buildComponents(address: {
+    postal_code?: string;
+    city?: string;
+    subregion?: string;
+    country?: string;
+  }): { postal_code?: string; country?: string; locality?: string } {
+    const countryCodeMap: { [key: string]: string } = {
+      finland: "FI",
+      suomi: "FI",
+    };
+    const country = address.country
+      ? countryCodeMap[address.country.toLowerCase()] || address.country.toUpperCase()
+      : "FI";
+
+    const components: { postal_code?: string; country?: string; locality?: string } = { country };
+
+    // Add postal_code restriction — this is the key fix for Finnish addresses
+    // where the same street name exists in multiple cities
+    if (address.postal_code && address.postal_code !== "00000") {
+      components.postal_code = address.postal_code;
+    }
+
+    return components;
+  }
+
+  /**
+   * Pick the most precise geocode result from a list.
+   */
+  private pickBestResult(results: any[]): any | null {
+    if (!results || results.length === 0) return null;
+    const precision: Record<string, number> = {
+      ROOFTOP: 1,
+      RANGE_INTERPOLATED: 2,
+      GEOMETRIC_CENTER: 3,
+      APPROXIMATE: 4,
+    };
+    return results.sort(
+      (a, b) =>
+        (precision[a.geometry.location_type ?? "APPROXIMATE"] ?? 4) -
+        (precision[b.geometry.location_type ?? "APPROXIMATE"] ?? 4)
+    )[0];
+  }
+
   async getCoordinates(address: {
     street_address: string;
     postal_code: string;
@@ -150,19 +197,16 @@ export class GeocodingService {
     country: string;
   }): Promise<{ latitude: number; longitude: number }> {
     try {
-      // 1. First try: Place ID method
-      const placeId = await this.getPlaceId(address);
-      if (placeId) {
-        const coords = await this.getCoordinatesFromPlaceId(placeId);
-        if (coords) return coords;
-      }
+      const components = this.buildComponents(address);
+      const cityOrSubregion = address.city || address.subregion || "";
 
-      // 2. Second try: Geocode with FULL address
+      // 1. First try: Geocode with full address + component restrictions
       const fullAddress = [
         address.street_address,
-        `${address.postal_code} ${address.subregion || address.city}`,
+        address.postal_code,
+        cityOrSubregion,
         address.region || address.state,
-        address.country,
+        address.country || "Finland",
       ]
         .filter(Boolean)
         .join(", ");
@@ -170,28 +214,36 @@ export class GeocodingService {
       let response = await client.geocode({
         params: {
           address: fullAddress,
+          components,
           key: process.env.GOOGLE_MAPS_API_KEY!,
         },
       });
 
       // Find most precise result
-      const preciseResult = response.data.results.find((r) =>
-        this.isPreciseLocation(r.geometry.location_type)
-      );
-
-      if (preciseResult) {
-        const { lat, lng } = preciseResult.geometry.location;
+      let best = this.pickBestResult(response.data.results);
+      if (best && this.isPreciseLocation(best.geometry.location_type)) {
+        const { lat, lng } = best.geometry.location;
         return { latitude: lat, longitude: lng };
       }
 
-      // 3. Third try: Without apartment identifiers if needed
+      // 2. Second try: Place Autocomplete → Place Details (more accurate for street-level)
+      const placeId = await this.getPlaceId(address);
+      if (placeId) {
+        const coords = await this.getCoordinatesFromPlaceId(placeId);
+        if (coords) return coords;
+      }
+
+      // 3. Third try: Simplified address (no apartment identifiers) + components
+      const simplifiedStreet = address.street_address
+        .replace(/\b(?:as|apartment|apt|unit|huoneisto)\s*\d+\b/gi, "")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+
       const simplifiedAddress = [
-        address.street_address
-          .replace(/\b(?:as|apartment|apt|unit)\s*\d+\b/gi, "")
-          .replace(/\s{2,}/g, " ")
-          .trim(),
-        `${address.postal_code} ${address.subregion || address.city}`,
-        address.country,
+        simplifiedStreet,
+        address.postal_code,
+        cityOrSubregion,
+        address.country || "Finland",
       ]
         .filter(Boolean)
         .join(", ");
@@ -199,30 +251,37 @@ export class GeocodingService {
       response = await client.geocode({
         params: {
           address: simplifiedAddress,
+          components,
           key: process.env.GOOGLE_MAPS_API_KEY!,
         },
       });
 
-      const bestResult = response.data.results.sort((a, b) => {
-        const precision = {
-          ROOFTOP: 1,
-          RANGE_INTERPOLATED: 2,
-          GEOMETRIC_CENTER: 3,
-          APPROXIMATE: 4,
-        };
-        return (
-          (precision[a.geometry.location_type ?? "APPROXIMATE"] ?? 4) -
-          (precision[b.geometry.location_type ?? "APPROXIMATE"] ?? 4)
-        );
-      })[0];
+      best = this.pickBestResult(response.data.results);
+      if (best) {
+        const { lat, lng } = best.geometry.location;
+        return { latitude: lat, longitude: lng };
+      }
 
-      if (!bestResult) throw new Error("No geocode results found");
+      // 4. Last resort: Just postal_code + country (at least puts pin in right city area)
+      if (address.postal_code && address.postal_code !== "00000") {
+        response = await client.geocode({
+          params: {
+            address: `${address.postal_code}, Finland`,
+            components: { country: "FI" },
+            key: process.env.GOOGLE_MAPS_API_KEY!,
+          },
+        });
+        best = this.pickBestResult(response.data.results);
+        if (best) {
+          const { lat, lng } = best.geometry.location;
+          return { latitude: lat, longitude: lng };
+        }
+      }
 
-      const { lat, lng } = bestResult.geometry.location;
-      return { latitude: lat, longitude: lng };
+      throw new Error("No geocode results found");
     } catch (error: any) {
       throw new Error(
-        `Geocoding failed for ${address.street_address}, ${address.postal_code}, ${address.subregion}: ${error.message}`
+        `Geocoding failed for ${address.street_address}, ${address.postal_code}, ${address.city || address.subregion}: ${error.message}`
       );
     }
   }
