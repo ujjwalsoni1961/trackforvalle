@@ -34,13 +34,17 @@ export class ContractTemplate {
 
   @Column({ type: "jsonb", default: "[]" })
   field_positions: Array<{
-    name: string;
+    name?: string;
+    id?: string;
+    label?: string;
     x: number;
     y: number;
     width: number;
     height: number;
     page: number;
     type?: string;
+    required?: boolean;
+    options?: string[];
   }>;
 
   @Column({ type: "json", nullable: true })

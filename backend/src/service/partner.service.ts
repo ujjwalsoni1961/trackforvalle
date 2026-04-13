@@ -195,11 +195,11 @@ export class PartnerService {
         signedContracts = signedContractsList.length;
       }
 
-      // Count unique leads from signed contracts
+      // Count unique leads from signed contracts (both via visit and direct lead_id)
       const leadIds = new Set(
         signedContractsList
-          .filter((c) => c.visit?.lead_id)
-          .map((c) => c.visit.lead_id)
+          .map((c) => c.lead_id || c.visit?.lead_id)
+          .filter(Boolean)
       );
       const totalLeads = leadIds.size;
 
@@ -281,6 +281,7 @@ export class PartnerService {
         .leftJoinAndSelect("c.visit", "visit")
         .leftJoinAndSelect("visit.rep", "rep")
         .leftJoinAndSelect("visit.lead", "lead")
+        .leftJoinAndSelect("c.images", "images")
         .where("template.partner_id = :partner_id", { partner_id })
         .orderBy("c.signed_at", "DESC")
         .skip(skip)

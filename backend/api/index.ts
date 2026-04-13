@@ -24,7 +24,8 @@ app.use(
     saveUninitialized: false,
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use("/api", router);
 app.use(verifyToken);
 app.use("/", (req, res) => {

@@ -16,7 +16,6 @@ import { ContractsService } from '../contracts.service';
 import { UsersService } from '../../users/users.service';
 import { DomSanitizer, SafeHtml, SafeUrl } from '@angular/platform-browser';
 import { finalize } from 'rxjs/operators';
-import { downloadPdfFromHtml } from '../../shared/pdf-generator';
 
 interface SignedContract {
   id: number;
@@ -281,45 +280,15 @@ export class SignedContractsComponent implements OnInit {
   }
 
   viewContract(contract: SignedContract) {
-    this.isLoading = true;
-    this.contractsService.getContractHtml(contract.id).pipe(
-      finalize(() => this.isLoading = false)
-    ).subscribe({
-      next: (html: string) => {
-        const newWindow = window.open('', '_blank');
-        if (newWindow) {
-          newWindow.document.write(html);
-          newWindow.document.close();
-        } else {
-          this.snackBar.open('Pop-up blocked. Please allow pop-ups.', 'Close', { duration: 3000 });
-        }
-      },
-      error: () => {
-        this.snackBar.open('Error loading contract', 'Close', { duration: 3000 });
-      }
-    });
+    // Open the contract PDF/HTML viewer URL directly in a new window
+    const url = this.contractsService.getContractPdfUrl(contract.id);
+    window.open(url, '_blank');
   }
 
-  async downloadContract(contract: SignedContract) {
-    this.isLoading = true;
-    this.contractsService.getContractHtml(contract.id).subscribe({
-      next: async (html: string) => {
-        try {
-          const title = (contract.metadata as any)?.title || contract.contract_template_id || 'contract';
-          await downloadPdfFromHtml(html, `contract_${title}_${contract.id}.pdf`);
-          this.snackBar.open('PDF download started', 'Close', { duration: 2000 });
-        } catch (err) {
-          console.error('PDF generation error:', err);
-          this.snackBar.open('Error generating PDF', 'Close', { duration: 3000 });
-        } finally {
-          this.isLoading = false;
-        }
-      },
-      error: () => {
-        this.isLoading = false;
-        this.snackBar.open('Error loading contract', 'Close', { duration: 3000 });
-      }
-    });
+  downloadContract(contract: SignedContract) {
+    // Open the download URL directly — browser will handle the download via Content-Disposition header
+    const url = this.contractsService.getContractPdfDownloadUrl(contract.id);
+    window.open(url, '_blank');
   }
 
   onPageChange(event: PageEvent) {

@@ -148,6 +148,29 @@ export class ContractTemplateController {
         return;
       }
 
+      // If PDF already stored in contract_pdfs, serve it directly (covers custom-signed PDF contracts)
+      if (contract.pdf && contract.pdf.pdf_data) {
+        const fileName = `contract_${contractId}_${Date.now()}.pdf`;
+        res.setHeader("Content-Type", "application/pdf");
+        if (shouldDownload) {
+          res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="${fileName}"`
+          );
+        } else {
+          res.setHeader(
+            "Content-Disposition",
+            `inline; filename="${fileName}"`
+          );
+        }
+        res.setHeader(
+          "Content-Length",
+          contract.pdf.pdf_data.length.toString()
+        );
+        res.send(contract.pdf.pdf_data);
+        return;
+      }
+
       if (!contract?.rendered_html) {
         res.status(404).json({
           data: null,
@@ -167,22 +190,6 @@ export class ContractTemplateController {
       // If download is requested, generate and return PDF
       if (shouldDownload) {
         try {
-          // Check if PDF already exists in database
-          if (contract.pdf && contract.pdf.pdf_data) {
-            const fileName = `contract_${contractId}_${Date.now()}.pdf`;
-            res.setHeader("Content-Type", "application/pdf");
-            res.setHeader(
-              "Content-Disposition",
-              `attachment; filename="${fileName}"`
-            );
-            res.setHeader(
-              "Content-Length",
-              contract.pdf.pdf_data.length.toString()
-            );
-            res.send(contract.pdf.pdf_data);
-            return;
-          }
-
           // Generate PDF from HTML
           const pdfBuffer = await this.generatePdfFromHtml(styledHtml);
           const fileName = `contract_${contractId}_${Date.now()}.pdf`;
@@ -525,7 +532,7 @@ export class ContractTemplateController {
           } else {
             // Draw text field value — match by label (lowercased) since Flutter sends keys that way
             const fieldKey = (field.label || field.name || field.id || '').toLowerCase();
-            const value = field_values?.[fieldKey] || field_values?.[field.name] || field_values?.[field.label] || field_values?.[field.id] || "";
+            const value = field_values?.[fieldKey] || (field.name ? field_values?.[field.name] : '') || (field.label ? field_values?.[field.label] : '') || (field.id ? field_values?.[field.id] : '') || "";
             if (value) {
               const fontSize = Math.min(field.height * 0.7, 14);
               page.drawText(String(value), {
@@ -756,9 +763,10 @@ export class ContractTemplateController {
         null,
         "Contract signed successfully"
       );
-    } catch (error) {
-      console.error("Error signing contract:", error);
-      ApiResponse.error(res, 500, "Failed to sign contract");
+    } catch (error: any) {
+      console.error("Error signing contract:", error?.message || error, error?.stack);
+      const errMsg = error?.message || "Failed to sign contract";
+      ApiResponse.error(res, 500, `Failed to sign contract: ${errMsg}`);
     }
   }
 

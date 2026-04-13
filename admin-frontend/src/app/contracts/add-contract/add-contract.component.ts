@@ -663,7 +663,8 @@ export class AddContractComponent implements OnInit {
       status,
       template_type: this.templateType,
       ...(Object.keys(dropdownFields).length > 0 && { dropdown_fields: dropdownFields }),
-      ...(partner_id && { partner_id }),
+      // Always send partner_id (null clears the link, number sets it)
+      partner_id: partner_id || null,
       ...(this.templateType === 'pdf_upload' && this.pdfUrl && { pdf_url: this.pdfUrl }),
       ...(this.templateType === 'pdf_upload' && this.fieldPositions.length > 0 && { field_positions: this.fieldPositions })
     };

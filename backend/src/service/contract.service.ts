@@ -289,6 +289,7 @@ export const ContractTemplateService = {
       template_type?: string;
       pdf_url?: string | null;
       field_positions?: Array<any> | null;
+      partner_id?: number | null;
       dropdown_fields?: {
         [fieldName: string]: {
           label: string;
@@ -345,6 +346,9 @@ export const ContractTemplateService = {
       }
       if (updates.field_positions !== undefined) {
         existingTemplate.field_positions = updates.field_positions as any;
+      }
+      if (updates.partner_id !== undefined) {
+        existingTemplate.partner_id = updates.partner_id as any;
       }
 
       // Update assigned sales reps if provided

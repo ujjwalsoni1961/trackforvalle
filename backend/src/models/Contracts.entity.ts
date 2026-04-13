@@ -25,7 +25,7 @@ export class Contract {
   template: ContractTemplate;
 
   @Column({ type: "int", nullable: true })
-  visit_id: number;
+  visit_id: number | null;
 
   @ManyToOne(() => Visit, (visit) => visit.contract)
   @JoinColumn({ name: "visit_id" })
@@ -44,7 +44,7 @@ export class Contract {
   field_values: Record<string, any>;
 
   @Column({ type: "int", nullable: true })
-  lead_id: number;
+  lead_id: number | null;
 
   @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
   signed_at: Date;
