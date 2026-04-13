@@ -11,7 +11,6 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { PartnerService } from '../partner.service';
 import { environment } from '../../../environments/environment';
-import { downloadPdfFromHtml } from '../../shared/pdf-generator';
 
 @Component({
   selector: 'app-partner-contracts',
@@ -157,51 +156,15 @@ export class PartnerContractsComponent implements OnInit {
   }
 
   viewSignedContract(contract: any): void {
-    this.selectedContract = contract;
-    this.contractHtml = '';
-    this.loadingHtml = true;
-    this.dialog.open(this.viewContractDialog, { width: '900px', maxHeight: '80vh' });
-
-    // Fetch the styled HTML from the backend
-    this.partnerService.getContractHtml(contract.id).subscribe({
-      next: (html: string) => {
-        this.contractHtml = html;
-        this.loadingHtml = false;
-      },
-      error: () => {
-        // Fall back to rendered_html if available
-        this.contractHtml = contract.rendered_html || '<p>Unable to load contract content.</p>';
-        this.loadingHtml = false;
-      }
-    });
+    // Open the contract PDF/HTML viewer URL directly in a new tab
+    const url = this.partnerService.getContractPdfUrl(contract.id);
+    window.open(url, '_blank');
   }
 
-  async downloadSignedContract(contract: any): Promise<void> {
-    try {
-      this.loadingHtml = true;
-      // Fetch the HTML from the backend
-      this.partnerService.getContractHtml(contract.id).subscribe({
-        next: async (html: string) => {
-          try {
-            const title = contract.template?.title || contract.contract_template_id || 'contract';
-            await downloadPdfFromHtml(html, `contract_${title}_${contract.id}.pdf`);
-            this.snackBar.open('PDF download started', 'Close', { duration: 2000 });
-          } catch (err) {
-            console.error('PDF generation error:', err);
-            this.snackBar.open('Error generating PDF', 'Close', { duration: 3000 });
-          } finally {
-            this.loadingHtml = false;
-          }
-        },
-        error: () => {
-          this.loadingHtml = false;
-          this.snackBar.open('Error loading contract', 'Close', { duration: 3000 });
-        }
-      });
-    } catch (err) {
-      this.loadingHtml = false;
-      this.snackBar.open('Error downloading PDF', 'Close', { duration: 3000 });
-    }
+  downloadSignedContract(contract: any): void {
+    // Open the download URL directly — browser handles the download via Content-Disposition header
+    const url = this.partnerService.getContractPdfDownloadUrl(contract.id);
+    window.open(url, '_blank');
   }
 
   getLeadName(contract: any): string {

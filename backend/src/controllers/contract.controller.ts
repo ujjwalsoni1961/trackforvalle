@@ -386,12 +386,25 @@ export class ContractTemplateController {
   async getContractByLead(req: any, res: Response): Promise<void> {
     try {
       const { leadId } = req.params;
+      const leadIdNum = parseInt(leadId);
       const dataSource = await getDataSource();
+      const contractRepo = dataSource.getRepository(Contract);
 
-      // Find visit(s) for this lead that have a contract
+      // Strategy 1: Find contracts linked directly by lead_id on contracts table
+      const directContracts = await contractRepo.find({
+        where: { lead_id: leadIdNum },
+        relations: {
+          template: true,
+          images: true,
+          pdf: true,
+        },
+        order: { signed_at: "DESC" },
+      });
+
+      // Strategy 2: Find contracts linked through visits
       const visitRepo = dataSource.getRepository(Visit);
       const visits = await visitRepo.find({
-        where: { lead_id: parseInt(leadId) },
+        where: { lead_id: leadIdNum },
         relations: {
           contract: {
             template: true,
@@ -401,11 +414,24 @@ export class ContractTemplateController {
         },
         order: { created_at: "DESC" },
       });
+      const visitContracts = visits
+        .filter((v) => v.contract)
+        .map((v) => v.contract);
 
-      // Filter visits that have a contract
-      const contractVisits = visits.filter((v) => v.contract);
+      // Merge and deduplicate by contract id
+      const contractMap = new Map<number, Contract>();
+      for (const c of directContracts) {
+        contractMap.set(c.id, c);
+      }
+      for (const c of visitContracts) {
+        if (!contractMap.has(c.id)) {
+          contractMap.set(c.id, c);
+        }
+      }
 
-      if (contractVisits.length === 0) {
+      const allContracts = Array.from(contractMap.values());
+
+      if (allContracts.length === 0) {
         res.status(404).json({
           success: false,
           data: null,
@@ -414,9 +440,17 @@ export class ContractTemplateController {
         return;
       }
 
-      // Return the most recent contract with visit info
-      const latestVisit = contractVisits[0];
-      const contract = latestVisit.contract;
+      // Sort by signed_at descending, return the most recent
+      allContracts.sort(
+        (a, b) =>
+          new Date(b.signed_at).getTime() - new Date(a.signed_at).getTime()
+      );
+      const contract = allContracts[0];
+
+      // Find visit_id if available
+      const matchingVisit = visits.find(
+        (v) => v.contract && v.contract.id === contract.id
+      );
 
       res.status(200).json({
         success: true,
@@ -427,7 +461,7 @@ export class ContractTemplateController {
           rendered_html: contract.rendered_html,
           signature_url: contract.images?.[0]?.image_url || null,
           has_pdf: !!contract.pdf,
-          visit_id: latestVisit.visit_id,
+          visit_id: matchingVisit?.visit_id || contract.visit_id || null,
           metadata: contract.metadata,
         },
         message: "Contract found",
