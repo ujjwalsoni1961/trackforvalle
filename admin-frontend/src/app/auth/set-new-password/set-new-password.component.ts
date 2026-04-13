@@ -43,6 +43,8 @@ export class SetNewPasswordComponent implements OnInit {
   sessionReady = false;
   resetMode: 'jwt' | 'supabase' = 'supabase';
   jwtToken: string | null = null;
+  isSalesRep = false;
+  readonly SALESMAN_APP_URL = 'https://web-opal-eight-21.vercel.app';
 
   form = new FormGroup({
     password: new FormControl('', [
@@ -63,6 +65,15 @@ export class SetNewPasswordComponent implements OnInit {
         this.jwtToken = token;
         this.sessionReady = true;
         this.resetMode = 'jwt';
+        // Decode JWT to check user role (sales rep = role_id 4)
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          if (payload.role_id === 4) {
+            this.isSalesRep = true;
+          }
+        } catch (e) {
+          // If decode fails, default to admin redirect
+        }
         return;
       }
 
@@ -140,7 +151,12 @@ export class SetNewPasswordComponent implements OnInit {
             this.loading = false;
             this.form.markAsUntouched();
             setTimeout(() => {
-              this._router.navigateByUrl('/auth/sign-in');
+              if (this.isSalesRep) {
+                // Redirect sales reps to their own login page
+                window.location.href = this.SALESMAN_APP_URL + '/login';
+              } else {
+                this._router.navigateByUrl('/auth/sign-in');
+              }
             }, 2000);
           },
           error: (error) => {

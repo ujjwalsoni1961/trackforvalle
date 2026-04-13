@@ -64,6 +64,8 @@ export class LeadsImportComponent implements OnInit {
   validRows = 0;
   rowsWithErrors = 0;
   isSubmitting = false;
+  isParsing = false;
+  aiParsed = false; // true when AI parsed the file (no manual mapping needed)
   mappingForm: FormGroup;
   manualLeadsForm: FormGroup;
   csvPartner: number | null = null;
@@ -150,11 +152,6 @@ export class LeadsImportComponent implements OnInit {
           errors.push('email');
         }
 
-        // Validate phone
-        // if (lead.phone && !this.isValidPhone(lead.phone)) {
-        //   errors.push('phone');
-        // }
-
         if (errors.length > 0) {
           lead.errors = errors;
         }
@@ -237,9 +234,11 @@ export class LeadsImportComponent implements OnInit {
   handleFile(file: File) {
     this.fileName = file.name;
     if (file.name.endsWith('.csv')) {
+      this.aiParsed = false;
       this.parseCsv(file);
-    } else if (file.name.endsWith('.xlsx')) {
-      this.parseExcel(file);
+    } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+      // Use AI parsing for Excel files
+      this.parseExcelWithAI(file);
     } else {
       this.snackBar.open('Unsupported file format. Please upload CSV or Excel.', 'Close', { duration: 3000 });
     }
@@ -261,109 +260,66 @@ export class LeadsImportComponent implements OnInit {
     });
   }
 
-  parseExcel(file: File) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const fileData = new Uint8Array(e.target!.result as ArrayBuffer);
-      const workbook = read(fileData, { type: 'array', cellDates: true });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const json = utils.sheet_to_json(worksheet, { header: 1, blankrows: false, raw: false, dateNF: 'yyyy-mm-dd' });
-
-      // Detect header row: find the first row with 2+ non-empty cells (skip title rows)
-      let headerRowIndex = 0;
-      for (let i = 0; i < Math.min(json.length, 5); i++) {
-        const row = json[i] as any[];
-        const nonEmpty = row.filter(cell => cell !== undefined && cell !== null && cell.toString().trim() !== '').length;
-        if (nonEmpty >= 2) {
-          headerRowIndex = i;
-          break;
+  /** Send Excel file to backend for AI-powered parsing */
+  parseExcelWithAI(file: File) {
+    this.isParsing = true;
+    this.aiParsed = false;
+    this.leadsService.parseExcelWithAI(file).subscribe({
+      next: (response: any) => {
+        this.isParsing = false;
+        const data = response.data;
+        if (!data?.leads?.length) {
+          this.snackBar.open('AI could not parse any leads from this file.', 'Close', { duration: 5000 });
+          return;
         }
-      }
-
-      const headerRow = json[headerRowIndex] as any[];
-      // Only use columns that have actual header values (skip trailing empty cols)
-      const headers: string[] = [];
-      for (let i = 0; i < headerRow.length; i++) {
-        const val = headerRow[i];
-        if (val !== undefined && val !== null && val.toString().trim() !== '') {
-          headers.push(val.toString().trim());
-        } else {
-          break; // stop at first empty header
-        }
-      }
-
-      const dataRows = json.slice(headerRowIndex + 1) as any[][];
-      const rowData = dataRows
-        .map(row => {
-          const obj: any = {};
-          let hasData = false;
-          headers.forEach((header, i) => {
-            let val = row[i];
-            if (val === undefined || val === null) {
-              obj[header] = '';
-            } else {
-              let strVal = val.toString().trim();
-              // Clean numeric strings that look like postal codes (e.g. "16320" from float)
-              if (/^\d+\.0*$/.test(strVal)) {
-                strVal = strVal.replace(/\.0*$/, '');
-              }
-              obj[header] = strVal;
-              if (strVal !== '') hasData = true;
+        this.aiParsed = true;
+        // Convert AI-parsed leads directly into preview data
+        this.previewData = data.leads.map((lead: any, index: number) => {
+          const parsed: Lead = {
+            serialNumber: index + 1,
+            customerName: lead.customerName || '',
+            email: lead.email || '',
+            phone: lead.phone || '',
+            streetAddress: lead.streetAddress || '',
+            city: lead.city || '',
+            state: lead.state || '',
+            postalCode: lead.postalCode || '',
+            country: lead.country || 'Finland',
+            comments: lead.comments || '',
+          };
+          // Validate required fields
+          const errors: string[] = [];
+          this.requiredFields.forEach(field => {
+            if (!(parsed as any)[field]) {
+              errors.push(field);
             }
           });
-          return hasData ? obj : null;
-        })
-        .filter((row): row is Record<string, string> => row !== null);
-
-      // Extract emails and phones from comments column into separate fields
-      const commentsHeader = headers.find(h => {
-        const lower = h.toLowerCase();
-        return lower.includes('kommentti') || lower.includes('comment') || lower.includes('huomio');
-      });
-      if (commentsHeader) {
-        rowData.forEach(row => {
-          const comment = row[commentsHeader] || '';
-          if (!comment) return;
-          // Extract email
-          const emailMatch = comment.match(/([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/);
-          if (emailMatch) {
-            row['__extracted_email'] = emailMatch[1];
+          if (parsed.email && !this.isBlankish(parsed.email) && !this.isValidEmail(parsed.email)) {
+            errors.push('email');
           }
-          // Extract phone (Finnish format: 04x or +358)
-          const phoneMatch = comment.match(/((?:\+358|0)[\d\s]{7,14})/);
-          if (phoneMatch) {
-            row['__extracted_phone'] = phoneMatch[1].replace(/\s/g, '');
+          if (errors.length > 0) {
+            parsed.errors = errors;
           }
-          // Extract name (look for patterns like "Name /" or "/ Name /" that aren't email/phone)
-          const parts = comment.split('/');
-          if (parts.length > 1) {
-            for (const part of parts) {
-              const trimmed = part.trim();
-              // Skip if it looks like email, phone, or is too long (likely a note)
-              if (trimmed.includes('@') || /^[\d+]/.test(trimmed) || trimmed.length > 40) continue;
-              // If it looks like a name (1-3 words, starts with uppercase)
-              if (/^[A-ZÄÖÅ][a-zäöå]+(\s[A-ZÄÖÅ][a-zäöå]+){0,2}$/.test(trimmed)) {
-                row['__extracted_name'] = trimmed;
-                break;
-              }
-            }
-          }
+          return parsed;
         });
+
+        // Set display columns (show all fields that have data)
+        const fieldsWithData = this.systemFields.filter(field =>
+          this.previewData.some((lead: any) => lead[field.id] && lead[field.id].toString().trim() !== '')
+        );
+        this.displayedColumns = ['serialNumber', ...fieldsWithData.map(f => f.id)];
+        this.totalRows = this.previewData.length;
+        this.validRows = this.previewData.filter(lead => !lead.errors?.length).length;
+        this.rowsWithErrors = this.totalRows - this.validRows;
+
+        this.snackBar.open(`AI parsed ${data.leads.length} leads successfully!`, 'Close', { duration: 3000 });
+      },
+      error: (err: any) => {
+        this.isParsing = false;
+        const msg = err?.error?.error?.message || 'AI parsing failed. Try CSV format instead.';
+        this.snackBar.open(msg, 'Close', { duration: 5000 });
       }
-
-      // Add extracted fields as virtual headers for mapping
-      const hasExtractedEmails = rowData.some(r => r['__extracted_email']);
-      const hasExtractedPhones = rowData.some(r => r['__extracted_phone']);
-      const hasExtractedNames = rowData.some(r => r['__extracted_name']);
-      const allHeaders = [...headers];
-      if (hasExtractedEmails) allHeaders.push('__extracted_email');
-      if (hasExtractedPhones) allHeaders.push('__extracted_phone');
-      if (hasExtractedNames) allHeaders.push('__extracted_name');
-
-      this.processData(allHeaders, rowData);
-    };
-    reader.readAsArrayBuffer(file);
+    });
   }
 
   processData(columns: string[], data: any[]) {
@@ -391,12 +347,6 @@ export class LeadsImportComponent implements OnInit {
 
   autoSuggestMapping(column: string): string {
     const lowerCol = column.toLowerCase();
-    // Extracted fields from smart parsing
-    if (column === '__extracted_email') return 'email';
-    if (column === '__extracted_phone') return 'phone';
-    if (column === '__extracted_name') return 'customerName';
-    // Finnish column names
-    if (lowerCol.includes('valle') || lowerCol.includes('pennala')) return 'streetAddress';
     if (lowerCol.includes('name') || lowerCol.includes('myyjä') || lowerCol.includes('nimi')) return 'customerName';
     if (lowerCol.includes('email') || lowerCol.includes('sähköposti')) return 'email';
     if (lowerCol.includes('phone') || lowerCol.includes('puhelin')) return 'phone';
@@ -407,16 +357,7 @@ export class LeadsImportComponent implements OnInit {
     if (lowerCol.includes('country') || lowerCol.includes('maa')) return 'country';
     if (lowerCol.includes('comment') || lowerCol.includes('huomio') || lowerCol.includes('kommentti')) return 'comments';
     if (lowerCol.includes('partner') || lowerCol.includes('kumppani')) return 'partner';
-    if (lowerCol.includes('kontaktit') || lowerCol.includes('contact')) return ''; // skip contact dates by default
     return '';
-  }
-
-  /** Get display name for column headers including extracted fields */
-  getColumnDisplayName(column: string): string {
-    if (column === '__extracted_email') return 'Email (extracted from comments)';
-    if (column === '__extracted_phone') return 'Phone (extracted from comments)';
-    if (column === '__extracted_name') return 'Name (extracted from comments)';
-    return column;
   }
 
   refreshPreview() {
@@ -561,7 +502,7 @@ export class LeadsImportComponent implements OnInit {
         errorDetails.forEach((error: any, index: number) => {
           setTimeout(() => {
             this.snackBar.open(error, 'Close', { duration: 3000 });
-          }, index * 3500); // Sequential display with 3.5s intervals
+          }, index * 3500);
           const rowIndex = parseInt(error.match(/Row (\d+)/)?.[1] || 0) - 1;
           if (this.previewData[rowIndex]) {
             this.previewData[rowIndex].errors = this.previewData[rowIndex].errors || [];
@@ -584,6 +525,8 @@ export class LeadsImportComponent implements OnInit {
     this.validRows = 0;
     this.rowsWithErrors = 0;
     this.isSubmitting = false;
+    this.isParsing = false;
+    this.aiParsed = false;
     this.csvPartner = null;
     this.csvLeadSetName = '';
     this.mappingForm = this.fb.group({

@@ -1,7 +1,8 @@
 import multer from "multer";
+import os from "os";
 
 export const upload = multer({
-  dest: "uploads/",
+  dest: os.tmpdir(),
   fileFilter: (req, file, cb) => {
     const allowedTypes = [
       "text/csv",

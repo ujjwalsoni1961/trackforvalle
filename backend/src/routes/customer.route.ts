@@ -2,9 +2,17 @@ import { LeadsController } from "../controllers/leads.controller";
 import { permissionMiddleware } from "../middleware/permission.middleware";
 import express from "express";
 import { verifyToken } from "../middleware/auth.middleware";
+import { upload } from "../config/multer";
 
 const leadController = new LeadsController();
 const router = express.Router();
+
+router.post(
+  "/parse-excel",
+  verifyToken,
+  upload.single("file"),
+  leadController.parseExcelWithAI
+);
 
 router.post(
   "/import",

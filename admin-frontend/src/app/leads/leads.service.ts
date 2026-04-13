@@ -139,6 +139,12 @@ export class LeadsService {
     return this.http.get(`${this.baseUrl}/territory`, { params });
   }
 
+  parseExcelWithAI(file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post(`${this.baseUrl}/leads/parse-excel`, formData);
+  }
+
   importLeads(payload: any): Observable<any> {
     return this.http.post(`${this.baseUrl}/leads/import`, payload);
   }

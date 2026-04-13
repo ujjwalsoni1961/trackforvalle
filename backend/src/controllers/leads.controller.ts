@@ -7,10 +7,47 @@ import * as XLSX from "xlsx";
 import { readFileSync, unlinkSync, createReadStream } from "fs";
 import { LeadImportDto, UpdateLeadDto } from "../interfaces/common.interface";
 import { validate } from "class-validator";
+import { GeminiService } from "../service/gemini.service";
 
 const customerService = new CustomerService();
+const geminiService = new GeminiService();
 
 export class LeadsController {
+  async parseExcelWithAI(req: any, res: Response): Promise<void> {
+    try {
+      if (!req.file) {
+        return ApiResponse.error(res, 400, "No file uploaded");
+      }
+
+      const filePath = req.file.path;
+      const fileBuffer = readFileSync(filePath);
+      const workbook = XLSX.read(fileBuffer, { type: "buffer", cellDates: true, raw: false, dateNF: "yyyy-mm-dd" });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const rawRows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, raw: false, dateNF: "yyyy-mm-dd" });
+
+      // Clean up temp file
+      try { unlinkSync(filePath); } catch (e) { /* ignore */ }
+
+      if (!rawRows || rawRows.length < 2) {
+        return ApiResponse.error(res, 400, "File is empty or has no data rows");
+      }
+
+      const result = await geminiService.parseExcelData(rawRows);
+
+      return ApiResponse.result(
+        res,
+        result,
+        200,
+        null,
+        `Parsed ${result.leads.length} leads using AI`
+      );
+    } catch (error: any) {
+      console.error("Parse Excel with AI error:", error);
+      return ApiResponse.error(res, 500, error.message || "Failed to parse Excel file");
+    }
+  }
+
   async createLeads(req: any, res: Response): Promise<void> {
     const data: LeadImportDto = req.body;
     const userId = parseInt(req.user.user_id);
