@@ -91,6 +91,8 @@ export class AddContractComponent implements OnInit {
   // PDF upload state
   templateType: 'richtext' | 'pdf_upload' = 'richtext';
   pdfUrl: string | null = null;
+  private _rawFieldPositions: any[] = []; // PDF-space positions from DB, converted to CSS after canvas renders
+  private _fieldPositionsConverted = false; // Track whether we've converted positions for this edit session
   pdfFile: File | null = null;
   fieldPositions: any[] = [];
   pdfPages: any[] = [];
@@ -349,7 +351,9 @@ export class AddContractComponent implements OnInit {
         this.currentTemplate = response.data;
         this.templateType = this.currentTemplate.template_type || 'richtext';
         this.pdfUrl = this.currentTemplate.pdf_url || null;
-        this.fieldPositions = this.currentTemplate.field_positions || [];
+        // Field positions from DB are in PDF coordinate space; will convert to CSS space after canvas renders
+        this._rawFieldPositions = this.currentTemplate.field_positions || [];
+        this.fieldPositions = this._rawFieldPositions;
 
         this.contractForm.patchValue({
           title: this.currentTemplate.title,
@@ -495,6 +499,15 @@ export class AddContractComponent implements OnInit {
       canvas.height = viewport.height;
       canvas.width = viewport.width;
       await page.render({ canvasContext: context, viewport }).promise;
+
+      // After first render in edit mode, convert stored PDF-space coordinates to CSS display space
+      if (this.isEditMode && this._rawFieldPositions.length > 0 && !this._fieldPositionsConverted) {
+        // Use requestAnimationFrame to ensure the browser has applied CSS layout
+        requestAnimationFrame(() => {
+          this.fieldPositions = this.fieldPositionsToCssSpace(this._rawFieldPositions);
+          this._fieldPositionsConverted = true;
+        });
+      }
     }
     this._pdfDoc = pdf;
   }
@@ -644,18 +657,50 @@ export class AddContractComponent implements OnInit {
     }
   }
 
-  // ─── Canvas Dimensions (for field position scaling) ───
+  // ─── Coordinate Conversion (CSS display space ↔ PDF space) ───
 
-  getCanvasDisplayWidth(): number {
+  /**
+   * Get the scale factor between CSS display and internal canvas (PDF) coordinates.
+   * The canvas is rendered at scale 1.0 (canvas.width = PDF width in pts),
+   * but CSS `w-full` stretches it to fit the container.
+   * cssScale = displayWidth / internalWidth
+   */
+  private getCssScale(): number {
     const canvas = document.getElementById('pdfCanvas') as HTMLCanvasElement;
-    if (canvas) return canvas.getBoundingClientRect().width;
-    return 0;
+    if (!canvas || canvas.width === 0) return 1;
+    return canvas.getBoundingClientRect().width / canvas.width;
   }
 
-  getCanvasDisplayHeight(): number {
-    const canvas = document.getElementById('pdfCanvas') as HTMLCanvasElement;
-    if (canvas) return canvas.getBoundingClientRect().height;
-    return 0;
+  /**
+   * Convert field positions from CSS display space to PDF coordinate space (for saving).
+   * Divides x, y, width, height by cssScale.
+   */
+  private fieldPositionsToPdfSpace(fields: any[]): any[] {
+    const scale = this.getCssScale();
+    if (scale === 1 || scale === 0) return fields;
+    return fields.map(f => ({
+      ...f,
+      x: f.x / scale,
+      y: f.y / scale,
+      width: f.width / scale,
+      height: f.height / scale
+    }));
+  }
+
+  /**
+   * Convert field positions from PDF coordinate space to CSS display space (for editing).
+   * Multiplies x, y, width, height by cssScale.
+   */
+  private fieldPositionsToCssSpace(fields: any[]): any[] {
+    const scale = this.getCssScale();
+    if (scale === 1 || scale === 0) return fields;
+    return fields.map(f => ({
+      ...f,
+      x: f.x * scale,
+      y: f.y * scale,
+      width: f.width * scale,
+      height: f.height * scale
+    }));
   }
 
   // ─── Save Contract ───
@@ -681,10 +726,8 @@ export class AddContractComponent implements OnInit {
       partner_id: partner_id || null,
       ...(this.templateType === 'pdf_upload' && this.pdfUrl && { pdf_url: this.pdfUrl }),
       ...(this.templateType === 'pdf_upload' && this.fieldPositions.length > 0 && {
-        field_positions: this.fieldPositions,
-        // Store canvas display dimensions so backend can scale coordinates to actual PDF dimensions
-        field_positions_canvas_width: this.getCanvasDisplayWidth(),
-        field_positions_canvas_height: this.getCanvasDisplayHeight()
+        // Convert from CSS display coordinates to actual PDF coordinate space
+        field_positions: this.fieldPositionsToPdfSpace(this.fieldPositions)
       })
     };
 

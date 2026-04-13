@@ -546,19 +546,8 @@ export class ContractTemplateController {
         const pages = pdfDoc.getPages();
 
         // Overlay field values and signature
+        // Coordinates are stored in PDF coordinate space (admin frontend converts CSS→PDF on save)
         const fieldPositions = template.field_positions || [];
-
-        // Compute scale factor: admin placed fields on a CSS-scaled canvas.
-        // The canvas internal dimensions match PDF at scale=1.0, but the CSS
-        // display may be different (w-full h-auto). If canvas display width
-        // was stored, use it to scale coordinates to actual PDF dimensions.
-        const canvasWidth = (template as any).field_positions_canvas_width;
-        const firstPage = pages[0];
-        const pdfPageWidth = firstPage ? firstPage.getWidth() : 612;
-        const pdfPageHeight = firstPage ? firstPage.getHeight() : 792;
-        // Scale factor: if canvasWidth is stored, compute ratio; otherwise assume 1:1
-        const scaleFactor = canvasWidth && canvasWidth > 0 ? pdfPageWidth / canvasWidth : 1;
-        console.log(`PDF overlay: canvasWidth=${canvasWidth}, pdfPageWidth=${pdfPageWidth}, scaleFactor=${scaleFactor}`);
 
         for (const field of fieldPositions) {
           const pageIndex = (field.page || 1) - 1;
@@ -566,32 +555,27 @@ export class ContractTemplateController {
           const page = pages[pageIndex];
           const pageHeight = page.getHeight();
 
-          // Scale field coordinates from CSS display space to actual PDF space
-          const fieldX = field.x * scaleFactor;
-          const fieldY = field.y * scaleFactor;
-          const fieldW = field.width * scaleFactor;
-          const fieldH = field.height * scaleFactor;
-
-          // Convert coordinates: y = pageHeight - fieldY - fieldH (top-left to bottom-left)
-          const drawY = pageHeight - fieldY - fieldH;
+          // field.x, field.y, field.width, field.height are in PDF points (top-left origin)
+          // Convert y: PDF uses bottom-left origin
+          const drawY = pageHeight - field.y - field.height;
 
           if (field.type === "signature") {
             // Draw signature image - NO borders, NO red boxes
             page.drawImage(sigImage, {
-              x: fieldX,
+              x: field.x,
               y: drawY,
-              width: fieldW,
-              height: fieldH,
+              width: field.width,
+              height: field.height,
             });
           } else {
             // Draw text field value — match by label (lowercased) since Flutter sends keys that way
             const fieldKey = (field.label || field.name || field.id || '').toLowerCase();
             const value = field_values?.[fieldKey] || (field.name ? field_values?.[field.name] : '') || (field.label ? field_values?.[field.label] : '') || (field.id ? field_values?.[field.id] : '') || "";
             if (value) {
-              const fontSize = Math.min(fieldH * 0.7, 14);
+              const fontSize = Math.min(field.height * 0.7, 14);
               page.drawText(String(value), {
-                x: fieldX + 2,
-                y: drawY + fieldH * 0.25,
+                x: field.x + 2,
+                y: drawY + field.height * 0.25,
                 size: fontSize,
                 font,
                 color: rgb(0, 0, 0),
