@@ -23,7 +23,7 @@ export class ContractTemplateController {
     this.uploadPdf = this.uploadPdf.bind(this);
   }
   async create(req: any, res: Response): Promise<void> {
-    const { title, content, assigned_manager_ids, assigned_sales_rep_ids, status, dropdown_fields, partner_id, template_type, pdf_url, field_positions } =
+    const { title, content, assigned_manager_ids, assigned_sales_rep_ids, status, dropdown_fields, partner_id, template_type, pdf_url, field_positions, field_positions_canvas_width, field_positions_canvas_height } =
       req.body;
 
     // Support both old field name (assigned_manager_ids) and new (assigned_sales_rep_ids) for backwards compatibility
@@ -39,6 +39,8 @@ export class ContractTemplateController {
       ...(template_type && { template_type }),
       ...(pdf_url && { pdf_url }),
       ...(field_positions && { field_positions }),
+      ...(field_positions_canvas_width && { field_positions_canvas_width }),
+      ...(field_positions_canvas_height && { field_positions_canvas_height }),
     });
     if (newTemplate.status >= 400) {
       ApiResponse.error(res, newTemplate.status, newTemplate.message);
@@ -545,33 +547,51 @@ export class ContractTemplateController {
 
         // Overlay field values and signature
         const fieldPositions = template.field_positions || [];
+
+        // Compute scale factor: admin placed fields on a CSS-scaled canvas.
+        // The canvas internal dimensions match PDF at scale=1.0, but the CSS
+        // display may be different (w-full h-auto). If canvas display width
+        // was stored, use it to scale coordinates to actual PDF dimensions.
+        const canvasWidth = (template as any).field_positions_canvas_width;
+        const firstPage = pages[0];
+        const pdfPageWidth = firstPage ? firstPage.getWidth() : 612;
+        const pdfPageHeight = firstPage ? firstPage.getHeight() : 792;
+        // Scale factor: if canvasWidth is stored, compute ratio; otherwise assume 1:1
+        const scaleFactor = canvasWidth && canvasWidth > 0 ? pdfPageWidth / canvasWidth : 1;
+        console.log(`PDF overlay: canvasWidth=${canvasWidth}, pdfPageWidth=${pdfPageWidth}, scaleFactor=${scaleFactor}`);
+
         for (const field of fieldPositions) {
           const pageIndex = (field.page || 1) - 1;
           if (pageIndex < 0 || pageIndex >= pages.length) continue;
           const page = pages[pageIndex];
           const pageHeight = page.getHeight();
 
-          // Convert coordinates: y = pageHeight - field.y - field.height (top-left to bottom-left)
-          const drawY = pageHeight - field.y - field.height;
+          // Scale field coordinates from CSS display space to actual PDF space
+          const fieldX = field.x * scaleFactor;
+          const fieldY = field.y * scaleFactor;
+          const fieldW = field.width * scaleFactor;
+          const fieldH = field.height * scaleFactor;
+
+          // Convert coordinates: y = pageHeight - fieldY - fieldH (top-left to bottom-left)
+          const drawY = pageHeight - fieldY - fieldH;
 
           if (field.type === "signature") {
             // Draw signature image - NO borders, NO red boxes
-            sigImage.scale(field.width / sigImage.width);
             page.drawImage(sigImage, {
-              x: field.x,
+              x: fieldX,
               y: drawY,
-              width: field.width,
-              height: field.height,
+              width: fieldW,
+              height: fieldH,
             });
           } else {
             // Draw text field value — match by label (lowercased) since Flutter sends keys that way
             const fieldKey = (field.label || field.name || field.id || '').toLowerCase();
             const value = field_values?.[fieldKey] || (field.name ? field_values?.[field.name] : '') || (field.label ? field_values?.[field.label] : '') || (field.id ? field_values?.[field.id] : '') || "";
             if (value) {
-              const fontSize = Math.min(field.height * 0.7, 14);
+              const fontSize = Math.min(fieldH * 0.7, 14);
               page.drawText(String(value), {
-                x: field.x + 2,
-                y: drawY + field.height * 0.25,
+                x: fieldX + 2,
+                y: drawY + fieldH * 0.25,
                 size: fontSize,
                 font,
                 color: rgb(0, 0, 0),

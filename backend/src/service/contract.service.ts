@@ -16,6 +16,8 @@ export const ContractTemplateService = {
     template_type?: string;
     pdf_url?: string;
     field_positions?: Array<any>;
+    field_positions_canvas_width?: number;
+    field_positions_canvas_height?: number;
     dropdown_fields?: {
       [fieldName: string]: {
         label: string;
@@ -50,6 +52,8 @@ export const ContractTemplateService = {
         ...(payload.template_type && { template_type: payload.template_type }),
         ...(payload.pdf_url && { pdf_url: payload.pdf_url }),
         ...(payload.field_positions && { field_positions: payload.field_positions }),
+        ...(payload.field_positions_canvas_width && { field_positions_canvas_width: payload.field_positions_canvas_width }),
+        ...(payload.field_positions_canvas_height && { field_positions_canvas_height: payload.field_positions_canvas_height }),
       });
 
       const savedTemplate = await contractRepo.save(newTemplate);
@@ -289,6 +293,8 @@ export const ContractTemplateService = {
       template_type?: string;
       pdf_url?: string | null;
       field_positions?: Array<any> | null;
+      field_positions_canvas_width?: number | null;
+      field_positions_canvas_height?: number | null;
       partner_id?: number | null;
       dropdown_fields?: {
         [fieldName: string]: {
@@ -346,6 +352,12 @@ export const ContractTemplateService = {
       }
       if (updates.field_positions !== undefined) {
         existingTemplate.field_positions = updates.field_positions as any;
+      }
+      if (updates.field_positions_canvas_width !== undefined) {
+        existingTemplate.field_positions_canvas_width = updates.field_positions_canvas_width as any;
+      }
+      if (updates.field_positions_canvas_height !== undefined) {
+        existingTemplate.field_positions_canvas_height = updates.field_positions_canvas_height as any;
       }
       if (updates.partner_id !== undefined) {
         existingTemplate.partner_id = updates.partner_id as any;

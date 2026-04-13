@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:track/src/core/injector/injector.dart';
 import 'package:track/src/core/network/api.dart';
+import 'package:track/src/core/network/api_interceptor.dart';
 import 'package:track/src/core/ui/res/app_colors.dart';
 import 'package:track/src/core/ui/routes/routes.dart';
 import 'package:track/src/core/ui/utility/paddings.dart';
@@ -260,6 +261,13 @@ class _EachLeadsDetailsPageState extends State<EachLeadsDetailsPage> {
         final data = response.data['data'];
         final contractId = data['contract_id'] as int;
         final title = data['template_title'] as String? ?? 'Contract';
+        final hasPdf = data['has_pdf'] == true;
+
+        // Build the direct PDF URL for contracts that have stored PDF data.
+        // This routes through Mozilla PDF.js viewer in the iframe for reliable rendering.
+        final pdfUrl = hasPdf
+            ? '${APIInterceptor.BASE_URL}/contract/$contractId/pdf'
+            : null;
 
         // Open full-screen dialog with contract preview
         showDialog(
@@ -277,7 +285,8 @@ class _EachLeadsDetailsPageState extends State<EachLeadsDetailsPage> {
                 padding: const EdgeInsets.all(8.0),
                 child: ContractPreview(
                   templateString: '',
-                  contractId: contractId,
+                  contractId: hasPdf ? null : contractId,
+                  pdfUrl: pdfUrl,
                 ),
               ),
             ),

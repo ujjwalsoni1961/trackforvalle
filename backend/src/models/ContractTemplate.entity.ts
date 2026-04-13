@@ -47,6 +47,12 @@ export class ContractTemplate {
     options?: string[];
   }>;
 
+  @Column({ type: "float", nullable: true })
+  field_positions_canvas_width: number;
+
+  @Column({ type: "float", nullable: true })
+  field_positions_canvas_height: number;
+
   @Column({ type: "json", nullable: true })
   dropdown_fields: {
     [fieldName: string]: {

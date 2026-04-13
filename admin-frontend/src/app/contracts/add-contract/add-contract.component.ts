@@ -644,6 +644,20 @@ export class AddContractComponent implements OnInit {
     }
   }
 
+  // ─── Canvas Dimensions (for field position scaling) ───
+
+  getCanvasDisplayWidth(): number {
+    const canvas = document.getElementById('pdfCanvas') as HTMLCanvasElement;
+    if (canvas) return canvas.getBoundingClientRect().width;
+    return 0;
+  }
+
+  getCanvasDisplayHeight(): number {
+    const canvas = document.getElementById('pdfCanvas') as HTMLCanvasElement;
+    if (canvas) return canvas.getBoundingClientRect().height;
+    return 0;
+  }
+
   // ─── Save Contract ───
 
   saveContract() {
@@ -666,7 +680,12 @@ export class AddContractComponent implements OnInit {
       // Always send partner_id (null clears the link, number sets it)
       partner_id: partner_id || null,
       ...(this.templateType === 'pdf_upload' && this.pdfUrl && { pdf_url: this.pdfUrl }),
-      ...(this.templateType === 'pdf_upload' && this.fieldPositions.length > 0 && { field_positions: this.fieldPositions })
+      ...(this.templateType === 'pdf_upload' && this.fieldPositions.length > 0 && {
+        field_positions: this.fieldPositions,
+        // Store canvas display dimensions so backend can scale coordinates to actual PDF dimensions
+        field_positions_canvas_width: this.getCanvasDisplayWidth(),
+        field_positions_canvas_height: this.getCanvasDisplayHeight()
+      })
     };
 
     const apiCall = this.isEditMode && this.templateId

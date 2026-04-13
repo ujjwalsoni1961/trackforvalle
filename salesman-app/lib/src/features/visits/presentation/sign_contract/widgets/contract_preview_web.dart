@@ -19,7 +19,9 @@ html.IFrameElement createIFrame({String? src, String? srcdoc}) {
   if (src != null) {
     // For PDF URLs, use Mozilla's hosted PDF.js viewer to guarantee inline rendering.
     // Direct iframe src to a PDF often triggers download instead of in-browser preview.
-    if (src.toLowerCase().endsWith('.pdf') || src.contains('/template-pdfs/')) {
+    if (src.toLowerCase().endsWith('.pdf') ||
+        src.contains('/template-pdfs/') ||
+        RegExp(r'/contract/\d+/pdf').hasMatch(src)) {
       final encodedUrl = Uri.encodeComponent(src);
       iframe.src = 'https://mozilla.github.io/pdf.js/web/viewer.html?file=$encodedUrl';
     } else {
