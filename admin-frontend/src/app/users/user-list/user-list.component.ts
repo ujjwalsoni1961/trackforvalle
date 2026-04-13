@@ -132,7 +132,8 @@ export class UserListComponent implements OnInit {
       next: (response: any) => {
         const teamMembers = response?.data?.teamMembers ?? [];
         this.users = teamMembers.map((member: any) => {
-          const [first_name = 'N/A', last_name = ''] = member.full_name ? member.full_name.split(' ') : ['N/A', ''];
+          const first_name = member.first_name || (member.full_name ? member.full_name.split(' ')[0] : 'N/A');
+          const last_name = member.last_name || (member.full_name ? member.full_name.split(' ').slice(1).join(' ') : '');
           return {
             id: String(member.user_id),
             first_name,
@@ -220,7 +221,8 @@ export class UserListComponent implements OnInit {
       next: (response: any) => {
         const teamMembers = response?.data?.teamMembers ?? [];
         const usersForExport = teamMembers.map((member: any) => {
-          const [first_name = 'N/A', last_name = ''] = member.full_name ? member.full_name.split(' ') : ['N/A', ''];
+          const first_name = member.first_name || (member.full_name ? member.full_name.split(' ')[0] : 'N/A');
+          const last_name = member.last_name || (member.full_name ? member.full_name.split(' ').slice(1).join(' ') : '');
           return {
             first_name,
             last_name,

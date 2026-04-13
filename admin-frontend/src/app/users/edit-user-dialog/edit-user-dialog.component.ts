@@ -31,7 +31,8 @@ export class EditUserDialogComponent {
     private dialogRef: MatDialogRef<EditUserDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
-    const [firstName = '', lastName = ''] = data.fullName ? data.fullName.split(' ') : ['', ''];
+    const firstName = data.first_name || (data.fullName ? data.fullName.split(' ')[0] : '');
+    const lastName = data.last_name || (data.fullName ? data.fullName.split(' ').slice(1).join(' ') : '');
     this.userForm = this.fb.group({
       first_name: [firstName, [Validators.required, Validators.minLength(2)]],
       last_name: [lastName, [Validators.required, Validators.minLength(2)]],

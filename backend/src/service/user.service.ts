@@ -839,6 +839,7 @@ export class UserTeamService {
         phone: params.phone,
         first_name: params.first_name,
         last_name: params.last_name,
+        full_name: `${params.first_name || ''} ${params.last_name || ''}`.trim() || undefined,
         is_email_verified: 1,
         is_active: true,
         is_admin: findRole.role_name === Roles.ADMIN ? 1 : 0,
@@ -1019,6 +1020,14 @@ export class UserTeamService {
       const { role_name, ...updatedFields } = updateData;
 
       updatedFields.role_id = role_id;
+
+      // Recompute full_name whenever first_name or last_name changes
+      const firstName = updatedFields.first_name ?? existingUser.first_name ?? '';
+      const lastName = updatedFields.last_name ?? existingUser.last_name ?? '';
+      const computedFullName = `${firstName} ${lastName}`.trim();
+      if (computedFullName) {
+        updatedFields.full_name = computedFullName;
+      }
 
       const findRole = await roleQuery.getRoleById(
         updatedFields.role_id,
@@ -1231,6 +1240,17 @@ export class UserTeamService {
         delete updateData.address;
       }
       const { role_name, ...updatedFields } = updateData;
+
+      // Recompute full_name whenever first_name or last_name changes
+      if (updatedFields.first_name !== undefined || updatedFields.last_name !== undefined) {
+        const firstName = updatedFields.first_name ?? existingUser.first_name ?? '';
+        const lastName = updatedFields.last_name ?? existingUser.last_name ?? '';
+        const computedFullName = `${firstName} ${lastName}`.trim();
+        if (computedFullName) {
+          updatedFields.full_name = computedFullName;
+        }
+      }
+
       const updatedUser = await userQuery.updateUser(
         queryRunner.manager,
         org_id,
