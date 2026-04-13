@@ -650,10 +650,24 @@ export class ContractTemplateController {
         pdfBytes = await pdfDoc.save();
       }
 
+      // Find the most recent open visit for this lead to link the contract
+      let visitId: number | null = null;
+      if (lead_id) {
+        const visitRepo = dataSource.getRepository(Visit);
+        const openVisit = await visitRepo.findOne({
+          where: { lead_id: lead_id },
+          order: { created_at: "DESC" },
+        });
+        if (openVisit) {
+          visitId = openVisit.visit_id;
+        }
+      }
+
       // Save contract record
       const contract = contractRepo.create({
         contract_template_id: template_id,
         lead_id: lead_id || null,
+        visit_id: visitId,
         field_values: field_values || {},
         signature_url: signatureUrl,
         rendered_html: template.content || "",
@@ -722,7 +736,7 @@ export class ContractTemplateController {
 
       ApiResponse.result(
         res,
-        { contract_id: savedContract.id },
+        { contract_id: savedContract.id, visit_id: visitId || 0 },
         201,
         null,
         "Contract signed successfully"

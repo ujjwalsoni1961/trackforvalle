@@ -40,6 +40,7 @@ class ChooseContractView extends StatefulWidget {
 class _ChooseContractViewState extends State<ChooseContractView> {
   int? _selectedId;
   String _currentTemplateString = '';
+  String? _currentPdfUrl;
 
   @override
   void initState() {
@@ -85,11 +86,26 @@ class _ChooseContractViewState extends State<ChooseContractView> {
       extra: SignContractViewPageParams(
         leadID: widget.params.leadId,
         contractTemplateID: _selectedId!,
-        fields: extractTemplateVariables(selectedTemplate.templateString, selectedTemplate.dropdownFields),
+        fields: selectedTemplate.isPdfUpload
+            ? _extractPdfFieldLabels(selectedTemplate.fieldPositions)
+            : extractTemplateVariables(selectedTemplate.templateString, selectedTemplate.dropdownFields),
         templateString: selectedTemplate.templateString,
         dropdownFields: selectedTemplate.dropdownFields,
+        templateType: selectedTemplate.templateType,
+        pdfUrl: selectedTemplate.pdfUrl,
+        fieldPositions: selectedTemplate.fieldPositions,
       ),
     );
+  }
+
+  /// Extract field labels from PDF field positions that are NOT signature fields
+  List<String> _extractPdfFieldLabels(List<Map<String, dynamic>>? fieldPositions) {
+    if (fieldPositions == null || fieldPositions.isEmpty) return [];
+    return fieldPositions
+        .where((f) => f['type'] != 'signature')
+        .map((f) => (f['label'] as String? ?? f['id'] as String? ?? '').toLowerCase())
+        .where((label) => label.isNotEmpty)
+        .toList();
   }
 
   @override
@@ -144,7 +160,9 @@ class _ChooseContractViewState extends State<ChooseContractView> {
                 setState(() {
                   _selectedId = state.templates.first.id;
                   _currentTemplateString = state.templates.first.templateString;
+                  _currentPdfUrl = state.templates.first.pdfUrl;
                   debugPrint('Contract Template: ${state.templates.first.templateString}');
+                  debugPrint('PDF URL: ${state.templates.first.pdfUrl}');
                 });
               });
             }
@@ -214,7 +232,9 @@ class _ChooseContractViewState extends State<ChooseContractView> {
                             );
                             _currentTemplateString =
                                 selectedTemplate.templateString;
+                            _currentPdfUrl = selectedTemplate.pdfUrl;
                             debugPrint('Selected Template: ${selectedTemplate.templateString}');
+                            debugPrint('Selected PDF URL: ${selectedTemplate.pdfUrl}');
                           });
                         }
                       },
@@ -232,6 +252,7 @@ class _ChooseContractViewState extends State<ChooseContractView> {
                   Expanded(
                     child: ContractPreview(
                       templateString: _currentTemplateString,
+                      pdfUrl: _currentPdfUrl,
                     ),
                   ),
                   const GapV(32),

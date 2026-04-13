@@ -12,7 +12,8 @@ import 'contract_preview_stub.dart'
 class ContractPreview extends StatefulWidget {
   final String templateString;
   final int? contractId;
-  const ContractPreview({super.key, required this.templateString, this.contractId});
+  final String? pdfUrl;
+  const ContractPreview({super.key, required this.templateString, this.contractId, this.pdfUrl});
 
   @override
   State<ContractPreview> createState() => _ContractPreviewState();
@@ -31,7 +32,14 @@ class _ContractPreviewState extends State<ContractPreview> {
       _viewId = 'contract-preview-${DateTime.now().millisecondsSinceEpoch}-${widget.contractId ?? 0}';
 
       // Register the platform view immediately in initState
-      if (widget.contractId != null) {
+      if (widget.pdfUrl != null && widget.pdfUrl!.isNotEmpty) {
+        // PDF upload template — show the PDF directly via Google Docs viewer
+        final encodedUrl = Uri.encodeComponent(widget.pdfUrl!);
+        final viewerUrl = 'https://docs.google.com/gview?embedded=true&url=$encodedUrl';
+        final iframe = platform.createIFrame(src: viewerUrl);
+        debugPrint('Registering PDF viewer platform view: $_viewId url=${widget.pdfUrl}');
+        platform.registerPlatformView(_viewId!, (int viewId) => iframe);
+      } else if (widget.contractId != null) {
         final pdfUrl = "${APIInterceptor.BASE_URL}/contract/${widget.contractId}/pdf";
         final iframe = platform.createIFrame(src: pdfUrl);
         debugPrint('Registering platform view in initState: $_viewId');
@@ -58,13 +66,19 @@ class _ContractPreviewState extends State<ContractPreview> {
   @override
   void didUpdateWidget(covariant ContractPreview oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.templateString != widget.templateString || oldWidget.contractId != widget.contractId) {
+    if (oldWidget.templateString != widget.templateString || oldWidget.contractId != widget.contractId || oldWidget.pdfUrl != widget.pdfUrl) {
       if (kIsWeb) {
         // For web, we need to re-register the platform view with new content
         setState(() {
           _viewId = 'contract-preview-${DateTime.now().millisecondsSinceEpoch}-${widget.contractId ?? 0}';
 
-          if (widget.contractId != null) {
+          if (widget.pdfUrl != null && widget.pdfUrl!.isNotEmpty) {
+            final encodedUrl = Uri.encodeComponent(widget.pdfUrl!);
+            final viewerUrl = 'https://docs.google.com/gview?embedded=true&url=$encodedUrl';
+            final iframe = platform.createIFrame(src: viewerUrl);
+            debugPrint('Re-registering PDF viewer platform view: $_viewId');
+            platform.registerPlatformView(_viewId!, (int viewId) => iframe);
+          } else if (widget.contractId != null) {
             final pdfUrl = "${APIInterceptor.BASE_URL}/contract/${widget.contractId}/pdf";
             final iframe = platform.createIFrame(src: pdfUrl);
             debugPrint('Re-registering platform view: $_viewId');
@@ -84,8 +98,12 @@ class _ContractPreviewState extends State<ContractPreview> {
 
   void _loadContent() async {
     if (!kIsWeb) {
-      // For mobile platforms, use WebView
-      if (widget.contractId != null) {
+      if (widget.pdfUrl != null && widget.pdfUrl!.isNotEmpty) {
+        // PDF upload template — load via Google Docs viewer
+        final encodedUrl = Uri.encodeComponent(widget.pdfUrl!);
+        final viewerUrl = 'https://docs.google.com/gview?embedded=true&url=$encodedUrl';
+        _webViewController?.loadRequest(Uri.parse(viewerUrl));
+      } else if (widget.contractId != null) {
         // If we have a contract ID, load the PDF directly
         debugPrint('Loading PDF for contract ID: ${widget.contractId}');
         final pdfUrl = "${APIInterceptor.BASE_URL}/contract/${widget.contractId}/pdf";
@@ -226,7 +244,7 @@ class _ContractPreviewState extends State<ContractPreview> {
                 console.log('Image failed to load:', originalSrc);
                 var container = document.createElement('div');
                 container.className = 'signature-container';
-                container.innerHTML = '<div class="signature-placeholder">🖊️ Customer Signature</div>';
+                container.innerHTML = '<div class="signature-placeholder">Customer Signature</div>';
                 img.parentNode.replaceChild(container, img);
               };
               
@@ -259,7 +277,7 @@ class _ContractPreviewState extends State<ContractPreview> {
       debugPrint('Image src: $imgSrc');
       
       // Enhance the img tag with better error handling
-      return '<div class="signature-container"><img src="$imgSrc" alt="Customer Signature" class="signature-image" onerror="console.log(\'Image load error:\', this.src); this.style.display=\'none\'; this.parentElement.innerHTML=\'<div class=&quot;signature-placeholder&quot;>🖊️ Customer Signature</div>\';"></div>';
+      return '<div class="signature-container"><img src="$imgSrc" alt="Customer Signature" class="signature-image" onerror="console.log(\'Image load error:\', this.src); this.style.display=\'none\'; this.parentElement.innerHTML=\'<div class=&quot;signature-placeholder&quot;>Customer Signature</div>\';"></div>';
     });
     
     debugPrint('Processed content: $content');

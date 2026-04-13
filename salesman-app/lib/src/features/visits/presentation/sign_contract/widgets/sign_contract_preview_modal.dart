@@ -41,6 +41,7 @@ class ContractPreviewModal extends StatefulWidget {
   final Map<String, String> dropdownValues;
   final int leadID;
   final int contractTemplateID;
+  final String? pdfUrl;
 
   const ContractPreviewModal({
     super.key,
@@ -49,6 +50,7 @@ class ContractPreviewModal extends StatefulWidget {
     this.dropdownValues = const {},
     required this.leadID,
     required this.contractTemplateID,
+    this.pdfUrl,
   });
 
   @override
@@ -121,6 +123,8 @@ class _ContractPreviewModalState extends State<ContractPreviewModal> {
 
   @override
   Widget build(BuildContext context) {
+    final bool hasPdfPreview = widget.pdfUrl != null && widget.pdfUrl!.isNotEmpty;
+
     return BlocListener<SubmitContractCubit, SubmitContractState>(
       listener: (context, state) {
         if (state is SubmitContractLoading) {
@@ -160,7 +164,7 @@ class _ContractPreviewModalState extends State<ContractPreviewModal> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Contract Preview",
+                hasPdfPreview ? "Sign Contract" : "Contract Preview",
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: Colors.black87,
@@ -175,9 +179,14 @@ class _ContractPreviewModalState extends State<ContractPreviewModal> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: ContractPreview(
-                      templateString: _replaceVariables(widget.templateString),
-                    ),
+                    child: hasPdfPreview
+                        ? ContractPreview(
+                            templateString: '',
+                            pdfUrl: widget.pdfUrl,
+                          )
+                        : ContractPreview(
+                            templateString: _replaceVariables(widget.templateString),
+                          ),
                   ),
                 ),
               ),
