@@ -24,7 +24,7 @@ export class Contract {
   @JoinColumn({ name: "contract_template_id" })
   template: ContractTemplate;
 
-  @Column({ type: "int" })
+  @Column({ type: "int", nullable: true })
   visit_id: number;
 
   @ManyToOne(() => Visit, (visit) => visit.contract)
@@ -36,6 +36,16 @@ export class Contract {
 
   @Column("jsonb", { nullable: true })
   metadata: Record<string, any>;
+
+  @Column({ type: "text", nullable: true })
+  signature_url: string;
+
+  @Column({ type: "jsonb", default: "{}", nullable: true })
+  field_values: Record<string, any>;
+
+  @Column({ type: "int", nullable: true })
+  lead_id: number;
+
   @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
   signed_at: Date;
 

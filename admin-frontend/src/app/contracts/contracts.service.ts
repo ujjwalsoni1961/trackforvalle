@@ -36,7 +36,9 @@ interface Contract {
   dropdown_fields?: { [key: string]: DropdownField };
   partner_id?: number;
   partner?: { partner_id: number; company_name: string } | null;
-  docuseal_template_id?: number | null;
+  template_type?: 'richtext' | 'pdf_upload';
+  pdf_url?: string;
+  field_positions?: any[];
 }
 
 interface SignedContract {
@@ -240,7 +242,9 @@ export class ContractsService {
             updated_at: item.updated_at,
             partner_id: item.partner_id || null,
             partner: item.partner || null,
-            docuseal_template_id: item.docuseal_template_id || null
+            template_type: item.template_type || 'richtext',
+            pdf_url: item.pdf_url || null,
+            field_positions: item.field_positions || []
           })),
           pagination: { total: response.data.length }
         }
@@ -292,7 +296,9 @@ export class ContractsService {
           dropdown_fields: response.data.dropdown_fields || {},
           partner_id: response.data.partner_id || null,
           partner: response.data.partner || null,
-          docuseal_template_id: response.data.docuseal_template_id || null
+          template_type: response.data.template_type || 'richtext',
+          pdf_url: response.data.pdf_url || null,
+          field_positions: response.data.field_positions || []
         }
       }))
     );
@@ -345,36 +351,11 @@ export class ContractsService {
     return this.http.get(`${this.baseUrl}/contract/${id}/pdf`, { responseType: 'text' });
   }
 
-  // ─── DocuSeal API methods ───
+  // ─── PDF Upload method ───
 
-  getDocuSealTemplates(): Observable<any> {
-    return this.http.get<any>(`${this.baseUrl}/docuseal/templates`);
-  }
-
-  getDocuSealTemplate(id: number): Observable<any> {
-    return this.http.get<any>(`${this.baseUrl}/docuseal/templates/${id}`);
-  }
-
-  createDocuSealSubmission(data: {
-    template_id: number;
-    submitters: Array<{ email: string; name?: string; role?: string; fields?: any[] }>;
-    metadata?: Record<string, any>;
-  }): Observable<any> {
-    return this.http.post<any>(`${this.baseUrl}/docuseal/submissions`, data);
-  }
-
-  getDocuSealSubmissions(params?: { template_id?: number; limit?: number }): Observable<any> {
-    let httpParams = new HttpParams();
-    if (params?.template_id) httpParams = httpParams.set('template_id', params.template_id.toString());
-    if (params?.limit) httpParams = httpParams.set('limit', params.limit.toString());
-    return this.http.get<any>(`${this.baseUrl}/docuseal/submissions`, { params: httpParams });
-  }
-
-  getDocuSealSubmission(id: number): Observable<any> {
-    return this.http.get<any>(`${this.baseUrl}/docuseal/submissions/${id}`);
-  }
-
-  getDocuSealBuilderToken(params?: { template_id?: number; document_urls?: string[]; name?: string }): Observable<{ success: boolean; data: { token: string } }> {
-    return this.http.post<{ success: boolean; data: { token: string } }>(`${this.baseUrl}/docuseal/builder-token`, params || {});
+  uploadTemplatePdf(file: File): Observable<{ success: boolean; data: { url: string } }> {
+    const formData = new FormData();
+    formData.append('contract_pdf', file);
+    return this.http.post<{ success: boolean; data: { url: string } }>(`${this.baseUrl}/contract/templates/upload-pdf`, formData);
   }
 }

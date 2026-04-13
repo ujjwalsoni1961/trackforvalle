@@ -198,6 +198,7 @@ Future<void> injectDependencies() async {
     ..registerLazySingleton(() => SubmitContractCubit(
       submitContract: sl(),
       submitContractPdf: sl(),
+      repository: sl(),
     ))
     ..registerFactory(() => PastVisitsCubit(sl()))
     ..registerFactory(() => LeadIdPastVisitsCubit(sl()))

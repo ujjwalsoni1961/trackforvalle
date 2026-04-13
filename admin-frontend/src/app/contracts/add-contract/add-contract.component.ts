@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormGroup, FormBuilder, Validators, FormArray } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -88,10 +88,17 @@ export class AddContractComponent implements OnInit {
     ]
   };
 
-  // DocuSeal popup state
-  private docuSealPopup: Window | null = null;
-  private popupCheckInterval: any = null;
-  docusealBaseUrl = 'https://docuseal-585556848696.europe-west1.run.app';
+  // PDF upload state
+  templateType: 'richtext' | 'pdf_upload' = 'richtext';
+  pdfUrl: string | null = null;
+  pdfFile: File | null = null;
+  fieldPositions: any[] = [];
+  pdfPages: any[] = [];
+  currentPdfPage: number = 1;
+  totalPdfPages: number = 0;
+  editingField: any = null;
+  _pdfDoc: any = null;
+  private dragState: { field: any; offsetX: number; offsetY: number } | null = null;
 
   predefinedTemplates: ContractTemplate[] = [
     {
@@ -100,7 +107,7 @@ export class AddContractComponent implements OnInit {
       content: `
       <h1 style="text-align: center; margin-bottom: 20px;">Standard Sales Agreement</h1>
       <p>
-        This Sales Agreement ("Agreement") is entered into on <strong>{date_signed}</strong> between 
+        This Sales Agreement ("Agreement") is entered into on <strong>{date_signed}</strong> between
         <strong>{company_name}</strong> ("Seller") and <strong>{customer_name}</strong> ("Buyer").
       </p>
 
@@ -113,7 +120,7 @@ export class AddContractComponent implements OnInit {
 
       <h2 style="margin-top: 20px;">2. Payment Terms</h2>
       <p>
-        Buyer shall pay the total amount of <strong>{deal_amount}</strong> upon signing this Agreement. 
+        Buyer shall pay the total amount of <strong>{deal_amount}</strong> upon signing this Agreement.
         Payment shall be made via <strong>{payment_method}</strong>.
       </p>
 
@@ -140,7 +147,7 @@ export class AddContractComponent implements OnInit {
       content: `
       <h1 style="text-align: center; margin-bottom: 20px;">Service Agreement</h1>
       <p>
-        This Service Agreement ("Agreement") is entered into on <strong>{date_signed}</strong> between 
+        This Service Agreement ("Agreement") is entered into on <strong>{date_signed}</strong> between
         <strong>{company_name}</strong> ("Provider") and <strong>{customer_name}</strong> ("Client").
       </p>
 
@@ -159,13 +166,13 @@ export class AddContractComponent implements OnInit {
 
       <h2 style="margin-top: 20px;">3. Service Delivery</h2>
       <p>
-        Provider shall deliver services to <strong>{customer_address}</strong> with 
+        Provider shall deliver services to <strong>{customer_address}</strong> with
         <strong>{dropdown:support_level}</strong> support level.
       </p>
 
       <h2 style="margin-top: 20px;">4. Terms and Conditions</h2>
       <p>
-        This agreement is subject to the terms and conditions outlined in our 
+        This agreement is subject to the terms and conditions outlined in our
         <strong>{dropdown:contract_type}</strong> service level agreement.
       </p>
 
@@ -182,7 +189,7 @@ export class AddContractComponent implements OnInit {
       content: `
       <h1 style="text-align: center; margin-bottom: 20px;">Bulk Purchase Agreement</h1>
       <p>
-        This Bulk Purchase Agreement ("Agreement") is entered into on <strong>{date_signed}</strong> between 
+        This Bulk Purchase Agreement ("Agreement") is entered into on <strong>{date_signed}</strong> between
         <strong>{company_name}</strong> ("Seller") and <strong>{customer_name}</strong> ("Buyer").
       </p>
 
@@ -196,13 +203,13 @@ export class AddContractComponent implements OnInit {
 
       <h2 style="margin-top: 20px;">2. Payment Terms</h2>
       <p>
-        Buyer shall pay 50% of <strong>{deal_amount}</strong> upon signing and the remaining balance upon delivery. 
+        Buyer shall pay 50% of <strong>{deal_amount}</strong> upon signing and the remaining balance upon delivery.
         Payment shall be made via <strong>{payment_method}</strong>.
       </p>
 
       <h2 style="margin-top: 20px;">3. Delivery Schedule</h2>
       <p>
-        Seller shall deliver the products in <strong>{delivery_installments}</strong> installments to 
+        Seller shall deliver the products in <strong>{delivery_installments}</strong> installments to
         <strong>{customer_address}</strong>, starting on <strong>{delivery_date}</strong>.
       </p>
 
@@ -224,7 +231,7 @@ export class AddContractComponent implements OnInit {
       content: `
       <h1 style="text-align: center; margin-bottom: 20px;">Subscription Agreement</h1>
       <p>
-        This Subscription Agreement ("Agreement") is entered into on <strong>{date_signed}</strong> between 
+        This Subscription Agreement ("Agreement") is entered into on <strong>{date_signed}</strong> between
         <strong>{company_name}</strong> ("Seller") and <strong>{customer_name}</strong> ("Buyer").
       </p>
 
@@ -237,7 +244,7 @@ export class AddContractComponent implements OnInit {
 
       <h2 style="margin-top: 20px;">2. Payment Terms</h2>
       <p>
-        Buyer shall pay <strong>{deal_amount}</strong> <strong>{subscription_frequency}</strong> via 
+        Buyer shall pay <strong>{deal_amount}</strong> <strong>{subscription_frequency}</strong> via
         <strong>{payment_method}</strong>, starting on <strong>{date_signed}</strong>.
       </p>
 
@@ -275,7 +282,7 @@ export class AddContractComponent implements OnInit {
       assigned_sales_rep_ids: [[], Validators.required],
       status: ['draft', Validators.required],
       partner_id: [null],
-      docuseal_template_id: [null],
+      template_type: ['richtext'],
       templateId: [''], // For template selection
       dropdownFields: this.fb.array([]) // For dynamic dropdown fields
     });
@@ -305,7 +312,7 @@ export class AddContractComponent implements OnInit {
               title: selectedTemplate.title,
               content: selectedTemplate.content
             });
-            
+
             // Auto-populate dropdown fields for service agreement template
             if (templateId === 'service-agreement-dropdown') {
               this.populateServiceAgreementDropdowns();
@@ -316,24 +323,45 @@ export class AddContractComponent implements OnInit {
     }
   }
 
+  onTemplateTypeChange(value: 'richtext' | 'pdf_upload') {
+    this.templateType = value;
+    const contentControl = this.contractForm.get('content');
+    if (value === 'pdf_upload') {
+      contentControl?.clearValidators();
+    } else {
+      contentControl?.setValidators(Validators.required);
+    }
+    contentControl?.updateValueAndValidity();
+  }
+
   loadTemplateForEdit() {
     if (!this.templateId) return;
-    
+
     this.isLoading = true;
     this.contractsService.getTemplateDetails(this.templateId).pipe(
       finalize(() => this.isLoading = false)
     ).subscribe({
       next: (response: any) => {
         this.currentTemplate = response.data;
+        this.templateType = this.currentTemplate.template_type || 'richtext';
+        this.pdfUrl = this.currentTemplate.pdf_url || null;
+        this.fieldPositions = this.currentTemplate.field_positions || [];
+
         this.contractForm.patchValue({
           title: this.currentTemplate.title,
           content: this.currentTemplate.content,
           assigned_sales_rep_ids: this.currentTemplate.assigned_sales_rep_ids,
           status: this.currentTemplate.status,
           partner_id: this.currentTemplate.partner_id || null,
-          docuseal_template_id: this.currentTemplate.docuseal_template_id || null
+          template_type: this.templateType
         });
-        
+
+        // Update content validator based on template type
+        if (this.templateType === 'pdf_upload') {
+          this.contractForm.get('content')?.clearValidators();
+          this.contractForm.get('content')?.updateValueAndValidity();
+        }
+
         // Load existing dropdown fields
         if (this.currentTemplate.dropdown_fields) {
           this.loadExistingDropdownFields(this.currentTemplate.dropdown_fields);
@@ -404,62 +432,112 @@ export class AddContractComponent implements OnInit {
     });
   }
 
-  openBuilder() {
-    const existingTemplateId = this.contractForm.get('docuseal_template_id')?.value;
-    let url: string;
-    if (existingTemplateId) {
-      url = `${this.docusealBaseUrl}/templates/${existingTemplateId}/edit`;
-    } else {
-      url = `${this.docusealBaseUrl}/templates/new`;
-    }
+  // ─── PDF Upload & Preview ───
 
-    const width = 1200;
-    const height = 800;
-    const left = (screen.width - width) / 2;
-    const top = (screen.height - height) / 2;
-    this.docuSealPopup = window.open(
-      url,
-      'DocuSealBuilder',
-      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
-    );
-
-    this.clearPopupCheck();
-    this.popupCheckInterval = setInterval(() => {
-      if (this.docuSealPopup && this.docuSealPopup.closed) {
-        this.clearPopupCheck();
-        this.onDocuSealPopupClosed();
-      }
-    }, 500);
-  }
-
-  private clearPopupCheck() {
-    if (this.popupCheckInterval) {
-      clearInterval(this.popupCheckInterval);
-      this.popupCheckInterval = null;
+  onPdfFileSelected(event: any) {
+    const file = event.target.files[0];
+    if (file && file.type === 'application/pdf') {
+      this.pdfFile = file;
+      this.isLoading = true;
+      this.contractsService.uploadTemplatePdf(file).pipe(
+        finalize(() => this.isLoading = false)
+      ).subscribe({
+        next: (response: any) => {
+          this.pdfUrl = response.data.url;
+          this.loadPdfPreview(file);
+          this.snackBar.open('PDF uploaded successfully', 'Close', { duration: 3000 });
+        },
+        error: () => this.snackBar.open('Error uploading PDF', 'Close', { duration: 3000 })
+      });
     }
   }
 
-  private onDocuSealPopupClosed() {
-    this.contractsService.getDocuSealTemplates().subscribe({
-      next: (response: any) => {
-        const templates = response?.data?.data || [];
-        if (templates.length > 0) {
-          const latest = templates.sort((a: any, b: any) =>
-            new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime()
-          )[0];
-          this.contractForm.patchValue({ docuseal_template_id: latest.id });
-          this.snackBar.open(`DocuSeal template #${latest.id} linked`, 'Close', { duration: 3000 });
-        }
-      },
-      error: () => {
-        this.snackBar.open('Could not fetch DocuSeal templates', 'Close', { duration: 3000 });
-      }
-    });
+  async loadPdfPreview(file: File) {
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    this.totalPdfPages = pdf.numPages;
+    this.currentPdfPage = 1;
+    await this.renderPdfPage(pdf, 1);
   }
 
-  ngOnDestroy() {
-    this.clearPopupCheck();
+  async renderPdfPage(pdf: any, pageNum: number) {
+    const page = await pdf.getPage(pageNum);
+    const viewport = page.getViewport({ scale: 1.0 });
+    const canvas = document.getElementById('pdfCanvas') as HTMLCanvasElement;
+    if (canvas) {
+      const context = canvas.getContext('2d');
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+      await page.render({ canvasContext: context, viewport }).promise;
+    }
+    this._pdfDoc = pdf;
   }
+
+  async goToPdfPage(pageNum: number) {
+    if (!this._pdfDoc || pageNum < 1 || pageNum > this.totalPdfPages) return;
+    this.currentPdfPage = pageNum;
+    await this.renderPdfPage(this._pdfDoc, pageNum);
+  }
+
+  // ─── Field Placement ───
+
+  addField(type: string) {
+    const newField = {
+      id: `${type}_${Date.now()}`,
+      type,
+      label: type === 'signature' ? 'Signature' : type === 'text' ? 'Text Field' : type === 'date' ? 'Date' : 'Dropdown',
+      page: this.currentPdfPage,
+      x: 50, y: 50,
+      width: type === 'signature' ? 200 : 150,
+      height: type === 'signature' ? 60 : 25,
+      required: true,
+      ...(type === 'dropdown' ? { options: ['Option 1', 'Option 2'] } : {})
+    };
+    this.fieldPositions.push(newField);
+  }
+
+  removeField(index: number) {
+    this.fieldPositions.splice(index, 1);
+  }
+
+  removeFieldById(id: string) {
+    const index = this.fieldPositions.findIndex(f => f.id === id);
+    if (index !== -1) {
+      this.fieldPositions.splice(index, 1);
+    }
+  }
+
+  getFieldsForCurrentPage(): any[] {
+    return this.fieldPositions.filter(f => f.page === this.currentPdfPage);
+  }
+
+  onFieldMouseDown(event: MouseEvent, field: any) {
+    event.preventDefault();
+    const el = event.target as HTMLElement;
+    this.dragState = {
+      field,
+      offsetX: event.clientX - el.getBoundingClientRect().left,
+      offsetY: event.clientY - el.getBoundingClientRect().top
+    };
+  }
+
+  onCanvasMouseMove(event: MouseEvent) {
+    if (!this.dragState) return;
+    const container = document.getElementById('pdfCanvasContainer');
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      this.dragState.field.x = Math.max(0, event.clientX - rect.left - this.dragState.offsetX);
+      this.dragState.field.y = Math.max(0, event.clientY - rect.top - this.dragState.offsetY);
+    }
+  }
+
+  onCanvasMouseUp() {
+    this.dragState = null;
+  }
+
+  // ─── Save Contract ───
 
   saveContract() {
     if (this.contractForm.invalid) {
@@ -468,7 +546,7 @@ export class AddContractComponent implements OnInit {
     }
 
     this.isLoading = true;
-    const { title, content, assigned_sales_rep_ids, status, partner_id, docuseal_template_id } = this.contractForm.value;
+    const { title, content, assigned_sales_rep_ids, status, partner_id } = this.contractForm.value;
     const dropdownFields = this.buildDropdownFieldsPayload();
 
     const contractData: any = {
@@ -476,15 +554,17 @@ export class AddContractComponent implements OnInit {
       content,
       assigned_sales_rep_ids,
       status,
+      template_type: this.templateType,
       ...(Object.keys(dropdownFields).length > 0 && { dropdown_fields: dropdownFields }),
       ...(partner_id && { partner_id }),
-      ...(docuseal_template_id && { docuseal_template_id })
+      ...(this.templateType === 'pdf_upload' && this.pdfUrl && { pdf_url: this.pdfUrl }),
+      ...(this.templateType === 'pdf_upload' && this.fieldPositions.length > 0 && { field_positions: this.fieldPositions })
     };
-    
+
     const apiCall = this.isEditMode && this.templateId
       ? this.contractsService.updateContract(this.templateId, contractData)
       : this.contractsService.createContract(contractData);
-    
+
     apiCall.pipe(
       finalize(() => this.isLoading = false)
     ).subscribe({
@@ -562,7 +642,7 @@ export class AddContractComponent implements OnInit {
 
   private buildDropdownFieldsPayload(): { [key: string]: DropdownField } {
     const dropdownFields: { [key: string]: DropdownField } = {};
-    
+
     this.dropdownFieldsArray.controls.forEach(control => {
       const fieldData = control.value;
       if (fieldData.fieldName) {
@@ -574,7 +654,7 @@ export class AddContractComponent implements OnInit {
         };
       }
     });
-    
+
     return dropdownFields;
   }
 

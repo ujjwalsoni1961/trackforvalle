@@ -26,8 +26,22 @@ export class ContractTemplate {
   @Column({ type: "varchar", default: "active" })
   status: string;
 
-  @Column({ type: "int", nullable: true })
-  docuseal_template_id: number;
+  @Column({ type: "varchar", default: "richtext" })
+  template_type: string;
+
+  @Column({ type: "text", nullable: true })
+  pdf_url: string;
+
+  @Column({ type: "jsonb", default: "[]" })
+  field_positions: Array<{
+    name: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    page: number;
+    type?: string;
+  }>;
 
   @Column({ type: "json", nullable: true })
   dropdown_fields: {

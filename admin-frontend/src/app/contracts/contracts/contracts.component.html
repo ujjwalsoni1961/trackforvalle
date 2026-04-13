@@ -3,12 +3,6 @@
   <div class="flex justify-between items-center mb-7">
     <h1 class="text-lg font-bold">Contract Templates</h1>
     <div class="flex gap-3">
-      <button mat-stroked-button
-              color="primary"
-              (click)="openBuilderForNew()"
-              *ngIf="canCreateContracts">
-        <mat-icon>description</mat-icon> New DocuSeal Template
-      </button>
       <button mat-flat-button
               color="primary"
               (click)="navigateToAddContract()"
@@ -72,18 +66,18 @@
             <span *ngIf="!contract.partner" class="text-gray-400">-</span>
           </td>
         </ng-container>
+        <ng-container matColumnDef="templateType">
+          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Type</th>
+          <td mat-cell *matCellDef="let contract">
+            <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full"
+                  [ngClass]="contract.template_type === 'pdf_upload' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800'">
+              {{ contract.template_type === 'pdf_upload' ? 'PDF Upload' : 'Rich Text' }}
+            </span>
+          </td>
+        </ng-container>
         <ng-container matColumnDef="salesRepNames">
           <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Assigned Sales Reps</th>
           <td mat-cell *matCellDef="let contract">{{ getSalesRepNames(contract) }}</td>
-        </ng-container>
-        <ng-container matColumnDef="docusealId">
-          <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">DocuSeal ID</th>
-          <td mat-cell *matCellDef="let contract">
-            <span *ngIf="contract.docuseal_template_id" class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">
-              #{{ contract.docuseal_template_id }}
-            </span>
-            <span *ngIf="!contract.docuseal_template_id" class="text-gray-400">-</span>
-          </td>
         </ng-container>
         <ng-container matColumnDef="status">
           <th mat-header-cell *matHeaderCellDef class="text-neutral-500 dark:text-neutral-400">Status</th>
@@ -104,6 +98,12 @@
               <mat-icon>visibility</mat-icon>
             </button>
             <button mat-icon-button
+                    matTooltip="Edit"
+                    (click)="editContract(contract)"
+                    *ngIf="canEditContract(contract)">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button
                     matTooltip="Publish"
                     (click)="publishContract(contract)"
                     *ngIf="contract.status === 'draft' && canEditContract(contract)"
@@ -115,12 +115,6 @@
                     (click)="openReassignContractDialog(contract)"
                     *ngIf="canEditContract(contract)">
               <mat-icon>assignment_ind</mat-icon>
-            </button>
-            <button mat-icon-button
-                    [matTooltip]="contract.docuseal_template_id ? 'Edit DocuSeal Template' : 'Create DocuSeal Template'"
-                    (click)="openBuilderForContract(contract)"
-                    *ngIf="canEditContract(contract)">
-              <mat-icon>{{ contract.docuseal_template_id ? 'edit_document' : 'note_add' }}</mat-icon>
             </button>
             <button mat-icon-button
                     matTooltip="Delete"
@@ -154,6 +148,7 @@
       <p *ngIf="selectedContract?.partner"><strong>Partner Company:</strong> {{ selectedContract?.partner?.company_name }}</p>
       <p><strong>Assigned Sales Reps:</strong> {{ selectedContract ? getSalesRepNames(selectedContract) : 'None' }}</p>
       <p><strong>Status:</strong> {{ selectedContract?.status | titlecase }}</p>
+      <p><strong>Type:</strong> {{ selectedContract?.template_type === 'pdf_upload' ? 'PDF Upload' : 'Rich Text' }}</p>
       <p><strong>Created At:</strong> {{ selectedContract?.created_at | date:'medium' }}</p>
       <div class="contract-content" [innerHTML]="selectedContract?.content"></div>
     </mat-dialog-content>

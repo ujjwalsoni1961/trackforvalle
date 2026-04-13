@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 // ignore: unused_import
@@ -58,7 +59,7 @@ class _ContractPreviewModalState extends State<ContractPreviewModal> {
   final SignatureController _signatureController = SignatureController(
     penStrokeWidth: 2,
     penColor: Colors.black,
-    exportBackgroundColor: Colors.white,
+    exportBackgroundColor: Colors.transparent,
   );
   
 
@@ -82,57 +83,34 @@ class _ContractPreviewModalState extends State<ContractPreviewModal> {
   }
 
   void _submitForm() async {
-    debugPrint('Contract Template: ${widget.templateString}');
-
     if (_signatureController.isEmpty) {
       // ignore: use_build_context_synchronously
       context.errorBar("Please sign the contract!");
       return;
     }
 
-    // Original signature-only submission
-    final signatureFile = await _saveSignature();
-    if (signatureFile == null) {
+    final bytes = await _signatureController.toPngBytes();
+    if (bytes == null) {
       // ignore: use_build_context_synchronously
-      context.errorBar("Please sign the contract!");
+      context.errorBar("Failed to capture signature");
       return;
     }
 
-    // Submit signature contract
-    // ignore: use_build_context_synchronously
-    context.read<SubmitContractCubit>().submitTheContract(
-      leadID: widget.leadID,
-      contractTemplateID: widget.contractTemplateID,
-      metaData: widget.formData,
-      dropdownValues: widget.dropdownValues,
-      signature: signatureFile,
-    );
-  }
+    final base64Sig = 'data:image/png;base64,${base64Encode(bytes)}';
 
-  Future<File?> _saveSignature() async {
-    if (_signatureController.isNotEmpty) {
-      final bytes = await _signatureController.toPngBytes();
-      if (bytes != null) {
-        if (kIsWeb) {
-          // For web, create a web-compatible file wrapper
-          final fileName = 'signature_${DateTime.now().millisecondsSinceEpoch}.png';
-          return _WebCompatibleFile(bytes, fileName);
-        } else {
-          // For mobile, use the traditional file system approach
-          final tempDir = Directory.systemTemp;
-          final file = File(
-            '${tempDir.path}/signature_${DateTime.now().millisecondsSinceEpoch}.png',
-          );
-          await file.writeAsBytes(bytes);
-          return file;
-        }
-      } else {
-        return null;
-      }
-    } else {
-      context.errorBar("Please provide a signature");
-      return null;
-    }
+    // Combine form data and dropdown values
+    final allFieldValues = <String, String>{
+      ...widget.formData,
+      ...widget.dropdownValues,
+    };
+
+    // ignore: use_build_context_synchronously
+    context.read<SubmitContractCubit>().signContract(
+      templateId: widget.contractTemplateID,
+      leadId: widget.leadID,
+      fieldValues: allFieldValues,
+      signatureBase64: base64Sig,
+    );
   }
 
   @override

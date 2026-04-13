@@ -10,7 +10,6 @@ import adminRoute from "./adminManager.routes";
 import contractRouter from "./contract.route";
 import dataRouter from "./data.route";
 import partnerRoute from "./partner.route";
-import docusealRoute from "./docuseal.route";
 // import healthRouter from "./health.route";
 
 import express from "express";
@@ -27,7 +26,6 @@ router.use("/admin", adminRoute);
 router.use("/contract",contractRouter)
 router.use("/regions", dataRouter)
 router.use("/partner", partnerRoute)
-router.use("/docuseal", docusealRoute)
 // router.use("/health", healthRouter)
 
 export default router;

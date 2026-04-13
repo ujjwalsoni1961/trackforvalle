@@ -26,11 +26,11 @@ abstract class ContractsRemoteDataSource {
     required int contractTemplateID,
     required File contractPdf,
   });
-  Future<Map<String, dynamic>> createDocuSealSubmission({
+  Future<Map<String, dynamic>> signContract({
     required int templateId,
-    required String signerEmail,
-    required String signerName,
-    Map<String, dynamic>? metadata,
+    required int leadId,
+    required Map<String, String> fieldValues,
+    required String signatureBase64,
   });
 }
 
@@ -104,44 +104,31 @@ class ContractsRemoteDataSourceImpl extends ContractsRemoteDataSource {
   }
 
   @override
-  Future<Map<String, dynamic>> createDocuSealSubmission({
+  Future<Map<String, dynamic>> signContract({
     required int templateId,
-    required String signerEmail,
-    required String signerName,
-    Map<String, dynamic>? metadata,
+    required int leadId,
+    required Map<String, String> fieldValues,
+    required String signatureBase64,
   }) async {
     try {
-      final response = await _api.dio.post('/docuseal/submissions', data: {
+      final response = await _api.dio.post('/contract/sign', data: {
         'template_id': templateId,
-        'submitters': [
-          {
-            'email': signerEmail,
-            'name': signerName,
-            'role': 'Signer',
-          }
-        ],
-        if (metadata != null) 'metadata': metadata,
+        'lead_id': leadId,
+        'field_values': fieldValues,
+        'signature': signatureBase64,
       });
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = response.data['data'];
-        // The response is an array of submitters with embed_src
-        if (data is List && data.isNotEmpty) {
-          return Map<String, dynamic>.from(data[0] as Map);
-        }
-        return Map<String, dynamic>.from(data as Map);
+        return Map<String, dynamic>.from(response.data['data'] as Map);
       } else {
         throw APIException(
-          message: response.data?['message']?.toString() ?? 'Failed to create submission',
+          message: response.data?['message']?.toString() ?? 'Signing failed',
           statusCode: response.statusCode ?? 500,
         );
       }
     } on APIException {
       rethrow;
     } catch (e) {
-      throw APIException(
-        message: e.toString(),
-        statusCode: 505,
-      );
+      throw APIException(message: e.toString(), statusCode: 505);
     }
   }
 

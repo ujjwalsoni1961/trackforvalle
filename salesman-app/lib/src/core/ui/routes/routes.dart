@@ -15,7 +15,6 @@ import 'package:track/src/features/visits/domain/entities/leads_entity.dart';
 import 'package:track/src/features/visits/presentation/leads/views/add_lead_view.dart';
 import 'package:track/src/features/visits/presentation/leads/views/leads_map_view.dart';
 import 'package:track/src/features/visits/presentation/sign_contract/views/choose_contract_view.dart';
-import 'package:track/src/features/visits/presentation/sign_contract/views/docuseal_sign_view.dart';
 import 'package:track/src/features/visits/presentation/sign_contract/views/sign_contract_view.dart';
 import 'package:track/src/features/visits/presentation/visit_log/views/visit_log_view.dart';
 import 'package:track/src/core/services/auth_service.dart';
@@ -72,7 +71,6 @@ class RouteNames {
   static const String contracts = 'contracts';
   static const String chooseContract = 'choose-contract';
   static const String signContract = 'sign-contract';
-  static const String docusealSign = 'docuseal-sign';
 
   // Communication
   static const String chat = 'chat';
@@ -110,7 +108,6 @@ class RoutePaths {
   static const String contracts = '/contracts';
   static const String chooseContract = '/contracts/choose';
   static const String signContract = '/contracts/sign';
-  static const String docusealSign = '/contracts/docuseal-sign';
 
   static const String chat = '/chat';
   static const String chatWithManager = '/chat/manager';
@@ -152,7 +149,6 @@ class Routes {
     RoutePaths.contracts,
     RoutePaths.chooseContract,
     RoutePaths.signContract,
-    RoutePaths.docusealSign,
     RoutePaths.chat,
     RoutePaths.chatWithManager,
   };
@@ -332,13 +328,6 @@ class Routes {
         builder: (context, state) =>
             SignContractView(params: state.extra as SignContractViewPageParams),
       ),
-      GoRoute(
-        path: RoutePaths.docusealSign,
-        name: RouteNames.docusealSign,
-        builder: (context, state) =>
-            DocuSealSignView(params: state.extra as DocuSealSignViewParams),
-      ),
-
       // Communication
       GoRoute(
         path: RoutePaths.chatWithManager,

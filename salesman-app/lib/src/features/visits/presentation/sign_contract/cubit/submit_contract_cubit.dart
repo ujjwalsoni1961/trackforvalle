@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:track/src/features/visits/domain/repositories/contracts_repository.dart';
 import 'package:track/src/features/visits/domain/usecases/submit_contract.dart';
 import 'package:track/src/features/visits/domain/usecases/submit_contract_pdf.dart';
 
@@ -10,11 +11,15 @@ part 'submit_contract_state.dart';
 class SubmitContractCubit extends Cubit<SubmitContractState> {
   final SubmitContract submitContract;
   final SubmitContractPdf _submitContractPdfUseCase;
-  
+  final ContractsRepository _repository;
+
   SubmitContractCubit({
     required this.submitContract,
     required SubmitContractPdf submitContractPdf,
-  }) : _submitContractPdfUseCase = submitContractPdf, super(SubmitContractInitial());
+    required ContractsRepository repository,
+  }) : _submitContractPdfUseCase = submitContractPdf,
+       _repository = repository,
+       super(SubmitContractInitial());
 
   void submitTheContract({
     required int leadID,
@@ -78,5 +83,32 @@ class SubmitContractCubit extends Cubit<SubmitContractState> {
         ),
       ),
     );
+  }
+
+  void signContract({
+    required int templateId,
+    required int leadId,
+    required Map<String, String> fieldValues,
+    required String signatureBase64,
+  }) async {
+    emit(SubmitContractLoading());
+    try {
+      final result = await _repository.signContract(
+        templateId: templateId,
+        leadId: leadId,
+        fieldValues: fieldValues,
+        signatureBase64: signatureBase64,
+      );
+      result.fold(
+        (failure) => emit(SubmitContractFailed(failure.message)),
+        (data) {
+          final contractId = data['contract_id'] as int? ?? 0;
+          final visitId = data['visit_id'] as int? ?? 0;
+          emit(SubmitContractSuccess(contractID: contractId, visitID: visitId));
+        },
+      );
+    } catch (e) {
+      emit(SubmitContractFailed(e.toString()));
+    }
   }
 }

@@ -20,10 +20,10 @@ abstract class ContractsRepository {
     required int contractTemplateID,
     required File contractPdf,
   });
-  ResultFuture<Map<String, dynamic>> createDocuSealSubmission({
+  ResultFuture<Map<String, dynamic>> signContract({
     required int templateId,
-    required String signerEmail,
-    required String signerName,
-    Map<String, dynamic>? metadata,
+    required int leadId,
+    required Map<String, String> fieldValues,
+    required String signatureBase64,
   });
 }

@@ -7,20 +7,22 @@ class ContractsTemplatesModel extends ContractTemplateEntity {
     required super.templateString,
     required super.title,
     super.dropdownFields,
-    super.docusealTemplateId,
+    super.templateType,
+    super.pdfUrl,
+    super.fieldPositions,
   });
 
   factory ContractsTemplatesModel.fromMap(DataMap map) {
     Map<String, DropdownField>? dropdownFields;
-    
+
     if (map['dropdown_fields'] != null) {
       final dropdownData = map['dropdown_fields'] as Map<String, dynamic>;
       dropdownFields = {};
-      
+
       dropdownData.forEach((key, value) {
         final fieldData = value as Map<String, dynamic>;
         final optionsData = fieldData['options'] as List<dynamic>;
-        
+
         final options = optionsData.map((option) {
           final optionMap = option as Map<String, dynamic>;
           return DropdownOption(
@@ -28,7 +30,7 @@ class ContractsTemplatesModel extends ContractTemplateEntity {
             value: optionMap['value'] as String,
           );
         }).toList();
-        
+
         dropdownFields![key] = DropdownField(
           label: fieldData['label'] as String,
           options: options,
@@ -37,13 +39,24 @@ class ContractsTemplatesModel extends ContractTemplateEntity {
         );
       });
     }
-    
+
+    List<Map<String, dynamic>>? fieldPositions;
+    if (map['field_positions'] != null) {
+      fieldPositions = (map['field_positions'] as List<dynamic>)
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+    } else {
+      fieldPositions = [];
+    }
+
     return ContractsTemplatesModel(
       id: map['id'] as int,
       templateString: map['content'] as String,
       title: map['title'] as String,
       dropdownFields: dropdownFields,
-      docusealTemplateId: map['docuseal_template_id'] as int?,
+      templateType: map['template_type'] as String? ?? 'richtext',
+      pdfUrl: map['pdf_url'] as String?,
+      fieldPositions: fieldPositions,
     );
   }
 }

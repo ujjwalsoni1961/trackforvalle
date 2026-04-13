@@ -58,6 +58,7 @@
     "ngx-markdown": "^19.1.1",
     "ngx-papaparse": "^8.0.0",
     "ngx-quill": "^27.1.2",
+    "pdfjs-dist": "^4.10.38",
     "rxjs": "~7.8.0",
     "track-admin": "file:",
     "tslib": "^2.3.0",

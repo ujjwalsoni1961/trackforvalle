@@ -13,6 +13,10 @@ const routes: Routes = [
     component: AddContractComponent
   },
   {
+    path: 'add/:id',
+    component: AddContractComponent
+  },
+  {
     path: 'signed',
     component: SignedContractsComponent
   }

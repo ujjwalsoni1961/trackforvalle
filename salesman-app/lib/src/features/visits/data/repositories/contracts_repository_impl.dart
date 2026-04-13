@@ -69,18 +69,18 @@ class ContractsRepositoryImpl extends ContractsRepository {
   }
 
   @override
-  ResultFuture<Map<String, dynamic>> createDocuSealSubmission({
+  ResultFuture<Map<String, dynamic>> signContract({
     required int templateId,
-    required String signerEmail,
-    required String signerName,
-    Map<String, dynamic>? metadata,
+    required int leadId,
+    required Map<String, String> fieldValues,
+    required String signatureBase64,
   }) async {
     try {
-      final result = await _remoteDataSource.createDocuSealSubmission(
+      final result = await _remoteDataSource.signContract(
         templateId: templateId,
-        signerEmail: signerEmail,
-        signerName: signerName,
-        metadata: metadata,
+        leadId: leadId,
+        fieldValues: fieldValues,
+        signatureBase64: signatureBase64,
       );
       return Right(result);
     } on APIException catch (e) {

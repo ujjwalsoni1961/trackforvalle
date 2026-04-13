@@ -35,20 +35,24 @@ class ContractTemplateEntity extends Equatable {
   final String templateString;
   final String title;
   final Map<String, DropdownField>? dropdownFields;
-  final int? docusealTemplateId;
+  final String templateType;
+  final String? pdfUrl;
+  final List<Map<String, dynamic>>? fieldPositions;
 
   const ContractTemplateEntity({
     required this.id,
     required this.title,
     required this.templateString,
     this.dropdownFields,
-    this.docusealTemplateId,
+    this.templateType = 'richtext',
+    this.pdfUrl,
+    this.fieldPositions,
   });
 
-  bool get hasDocuSeal => docusealTemplateId != null && docusealTemplateId! > 0;
+  bool get isPdfUpload => templateType == 'pdf_upload';
 
   @override
-  List<Object?> get props => [id, title, templateString, dropdownFields, docusealTemplateId];
+  List<Object?> get props => [id, title, templateString, dropdownFields, templateType, pdfUrl, fieldPositions];
 }
 
 class ContractTemplateListEntity extends Equatable {

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild, TemplateRef } from '@angular/core';
+import { Component, OnInit, ViewChild, TemplateRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormGroup, FormBuilder, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -51,7 +51,7 @@ interface Contract {
   dropdown_fields?: { [key: string]: DropdownField };
   partner_id?: number;
   partner?: { partner_id: number; company_name: string } | null;
-  docuseal_template_id?: number | null;
+  template_type?: 'richtext' | 'pdf_upload';
 }
 
 interface SalesRep {
@@ -89,12 +89,7 @@ export class ContractsComponent implements OnInit {
   contracts: Contract[] = [];
   filteredContracts: Contract[] = [];
   salesReps: SalesRep[] = [];
-  // DocuSeal popup state
-  private docuSealPopup: Window | null = null;
-  private popupCheckInterval: any = null;
-  builderContractId: number | null = null;
-  docusealBaseUrl = 'https://docuseal-585556848696.europe-west1.run.app';
-  displayedColumns: string[] = ['title', 'partnerCompany', 'docusealId', 'salesRepNames', 'status', 'createdAt', 'actions'];
+  displayedColumns: string[] = ['title', 'partnerCompany', 'templateType', 'salesRepNames', 'status', 'createdAt', 'actions'];
   filterForm: FormGroup;
   contractForm: FormGroup;
   isLoading = false;
@@ -235,6 +230,10 @@ export class ContractsComponent implements OnInit {
     this.router.navigate(['contracts/add']);
   }
 
+  editContract(contract: Contract) {
+    this.router.navigate(['contracts/add', contract.id]);
+  }
+
   publishContract(contract: Contract) {
     this.isLoading = true;
     this.contractsService.updateContract(contract.id, { status: 'published' } as any).pipe(
@@ -344,96 +343,5 @@ export class ContractsComponent implements OnInit {
 
   canDeleteContract(contract: Contract): boolean {
     return this.canEditAllContracts;
-  }
-
-  openBuilderForNew() {
-    this.builderContractId = null;
-    const url = `${this.docusealBaseUrl}/templates/new`;
-    this.openDocuSealPopup(url);
-  }
-
-  openBuilderForContract(contract: Contract) {
-    this.builderContractId = contract.id;
-    if (contract.docuseal_template_id) {
-      const url = `${this.docusealBaseUrl}/templates/${contract.docuseal_template_id}/edit`;
-      this.openDocuSealPopup(url);
-    } else {
-      const url = `${this.docusealBaseUrl}/templates/new`;
-      this.openDocuSealPopup(url);
-    }
-  }
-
-  private openDocuSealPopup(url: string) {
-    const width = 1200;
-    const height = 800;
-    const left = (screen.width - width) / 2;
-    const top = (screen.height - height) / 2;
-    this.docuSealPopup = window.open(
-      url,
-      'DocuSealBuilder',
-      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
-    );
-
-    // Poll for popup close, then refresh templates list
-    this.clearPopupCheck();
-    this.popupCheckInterval = setInterval(() => {
-      if (this.docuSealPopup && this.docuSealPopup.closed) {
-        this.clearPopupCheck();
-        this.onDocuSealPopupClosed();
-      }
-    }, 500);
-  }
-
-  private clearPopupCheck() {
-    if (this.popupCheckInterval) {
-      clearInterval(this.popupCheckInterval);
-      this.popupCheckInterval = null;
-    }
-  }
-
-  private onDocuSealPopupClosed() {
-    // Fetch latest DocuSeal templates and auto-link if needed
-    this.contractsService.getDocuSealTemplates().subscribe({
-      next: (response: any) => {
-        const templates = response?.data?.data || [];
-        if (templates.length > 0 && this.builderContractId) {
-          // Find the most recently created/updated template
-          const latest = templates.sort((a: any, b: any) =>
-            new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime()
-          )[0];
-          // Auto-link it to the contract
-          this.linkDocuSealTemplate(this.builderContractId, latest.id);
-        } else if (templates.length > 0) {
-          this.snackBar.open(
-            `DocuSeal template(s) available. Use the edit icon on a contract to link one.`,
-            'Close',
-            { duration: 5000 }
-          );
-        }
-        this.loadContracts();
-      },
-      error: () => {
-        this.loadContracts();
-      }
-    });
-    this.builderContractId = null;
-  }
-
-  linkDocuSealTemplate(contractId: number, templateId: number) {
-    this.contractsService.updateContract(contractId, {
-      docuseal_template_id: templateId
-    } as any).subscribe({
-      next: () => {
-        this.snackBar.open(`DocuSeal template #${templateId} linked successfully`, 'Close', { duration: 3000 });
-        this.loadContracts();
-      },
-      error: () => {
-        this.snackBar.open('Error linking DocuSeal template', 'Close', { duration: 3000 });
-      }
-    });
-  }
-
-  ngOnDestroy() {
-    this.clearPopupCheck();
   }
 }
