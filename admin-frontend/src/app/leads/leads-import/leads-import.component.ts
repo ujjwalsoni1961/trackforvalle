@@ -265,22 +265,103 @@ export class LeadsImportComponent implements OnInit {
     const reader = new FileReader();
     reader.onload = (e) => {
       const fileData = new Uint8Array(e.target!.result as ArrayBuffer);
-      const workbook = read(fileData, { type: 'array' });
+      const workbook = read(fileData, { type: 'array', cellDates: true });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      const json = utils.sheet_to_json(worksheet, { header: 1, blankrows: false });
-      const headers = json[0] as string[];
-      const rows = json.slice(1) as any[][];
-      const rowData = rows
+      const json = utils.sheet_to_json(worksheet, { header: 1, blankrows: false, raw: false, dateNF: 'yyyy-mm-dd' });
+
+      // Detect header row: find the first row with 2+ non-empty cells (skip title rows)
+      let headerRowIndex = 0;
+      for (let i = 0; i < Math.min(json.length, 5); i++) {
+        const row = json[i] as any[];
+        const nonEmpty = row.filter(cell => cell !== undefined && cell !== null && cell.toString().trim() !== '').length;
+        if (nonEmpty >= 2) {
+          headerRowIndex = i;
+          break;
+        }
+      }
+
+      const headerRow = json[headerRowIndex] as any[];
+      // Only use columns that have actual header values (skip trailing empty cols)
+      const headers: string[] = [];
+      for (let i = 0; i < headerRow.length; i++) {
+        const val = headerRow[i];
+        if (val !== undefined && val !== null && val.toString().trim() !== '') {
+          headers.push(val.toString().trim());
+        } else {
+          break; // stop at first empty header
+        }
+      }
+
+      const dataRows = json.slice(headerRowIndex + 1) as any[][];
+      const rowData = dataRows
         .map(row => {
           const obj: any = {};
+          let hasData = false;
           headers.forEach((header, i) => {
-            obj[header] = row[i]?.toString()?.trim() || '';
+            let val = row[i];
+            if (val === undefined || val === null) {
+              obj[header] = '';
+            } else {
+              let strVal = val.toString().trim();
+              // Clean numeric strings that look like postal codes (e.g. "16320" from float)
+              if (/^\d+\.0*$/.test(strVal)) {
+                strVal = strVal.replace(/\.0*$/, '');
+              }
+              obj[header] = strVal;
+              if (strVal !== '') hasData = true;
+            }
           });
-          return obj;
+          return hasData ? obj : null;
         })
-        .filter(row => Object.values(row).some(val => val !== '')); // Skip rows where all values are empty
-      this.processData(headers, rowData);
+        .filter((row): row is Record<string, string> => row !== null);
+
+      // Extract emails and phones from comments column into separate fields
+      const commentsHeader = headers.find(h => {
+        const lower = h.toLowerCase();
+        return lower.includes('kommentti') || lower.includes('comment') || lower.includes('huomio');
+      });
+      if (commentsHeader) {
+        rowData.forEach(row => {
+          const comment = row[commentsHeader] || '';
+          if (!comment) return;
+          // Extract email
+          const emailMatch = comment.match(/([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/);
+          if (emailMatch) {
+            row['__extracted_email'] = emailMatch[1];
+          }
+          // Extract phone (Finnish format: 04x or +358)
+          const phoneMatch = comment.match(/((?:\+358|0)[\d\s]{7,14})/);
+          if (phoneMatch) {
+            row['__extracted_phone'] = phoneMatch[1].replace(/\s/g, '');
+          }
+          // Extract name (look for patterns like "Name /" or "/ Name /" that aren't email/phone)
+          const parts = comment.split('/');
+          if (parts.length > 1) {
+            for (const part of parts) {
+              const trimmed = part.trim();
+              // Skip if it looks like email, phone, or is too long (likely a note)
+              if (trimmed.includes('@') || /^[\d+]/.test(trimmed) || trimmed.length > 40) continue;
+              // If it looks like a name (1-3 words, starts with uppercase)
+              if (/^[A-ZÄÖÅ][a-zäöå]+(\s[A-ZÄÖÅ][a-zäöå]+){0,2}$/.test(trimmed)) {
+                row['__extracted_name'] = trimmed;
+                break;
+              }
+            }
+          }
+        });
+      }
+
+      // Add extracted fields as virtual headers for mapping
+      const hasExtractedEmails = rowData.some(r => r['__extracted_email']);
+      const hasExtractedPhones = rowData.some(r => r['__extracted_phone']);
+      const hasExtractedNames = rowData.some(r => r['__extracted_name']);
+      const allHeaders = [...headers];
+      if (hasExtractedEmails) allHeaders.push('__extracted_email');
+      if (hasExtractedPhones) allHeaders.push('__extracted_phone');
+      if (hasExtractedNames) allHeaders.push('__extracted_name');
+
+      this.processData(allHeaders, rowData);
     };
     reader.readAsArrayBuffer(file);
   }
@@ -310,17 +391,32 @@ export class LeadsImportComponent implements OnInit {
 
   autoSuggestMapping(column: string): string {
     const lowerCol = column.toLowerCase();
-    if (lowerCol.includes('name') || lowerCol.includes('myyjä')) return 'customerName';
-    if (lowerCol.includes('email')) return 'email';
+    // Extracted fields from smart parsing
+    if (column === '__extracted_email') return 'email';
+    if (column === '__extracted_phone') return 'phone';
+    if (column === '__extracted_name') return 'customerName';
+    // Finnish column names
+    if (lowerCol.includes('valle') || lowerCol.includes('pennala')) return 'streetAddress';
+    if (lowerCol.includes('name') || lowerCol.includes('myyjä') || lowerCol.includes('nimi')) return 'customerName';
+    if (lowerCol.includes('email') || lowerCol.includes('sähköposti')) return 'email';
     if (lowerCol.includes('phone') || lowerCol.includes('puhelin')) return 'phone';
     if (lowerCol.includes('address') || lowerCol.includes('osoite') || lowerCol.includes('katu')) return 'streetAddress';
     if (lowerCol.includes('city') || lowerCol.includes('kaupunki')) return 'city';
     if (lowerCol.includes('state')) return 'state';
-    if (lowerCol.includes('postal') || lowerCol.includes('postin')) return 'postalCode';
-    if (lowerCol.includes('country')) return 'country';
+    if (lowerCol.includes('postal') || lowerCol.includes('postin') || lowerCol.includes('postinro')) return 'postalCode';
+    if (lowerCol.includes('country') || lowerCol.includes('maa')) return 'country';
     if (lowerCol.includes('comment') || lowerCol.includes('huomio') || lowerCol.includes('kommentti')) return 'comments';
     if (lowerCol.includes('partner') || lowerCol.includes('kumppani')) return 'partner';
+    if (lowerCol.includes('kontaktit') || lowerCol.includes('contact')) return ''; // skip contact dates by default
     return '';
+  }
+
+  /** Get display name for column headers including extracted fields */
+  getColumnDisplayName(column: string): string {
+    if (column === '__extracted_email') return 'Email (extracted from comments)';
+    if (column === '__extracted_phone') return 'Phone (extracted from comments)';
+    if (column === '__extracted_name') return 'Name (extracted from comments)';
+    return column;
   }
 
   refreshPreview() {
