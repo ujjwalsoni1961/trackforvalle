@@ -224,6 +224,12 @@ class _EachLeadsDetailsPageState extends State<EachLeadsDetailsPage> {
                     address.country,
                   ].where((part) => part.trim().isNotEmpty).join(', '),
                 ),
+                if (address.comments.trim().isNotEmpty)
+                  _buildDetailCard(
+                    icon: Icons.comment_outlined,
+                    title: 'Comments',
+                    value: address.comments,
+                  ),
                 _buildDetailCard(
                   icon: Icons.landscape,
                   title: 'Landmark',

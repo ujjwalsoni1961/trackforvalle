@@ -19,6 +19,7 @@ class LeadsAddressModel extends LeadsAddressEntity {
     required super.orgId,
     super.territoryId,
     super.polygonId,
+    super.comments,
   });
 
   factory LeadsAddressModel.empty() {
@@ -39,6 +40,7 @@ class LeadsAddressModel extends LeadsAddressEntity {
       orgId: 0,
       territoryId: null,
       polygonId: null,
+      comments: '',
     );
   }
 
@@ -60,6 +62,7 @@ class LeadsAddressModel extends LeadsAddressEntity {
       territoryId: map['territory_id'] as int?,
       polygonId: map['polygon_id'] as int?,
       orgId: map['org_id'] as int,
+      comments: map['comments'] as String? ?? '',
     );
   }
 }

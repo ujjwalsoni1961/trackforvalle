@@ -17,6 +17,7 @@ class LeadsAddressEntity extends Equatable {
   final int? territoryId;
   final int? polygonId;
   final int orgId;
+  final String comments;
 
   const LeadsAddressEntity({
     required this.addressId,
@@ -35,6 +36,7 @@ class LeadsAddressEntity extends Equatable {
     this.territoryId,
     this.polygonId,
     required this.orgId,
+    this.comments = '',
   });
 
   factory LeadsAddressEntity.empty() {
@@ -55,6 +57,7 @@ class LeadsAddressEntity extends Equatable {
       territoryId: null,
       polygonId: null,
       orgId: 0,
+      comments: '',
     );
   }
 
@@ -76,6 +79,7 @@ class LeadsAddressEntity extends Equatable {
     territoryId,
     polygonId,
     orgId,
+    comments,
   ];
 }
 

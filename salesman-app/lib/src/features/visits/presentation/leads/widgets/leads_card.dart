@@ -244,6 +244,49 @@ class _LeadsCardState extends State<LeadsCard>
                                       ),
                                     ],
                                   ),
+                                  // Comments snippet (if present)
+                                  if (address.comments.trim().isNotEmpty) ...[
+                                    const GapV(4),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(3),
+                                          decoration: BoxDecoration(
+                                            color: Colors.amber.withOpacity(
+                                              0.1,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            Icons.comment_outlined,
+                                            size: 12,
+                                            color: Colors.amber.withOpacity(
+                                              0.8,
+                                            ),
+                                          ),
+                                        ),
+                                        const GapH(6),
+                                        Expanded(
+                                          child: Text(
+                                            address.comments.trim(),
+                                            style: theme.textTheme.bodyMedium
+                                                ?.copyWith(
+                                                  color: Colors.grey.withOpacity(
+                                                    0.8,
+                                                  ),
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
+                                                  fontStyle: FontStyle.italic,
+                                                ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                   // Time Info (Optional)
                                   if (widget.time != null &&
                                       widget.time!.isNotEmpty) ...[
