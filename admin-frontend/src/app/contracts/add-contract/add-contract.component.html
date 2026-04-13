@@ -106,52 +106,154 @@
 
       <!-- PDF Preview with Field Placement -->
       <div *ngIf="pdfUrl" class="space-y-4">
-        <div class="flex gap-2 mb-4">
-          <button mat-stroked-button (click)="addField('signature')" type="button">
-            <mat-icon>draw</mat-icon> + Signature
+        <!-- Add Field Buttons -->
+        <div class="flex flex-wrap gap-2 mb-2">
+          <button mat-stroked-button (click)="addField('signature')" type="button" class="!text-sm">
+            <mat-icon class="!text-[18px] !w-[18px] !h-[18px]">draw</mat-icon> Signature
           </button>
-          <button mat-stroked-button (click)="addField('text')" type="button">
-            <mat-icon>text_fields</mat-icon> + Text
+          <button mat-stroked-button (click)="addField('text')" type="button" class="!text-sm">
+            <mat-icon class="!text-[18px] !w-[18px] !h-[18px]">text_fields</mat-icon> Text
           </button>
-          <button mat-stroked-button (click)="addField('date')" type="button">
-            <mat-icon>calendar_today</mat-icon> + Date
+          <button mat-stroked-button (click)="addField('date')" type="button" class="!text-sm">
+            <mat-icon class="!text-[18px] !w-[18px] !h-[18px]">calendar_today</mat-icon> Date
           </button>
-          <button mat-stroked-button (click)="addField('dropdown')" type="button">
-            <mat-icon>arrow_drop_down_circle</mat-icon> + Dropdown
+          <button mat-stroked-button (click)="addField('dropdown')" type="button" class="!text-sm">
+            <mat-icon class="!text-[18px] !w-[18px] !h-[18px]">arrow_drop_down_circle</mat-icon> Dropdown
           </button>
         </div>
-        <div id="pdfCanvasContainer" class="relative border rounded-lg overflow-hidden bg-gray-100"
-             (mousemove)="onCanvasMouseMove($event)"
-             (mouseup)="onCanvasMouseUp()">
-          <canvas id="pdfCanvas"></canvas>
+
+        <p class="text-xs text-gray-500">Tap a field to select it, then drag to position. Tap the PDF background to deselect.</p>
+
+        <!-- PDF Canvas + Overlays -->
+        <div id="pdfCanvasContainer"
+             class="relative border rounded-lg overflow-hidden bg-gray-100 touch-none"
+             (click)="deselectField()">
+          <canvas id="pdfCanvas" class="block w-full h-auto"></canvas>
           <!-- Draggable field markers -->
           <div *ngFor="let field of getFieldsForCurrentPage(); let i = index"
-               class="absolute border-2 border-dashed cursor-move flex items-center justify-center text-xs"
+               class="absolute border-2 cursor-move flex items-center justify-center text-xs select-none pdf-field-marker"
                [ngClass]="{
-                 'border-blue-500 bg-blue-50/50': field.type === 'signature',
-                 'border-green-500 bg-green-50/50': field.type === 'text',
-                 'border-orange-500 bg-orange-50/50': field.type === 'date',
-                 'border-purple-500 bg-purple-50/50': field.type === 'dropdown'
+                 'border-blue-500 bg-blue-100/70': field.type === 'signature',
+                 'border-green-600 bg-green-100/70': field.type === 'text',
+                 'border-orange-500 bg-orange-100/70': field.type === 'date',
+                 'border-purple-500 bg-purple-100/70': field.type === 'dropdown',
+                 'ring-2 ring-offset-1 ring-indigo-500 z-20': selectedField === field
                }"
                [style.left.px]="field.x"
                [style.top.px]="field.y"
                [style.width.px]="field.width"
                [style.height.px]="field.height"
-               (mousedown)="onFieldMouseDown($event, field)">
-            <span class="pointer-events-none select-none">{{ field.label }}</span>
-            <button class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center"
-                    (click)="removeFieldById(field.id)" type="button">x</button>
+               (mousedown)="onFieldPointerDown($event, field)"
+               (touchstart)="onFieldPointerDown($event, field)">
+            <span class="pointer-events-none select-none truncate px-1 font-medium"
+                  [ngClass]="{
+                    'text-blue-700': field.type === 'signature',
+                    'text-green-700': field.type === 'text',
+                    'text-orange-700': field.type === 'date',
+                    'text-purple-700': field.type === 'dropdown'
+                  }">
+              {{ field.label }}
+            </span>
+            <button class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] leading-none flex items-center justify-center shadow-sm hover:bg-red-600"
+                    (click)="$event.stopPropagation(); removeFieldById(field.id)" type="button">✕</button>
           </div>
         </div>
+
         <!-- Page Navigation -->
         <div *ngIf="totalPdfPages > 1" class="flex items-center justify-center gap-4">
           <button mat-icon-button [disabled]="currentPdfPage <= 1" (click)="goToPdfPage(currentPdfPage - 1)" type="button">
             <mat-icon>chevron_left</mat-icon>
           </button>
-          <span>Page {{ currentPdfPage }} / {{ totalPdfPages }}</span>
+          <span class="text-sm">Page {{ currentPdfPage }} / {{ totalPdfPages }}</span>
           <button mat-icon-button [disabled]="currentPdfPage >= totalPdfPages" (click)="goToPdfPage(currentPdfPage + 1)" type="button">
             <mat-icon>chevron_right</mat-icon>
           </button>
+        </div>
+
+        <!-- Field Properties Panel -->
+        <div *ngIf="selectedField" class="border rounded-lg p-4 bg-white shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-semibold flex items-center gap-2">
+              <mat-icon class="!text-[18px] !w-[18px] !h-[18px]"
+                        [ngClass]="{
+                          'text-blue-500': selectedField.type === 'signature',
+                          'text-green-600': selectedField.type === 'text',
+                          'text-orange-500': selectedField.type === 'date',
+                          'text-purple-500': selectedField.type === 'dropdown'
+                        }">
+                {{ selectedField.type === 'signature' ? 'draw' : selectedField.type === 'text' ? 'text_fields' : selectedField.type === 'date' ? 'calendar_today' : 'arrow_drop_down_circle' }}
+              </mat-icon>
+              {{ selectedField.type | titlecase }} Field Properties
+            </h4>
+            <button mat-icon-button color="warn" (click)="removeFieldById(selectedField.id); selectedField = null" type="button">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <mat-form-field appearance="outline" class="dense-field">
+              <mat-label>Label</mat-label>
+              <input matInput [value]="selectedField.label" (input)="updateFieldLabel(selectedField, $any($event.target).value)">
+            </mat-form-field>
+            <div class="flex items-center gap-1">
+              <mat-checkbox [(ngModel)]="selectedField.required" [ngModelOptions]="{standalone: true}">Required</mat-checkbox>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <mat-form-field appearance="outline" class="dense-field">
+              <mat-label>Width (px)</mat-label>
+              <input matInput type="number" [value]="selectedField.width" (input)="updateFieldWidth(selectedField, +$any($event.target).value)">
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="dense-field">
+              <mat-label>Height (px)</mat-label>
+              <input matInput type="number" [value]="selectedField.height" (input)="updateFieldHeight(selectedField, +$any($event.target).value)">
+            </mat-form-field>
+          </div>
+
+          <!-- Dropdown Options Editor -->
+          <div *ngIf="selectedField.type === 'dropdown'" class="space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="text-sm font-medium">Dropdown Options</label>
+              <button mat-stroked-button color="primary" (click)="addDropdownOption(selectedField)" type="button" class="!text-xs !py-0 !min-h-[28px]">
+                <mat-icon class="!text-[16px] !w-[16px] !h-[16px]">add</mat-icon> Add
+              </button>
+            </div>
+            <div *ngFor="let option of selectedField.options; let oi = index" class="flex items-center gap-2">
+              <span class="text-xs text-gray-400 w-5">{{ oi + 1 }}.</span>
+              <input class="flex-1 border rounded px-2 py-1 text-sm" [value]="option" (input)="updateDropdownOption(selectedField, oi, $any($event.target).value)" placeholder="Option value">
+              <button mat-icon-button color="warn" (click)="removeDropdownOption(selectedField, oi)" [disabled]="selectedField.options.length <= 1" type="button" class="!w-7 !h-7">
+                <mat-icon class="!text-[16px]">close</mat-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fields Summary List -->
+        <div *ngIf="fieldPositions.length > 0" class="border rounded-lg p-3 bg-gray-50">
+          <h4 class="text-sm font-medium mb-2">Placed Fields ({{ fieldPositions.length }})</h4>
+          <div class="space-y-1">
+            <div *ngFor="let field of fieldPositions; let i = index"
+                 class="flex items-center justify-between text-xs p-2 rounded cursor-pointer hover:bg-gray-100"
+                 [class.bg-indigo-50]="selectedField === field"
+                 (click)="selectField(field, $event)">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full"
+                      [ngClass]="{
+                        'bg-blue-500': field.type === 'signature',
+                        'bg-green-600': field.type === 'text',
+                        'bg-orange-500': field.type === 'date',
+                        'bg-purple-500': field.type === 'dropdown'
+                      }"></span>
+                <span class="font-medium">{{ field.label }}</span>
+                <span class="text-gray-400">Page {{ field.page }}</span>
+                <span *ngIf="field.type === 'dropdown' && field.options" class="text-gray-400">({{ field.options.length }} options)</span>
+              </div>
+              <button mat-icon-button color="warn" (click)="$event.stopPropagation(); removeField(i)" type="button" class="!w-6 !h-6">
+                <mat-icon class="!text-[14px]">delete</mat-icon>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

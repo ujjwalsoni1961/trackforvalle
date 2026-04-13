@@ -96,9 +96,13 @@ export class AddContractComponent implements OnInit {
   pdfPages: any[] = [];
   currentPdfPage: number = 1;
   totalPdfPages: number = 0;
-  editingField: any = null;
+  selectedField: any = null;
   _pdfDoc: any = null;
   private dragState: { field: any; offsetX: number; offsetY: number } | null = null;
+  private boundMouseMove: any;
+  private boundMouseUp: any;
+  private boundTouchMove: any;
+  private boundTouchEnd: any;
 
   predefinedTemplates: ContractTemplate[] = [
     {
@@ -496,15 +500,22 @@ export class AddContractComponent implements OnInit {
       ...(type === 'dropdown' ? { options: ['Option 1', 'Option 2'] } : {})
     };
     this.fieldPositions.push(newField);
+    this.selectedField = newField;
   }
 
   removeField(index: number) {
+    if (this.selectedField === this.fieldPositions[index]) {
+      this.selectedField = null;
+    }
     this.fieldPositions.splice(index, 1);
   }
 
   removeFieldById(id: string) {
     const index = this.fieldPositions.findIndex(f => f.id === id);
     if (index !== -1) {
+      if (this.selectedField === this.fieldPositions[index]) {
+        this.selectedField = null;
+      }
       this.fieldPositions.splice(index, 1);
     }
   }
@@ -513,28 +524,101 @@ export class AddContractComponent implements OnInit {
     return this.fieldPositions.filter(f => f.page === this.currentPdfPage);
   }
 
-  onFieldMouseDown(event: MouseEvent, field: any) {
-    event.preventDefault();
-    const el = event.target as HTMLElement;
-    this.dragState = {
-      field,
-      offsetX: event.clientX - el.getBoundingClientRect().left,
-      offsetY: event.clientY - el.getBoundingClientRect().top
-    };
+  selectField(field: any, event?: MouseEvent | TouchEvent) {
+    if (event) event.stopPropagation();
+    this.selectedField = field;
   }
 
-  onCanvasMouseMove(event: MouseEvent) {
+  deselectField() {
+    this.selectedField = null;
+  }
+
+  onFieldPointerDown(event: MouseEvent | TouchEvent, field: any) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.selectedField = field;
+
+    const container = document.getElementById('pdfCanvasContainer');
+    if (!container) return;
+    const containerRect = container.getBoundingClientRect();
+
+    let clientX: number, clientY: number;
+    if (event instanceof TouchEvent) {
+      clientX = event.touches[0].clientX;
+      clientY = event.touches[0].clientY;
+    } else {
+      clientX = event.clientX;
+      clientY = event.clientY;
+    }
+
+    this.dragState = {
+      field,
+      offsetX: clientX - containerRect.left - field.x,
+      offsetY: clientY - containerRect.top - field.y
+    };
+
+    // Bind document-level listeners for smooth dragging
+    this.boundMouseMove = (e: MouseEvent) => this.onPointerMove(e.clientX, e.clientY);
+    this.boundMouseUp = () => this.onPointerUp();
+    this.boundTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      this.onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
+    };
+    this.boundTouchEnd = () => this.onPointerUp();
+
+    document.addEventListener('mousemove', this.boundMouseMove);
+    document.addEventListener('mouseup', this.boundMouseUp);
+    document.addEventListener('touchmove', this.boundTouchMove, { passive: false });
+    document.addEventListener('touchend', this.boundTouchEnd);
+  }
+
+  private onPointerMove(clientX: number, clientY: number) {
     if (!this.dragState) return;
     const container = document.getElementById('pdfCanvasContainer');
-    if (container) {
-      const rect = container.getBoundingClientRect();
-      this.dragState.field.x = Math.max(0, event.clientX - rect.left - this.dragState.offsetX);
-      this.dragState.field.y = Math.max(0, event.clientY - rect.top - this.dragState.offsetY);
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const newX = clientX - rect.left - this.dragState.offsetX;
+    const newY = clientY - rect.top - this.dragState.offsetY;
+    this.dragState.field.x = Math.max(0, Math.min(newX, rect.width - this.dragState.field.width));
+    this.dragState.field.y = Math.max(0, Math.min(newY, rect.height - this.dragState.field.height));
+  }
+
+  private onPointerUp() {
+    this.dragState = null;
+    document.removeEventListener('mousemove', this.boundMouseMove);
+    document.removeEventListener('mouseup', this.boundMouseUp);
+    document.removeEventListener('touchmove', this.boundTouchMove);
+    document.removeEventListener('touchend', this.boundTouchEnd);
+  }
+
+  // Field property editing
+  updateFieldLabel(field: any, value: string) {
+    field.label = value;
+  }
+
+  updateFieldWidth(field: any, value: number) {
+    field.width = Math.max(50, value);
+  }
+
+  updateFieldHeight(field: any, value: number) {
+    field.height = Math.max(20, value);
+  }
+
+  addDropdownOption(field: any) {
+    if (!field.options) field.options = [];
+    field.options.push(`Option ${field.options.length + 1}`);
+  }
+
+  removeDropdownOption(field: any, index: number) {
+    if (field.options && field.options.length > 1) {
+      field.options.splice(index, 1);
     }
   }
 
-  onCanvasMouseUp() {
-    this.dragState = null;
+  updateDropdownOption(field: any, index: number, value: string) {
+    if (field.options) {
+      field.options[index] = value;
+    }
   }
 
   // ─── Save Contract ───

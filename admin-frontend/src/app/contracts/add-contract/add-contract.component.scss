@@ -7,3 +7,32 @@
   border-top-left-radius: 0.5rem;
   border-top-right-radius: 0.5rem;
 }
+
+// Dense mat-form-field for field properties panel
+:host ::ng-deep .dense-field {
+  .mat-mdc-form-field-subscript-wrapper {
+    display: none;
+  }
+  .mat-mdc-text-field-wrapper {
+    padding: 0 8px;
+  }
+}
+
+// PDF field markers
+.pdf-field-marker {
+  border-radius: 3px;
+  transition: box-shadow 0.15s ease;
+  &:hover {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  }
+}
+
+// Canvas container responsive
+#pdfCanvasContainer {
+  position: relative;
+  canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+}
